@@ -23,3 +23,8 @@ desktop.ini
 # Logs
 *.log
 app-startup.log
+
+# Release artifacts (上传到 GitHub Release，不走 git)
+*.zip
+*.7z
+*.tar.gz
