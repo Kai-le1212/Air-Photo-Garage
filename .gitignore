@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+publish/
+release/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Test
+TestResults/
+*.coverage
+coverage.xml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+app-startup.log

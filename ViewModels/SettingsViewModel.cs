@@ -1,0 +1,97 @@
+using System;
+using System.IO;
+using System.Reflection;
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace AirPhotoGarage.ViewModels;
+
+/// <summary>
+/// 设置页 ViewModel。
+/// 按 winui3-full-skill 规则：ViewModel 不直接引用 Microsoft.UI.Xaml.*，
+/// 主题切换通过 <see cref="ApplyTheme"/> 静态回调委托给 App 层。
+/// </summary>
+public sealed partial class SettingsViewModel : ObservableObject
+{
+    /// <summary>主题索引对应的选项（与 UI RadioButtons 顺序一致）。</summary>
+    public enum ThemeChoice
+    {
+        SystemDefault = 0,
+        Light = 1,
+        Dark = 2,
+    }
+
+    /// <summary>App 层注入的主题应用回调，签名：int -> void（0/1/2 = System/Light/Dark）。</summary>
+    public static Action<int>? ApplyTheme;
+
+    [ObservableProperty]
+    private int _themeIndex;
+
+    public SettingsViewModel()
+    {
+        _themeIndex = LoadFromDisk();
+    }
+
+    partial void OnThemeIndexChanged(int value)
+    {
+        ApplyTheme?.Invoke(value);
+        SaveToDisk(value);
+    }
+
+    /// <summary>版本号文本，例如 "v0.1.0"。</summary>
+    public string VersionText
+    {
+        get
+        {
+            var v = Assembly.GetExecutingAssembly().GetName().Version;
+            return v is null ? "v0.1.0" : $"v{v.Major}.{v.Minor}.{v.Build}";
+        }
+    }
+
+    /// <summary>版权信息文本（多行）。</summary>
+    public string CopyrightText =>
+        "Air Photo Garage · 航空摄影整理工具\n" +
+        "© 2026 AirPhotoGarage Team\n" +
+        "使用 .NET 10 + Windows App SDK 2.3 + WinUI 3 + SQLite 构建";
+
+    public string DatabasePathText =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AirPhotoGarage", "library.db");
+
+    public string LibraryRootText =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AirPhotoGarage");
+
+    // ---------- 持久化 ----------
+
+    private static string SettingsPath =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AirPhotoGarage", "settings.txt");
+
+    private static int LoadFromDisk()
+    {
+        try
+        {
+            if (File.Exists(SettingsPath))
+            {
+                var s = File.ReadAllText(SettingsPath).Trim();
+                if (int.TryParse(s, out var i) && i >= 0 && i <= 2) return i;
+            }
+        }
+        catch { }
+        return 0;
+    }
+
+    private static void SaveToDisk(int value)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(SettingsPath)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(SettingsPath, value.ToString());
+        }
+        catch { }
+    }
+}

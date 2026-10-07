@@ -1,0 +1,324 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using AirPhotoGarage.Models;
+using AirPhotoGarage.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage.Streams;
+
+namespace AirPhotoGarage.ViewModels;
+
+/// <summary>
+/// 批量导入向导的 ViewModel。
+/// 流程：
+/// 1. 用户从文件选择器选 N 张图，传入 <see cref="StartAsync"/>。
+/// 2. ViewModel 在后台调用 <see cref="IPhotoImportService.PrepareImportAsync"/>，得到 Photo 列表（已含缩略图与 EXIF）。
+/// 3. 用户逐张确认/补全「机型 / 注册号 / 机场 / 备注」。
+/// 4. 完成后通过 <see cref="CompletedPhotos"/> 返回所有 Photo，由 GarageViewModel 写入数据库。
+/// </summary>
+public sealed partial class ImportWizardViewModel : ObservableObject
+{
+    private readonly IPhotoImportService _importer;
+    private readonly IUiDispatcher _ui;
+    private readonly IAirportCatalogService _airportCatalog;
+    private readonly IAircraftCatalogService _aircraftCatalog;
+
+    private readonly List<Photo> _photos = new();
+    private readonly List<ImageSource?> _thumbnails = new();
+
+    [ObservableProperty] private bool _isOpen;
+    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private string _statusMessage = "";
+    [ObservableProperty] private int _currentIndex;
+
+    // 当前编辑字段
+    [ObservableProperty] private string _aircraftModel = "";
+    [ObservableProperty] private string _registrationNumber = "";
+    [ObservableProperty] private string _airportIata = "";
+    [ObservableProperty] private string _airportIcao = "";
+    [ObservableProperty] private string _airportName = "";
+    [ObservableProperty] private string _notes = "";
+
+    // 派生显示
+    [ObservableProperty] private ImageSource? _currentThumbnail;
+    [ObservableProperty] private string _stepText = "";
+    [ObservableProperty] private string _nextButtonText = "下一张 >";
+    [ObservableProperty] private string _shotAtText = "";
+    [ObservableProperty] private string _exifHint = "";
+
+    public ImportWizardViewModel(
+        IPhotoImportService importer,
+        IUiDispatcher uiDispatcher,
+        IAirportCatalogService airportCatalog,
+        IAircraftCatalogService aircraftCatalog)
+    {
+        _importer = importer;
+        _ui = uiDispatcher;
+        _airportCatalog = airportCatalog;
+        _aircraftCatalog = aircraftCatalog;
+    }
+
+    public int TotalCount => _photos.Count;
+
+    public bool CanGoBack => CurrentIndex > 0;
+
+    public bool CanCopyPrevious => CurrentIndex > 0;
+
+    public bool CanGoNext => CurrentIndex < _photos.Count - 1;
+
+    /// <summary>完成向导后，向调用方返回的所有 Photo 对象（已含用户填写的元数据）。</summary>
+    public IReadOnlyList<Photo> CompletedPhotos => _photos;
+
+    /// <summary>向所有照片写入 EXIF 自动提取的字段，并打开向导。</summary>
+    public async Task<bool> StartAsync(IReadOnlyList<string> sourceFiles)
+    {
+        if (sourceFiles is null || sourceFiles.Count == 0) return false;
+
+        IsBusy = true;
+        StatusMessage = $"准备导入 {sourceFiles.Count} 张...";
+        try
+        {
+            _photos.Clear();
+            _thumbnails.Clear();
+
+            // 1. 预处理：复制 + 缩略图 + EXIF
+            int succeeded = 0, failed = 0;
+            foreach (var src in sourceFiles)
+            {
+                try
+                {
+                    var photo = await _importer.PrepareImportAsync(src);
+                    _photos.Add(photo);
+                    succeeded++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PrepareImport failed {src}: {ex}");
+                    failed++;
+                }
+            }
+
+            if (_photos.Count == 0)
+            {
+                StatusMessage = $"预处理全部失败：{failed} 张";
+                IsOpen = false;
+                return false;
+            }
+
+            // 2. 在 UI 线程上为每张照片创建缩略图 ImageSource
+            foreach (var photo in _photos)
+            {
+                _thumbnails.Add(null);
+                _ = LoadThumbnailFor(photo, _photos.IndexOf(photo));
+            }
+
+            CurrentIndex = 0;
+            IsOpen = true;
+            LoadCurrentToFields();
+            StatusMessage = failed == 0
+                ? $"已加载 {succeeded} 张，请逐张确认信息"
+                : $"已加载 {succeeded} 张（{failed} 张失败）";
+            return true;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    partial void OnCurrentIndexChanged(int value)
+    {
+        LoadCurrentToFields();
+    }
+
+    /// <summary>把当前 Photo 的字段加载到可编辑属性。</summary>
+    private void LoadCurrentToFields()
+    {
+        if (_photos.Count == 0) return;
+        var p = _photos[CurrentIndex];
+
+        AircraftModel = p.AircraftModel ?? "";
+        RegistrationNumber = p.RegistrationNumber ?? "";
+        AirportIata = p.AirportIata ?? "";
+        AirportIcao = p.AirportIcao ?? "";
+        AirportName = p.AirportName ?? "";
+        Notes = p.Notes ?? "";
+        CurrentThumbnail = _thumbnails[CurrentIndex];
+
+        StepText = $"第 {CurrentIndex + 1} / {_photos.Count} 张";
+        NextButtonText = CurrentIndex == _photos.Count - 1 ? "完成导入" : "下一张 >";
+
+        // EXIF DateTimeOriginal 已是相机本地时间原值，不要 ToLocalTime 二次转换
+        ShotAtText = p.ShotAt.HasValue
+            ? p.ShotAt.Value.ToString("yyyy-MM-dd HH:mm")
+            : "未读取到拍摄时间";
+
+        var exifParts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(p.CameraModel)) exifParts.Add(p.CameraModel);
+        if (!string.IsNullOrWhiteSpace(p.LensModel)) exifParts.Add(p.LensModel);
+        if (p.FocalLength.HasValue) exifParts.Add($"{p.FocalLength.Value:0}mm");
+        if (!string.IsNullOrWhiteSpace(p.Aperture)) exifParts.Add(p.Aperture);
+        if (!string.IsNullOrWhiteSpace(p.ShutterSpeed)) exifParts.Add(p.ShutterSpeed);
+        if (p.Iso.HasValue) exifParts.Add($"ISO {p.Iso}");
+        ExifHint = exifParts.Count == 0 ? "" : "  ·  " + string.Join(" · ", exifParts);
+
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(CanCopyPrevious));
+        OnPropertyChanged(nameof(CanGoNext));
+    }
+
+    /// <summary>把当前可编辑属性写回 Photo 对象。</summary>
+    private void SaveFieldsToCurrent()
+    {
+        if (_photos.Count == 0) return;
+        var p = _photos[CurrentIndex];
+        p.AircraftModel = EmptyToNull(AircraftModel);
+        p.RegistrationNumber = EmptyToNull(RegistrationNumber);
+        p.AirportIata = EmptyToNull(AirportIata?.ToUpperInvariant());
+        p.AirportIcao = EmptyToNull(AirportIcao?.ToUpperInvariant());
+        p.AirportCode = p.AirportIata ?? p.AirportIcao; // 兼容旧字段
+        p.AirportName = EmptyToNull(AirportName);
+        p.Notes = EmptyToNull(Notes);
+    }
+
+    private static string? EmptyToNull(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // ---- 机场三字段联动 ----
+    // 任一字段变化时，回填其他两个（仅在值非空且与目录精确匹配时）。
+
+    partial void OnAirportIataChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 3) return;
+        var a = _airportCatalog.FindByIata(value);
+        if (a is null) return;
+        if (!string.Equals(AirportIcao, a.Icao, StringComparison.OrdinalIgnoreCase))
+            AirportIcao = a.Icao ?? "";
+        if (!string.Equals(AirportName, a.Name, StringComparison.Ordinal))
+            AirportName = a.Name;
+    }
+
+    partial void OnAirportIcaoChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length != 4) return;
+        var a = _airportCatalog.FindByIcao(value);
+        if (a is null) return;
+        if (!string.Equals(AirportIata, a.Iata, StringComparison.OrdinalIgnoreCase))
+            AirportIata = a.Iata ?? "";
+        if (!string.Equals(AirportName, a.Name, StringComparison.Ordinal))
+            AirportName = a.Name;
+    }
+
+    partial void OnAirportNameChanged(string value)
+    {
+        var results = _airportCatalog.SearchByName(value);
+        if (results.Count != 1) return;
+        var a = results[0];
+        if (!string.Equals(AirportIata, a.Iata, StringComparison.OrdinalIgnoreCase))
+            AirportIata = a.Iata ?? "";
+        if (!string.Equals(AirportIcao, a.Icao, StringComparison.OrdinalIgnoreCase))
+            AirportIcao = a.Icao ?? "";
+    }
+
+    [RelayCommand]
+    private void Previous()
+    {
+        if (CurrentIndex <= 0) return;
+        SaveFieldsToCurrent();
+        CurrentIndex--;
+    }
+
+    [RelayCommand]
+    private void Next()
+    {
+        SaveFieldsToCurrent();
+        if (CurrentIndex < _photos.Count - 1)
+        {
+            CurrentIndex++;
+        }
+        else
+        {
+            // 最后一张：完成向导
+            IsOpen = false;
+        }
+    }
+
+    /// <summary>一键把上一张已填写的信息复制到当前张。</summary>
+    [RelayCommand]
+    private void CopyFromPrevious()
+    {
+        if (CurrentIndex <= 0) return;
+        var prev = _photos[CurrentIndex - 1];
+        AircraftModel = prev.AircraftModel ?? "";
+        RegistrationNumber = prev.RegistrationNumber ?? "";
+        AirportIata = prev.AirportIata ?? "";
+        AirportIcao = prev.AirportIcao ?? "";
+        AirportName = prev.AirportName ?? "";
+        Notes = prev.Notes ?? "";
+    }
+
+    /// <summary>跳过本张，不修改字段并前进。</summary>
+    [RelayCommand]
+    private void Skip()
+    {
+        Next();
+    }
+
+    [RelayCommand]
+    private void Cancel()
+    {
+        IsOpen = false;
+    }
+
+    private async Task LoadThumbnailFor(Photo photo, int index)
+    {
+        var path = photo.ThumbnailPath ?? photo.FilePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+        try
+        {
+            byte[] bytes;
+            using (var fs = File.OpenRead(path))
+            using (var ms = new MemoryStream())
+            {
+                await fs.CopyToAsync(ms);
+                bytes = ms.ToArray();
+            }
+
+            _ui.TryEnqueue(() => _ = ApplyThumbnailOnUiThread(bytes, index));
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private async Task ApplyThumbnailOnUiThread(byte[] bytes, int index)
+    {
+        try
+        {
+            // 按 image.md 最佳实践：设置 DecodePixelHeight 让 BitmapImage
+            // 只解码到目标高度，避免完整解码。
+            var bmp = new BitmapImage { DecodePixelHeight = 480 };
+            using var ms = new MemoryStream(bytes);
+            await bmp.SetSourceAsync(ms.AsRandomAccessStream());
+            if (index < _thumbnails.Count)
+            {
+                _thumbnails[index] = bmp;
+            }
+            if (index == CurrentIndex)
+            {
+                CurrentThumbnail = bmp;
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+}

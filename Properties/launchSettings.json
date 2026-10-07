@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AirPhotoGarage (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AirPhotoGarage (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
