@@ -427,7 +427,15 @@ public sealed partial class MainPage : Page
             stack.Children.Insert(0, hint);
         }
 
-        dialog.Content = stack;
+        // 包一层 ScrollViewer，机场 / 备注字段多时可滚动
+        var scroll = new ScrollViewer
+        {
+            Content = stack,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            MaxHeight = 560,
+        };
+        dialog.Content = scroll;
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary) return;
 
