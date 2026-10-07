@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
@@ -12,6 +13,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Pickers;
+using Windows.System;
 using WinRT.Interop;
 
 namespace AirPhotoGarage;
@@ -243,6 +245,15 @@ public sealed partial class MainPage : Page
         Grid.SetRow(footerInfo, 2);
         body.Children.Add(footerInfo);
 
+        // 把 body 包在 ScrollViewer 里，让内容超出可视区域时可滚动
+        var scroll = new ScrollViewer
+        {
+            Content = body,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            MaxHeight = 600,
+        };
+
         var dialog = new ContentDialog
         {
             XamlRoot = this.XamlRoot,
@@ -250,7 +261,7 @@ public sealed partial class MainPage : Page
             PrimaryButtonText = "编辑信息",
             CloseButtonText = "关闭",
             DefaultButton = ContentDialogButton.Close,
-            Content = body,
+            Content = scroll,
         };
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
@@ -346,6 +357,22 @@ public sealed partial class MainPage : Page
         {
             asbModel.Text = args.SelectedItem as string ?? asbModel.Text;
         };
+        // 按 Enter / Tab 直接选中第一项候选（如果候选列表非空）。
+        // 使用 handledEventsToo: true 是因为 AutoSuggestBox 内部可能已经处理了 KeyDown，
+        // 默认订阅会被跳过。
+        asbModel.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((s, e) =>
+        {
+            if ((e.Key == VirtualKey.Enter || e.Key == VirtualKey.Tab) &&
+                asbModel.IsSuggestionListOpen &&
+                asbModel.ItemsSource is IEnumerable<string> items &&
+                items.Any())
+            {
+                asbModel.Text = items.First();
+                asbModel.ItemsSource = null;
+                asbModel.IsSuggestionListOpen = false;
+                e.Handled = true;
+            }
+        }), handledEventsToo: true);
 
         var tbReg = new TextBox { Header = "注册号", Text = photo.RegistrationNumber ?? "" };
 
