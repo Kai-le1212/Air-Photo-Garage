@@ -24,15 +24,4 @@ public sealed partial class ImportWizardView : UserControl
     {
         ViewModel.CancelCommand.Execute(null);
     }
-
-    /// <summary>
-    /// 机型 AutoSuggestBox 输入时实时显示候选。
-    /// </summary>
-    private void OnModelTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-    {
-        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
-        {
-            sender.ItemsSource = App.AircraftCatalog.Search(sender.Text);
-        }
-    }
 }

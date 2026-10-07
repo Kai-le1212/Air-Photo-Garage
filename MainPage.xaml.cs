@@ -127,7 +127,17 @@ public sealed partial class MainPage : Page
 
         var editItem = new MenuFlyoutItem { Text = "编辑信息..." };
         editItem.Icon = new FontIcon { Glyph = "\uE70F" }; // Edit
-        editItem.Click += (_, _) => _ = ShowEditDialogAsync(card);
+        editItem.Click += async (_, _) =>
+        {
+            try
+            {
+                await ShowEditDialogAsync(card);
+            }
+            catch (Exception ex)
+            {
+                App.Log($"ShowEditDialogAsync 异常: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+            }
+        };
         menu.Items.Add(editItem);
 
         menu.Items.Add(new MenuFlyoutSeparator());
@@ -336,45 +346,119 @@ public sealed partial class MainPage : Page
             DefaultButton = ContentDialogButton.Primary,
         };
 
-        var stack = new StackPanel { Spacing = 10, MinWidth = 460 };
+        var stack = new StackPanel { Spacing = 10, Width = 460 };  // 固定宽度，确保所有列等宽
 
-        // ---------- 机型 AutoSuggestBox ----------
-        var asbModel = new AutoSuggestBox
+        // ---------- 机型（TextBox + inline ListView 候选下拉） ----------
+        // 不用 AutoSuggestBox（ControlTemplate 里有不可消除的内部死区导致输入框窄 ~25px）。
+        // 不用 Popup（Popup 在 ContentDialog 内嵌会破坏 Modal 焦点链，导致 PrimaryButton 无法响应）。
+        // 直接把 ListView 放在 TextBox 下方（同一个 StackPanel），Visibility 控制显隐。
+        var tbModel = new TextBox
         {
             Header = "机型",
             Text = photo.AircraftModel ?? "",
-            QueryIcon = new FontIcon { Glyph = "\uE721" }, // Search
-            MaxHeight = 32,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        asbModel.TextChanged += (s, args) =>
+
+        var listModel = new ListView
         {
-            if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+            MaxHeight = 180,
+            MinHeight = 32,
+            SelectionMode = ListViewSelectionMode.Single,
+            Visibility = Visibility.Collapsed,  // 默认隐藏，输入时显示
+            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Margin = new Thickness(0, -6, 0, 0),  // 紧贴 TextBox
+        };
+
+        IReadOnlyList<string> currentSuggestions = Array.Empty<string>();
+        int selectedIndex = -1;
+
+        void PickCurrent()
+        {
+            string pick;
+            if (selectedIndex >= 0 && selectedIndex < currentSuggestions.Count)
+                pick = currentSuggestions[selectedIndex];
+            else if (currentSuggestions.Count > 0)
+                pick = currentSuggestions[0];
+            else
+                return;
+            tbModel.Text = pick;
+            listModel.Visibility = Visibility.Collapsed;
+        }
+
+        void RefreshSuggestions()
+        {
+            var results = App.AircraftCatalog.Search(tbModel.Text ?? "").ToList();
+            currentSuggestions = results;
+            listModel.ItemsSource = results;
+            if (results.Count > 0)
             {
-                asbModel.ItemsSource = App.AircraftCatalog.Search(asbModel.Text);
+                selectedIndex = 0;
+                listModel.SelectedIndex = 0;
+                listModel.Visibility = Visibility.Visible;
             }
-        };
-        asbModel.SuggestionChosen += (s, args) =>
-        {
-            asbModel.Text = args.SelectedItem as string ?? asbModel.Text;
-        };
-        // 按 Enter / Tab 直接选中第一项候选（如果候选列表非空）。
-        // 使用 handledEventsToo: true 是因为 AutoSuggestBox 内部可能已经处理了 KeyDown，
-        // 默认订阅会被跳过。
-        asbModel.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((s, e) =>
-        {
-            if ((e.Key == VirtualKey.Enter || e.Key == VirtualKey.Tab) &&
-                asbModel.IsSuggestionListOpen &&
-                asbModel.ItemsSource is IEnumerable<string> items &&
-                items.Any())
+            else
             {
-                asbModel.Text = items.First();
-                asbModel.ItemsSource = null;
-                asbModel.IsSuggestionListOpen = false;
-                e.Handled = true;
+                selectedIndex = -1;
+                listModel.SelectedIndex = -1;
+                listModel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        tbModel.TextChanged += (s, e) => RefreshSuggestions();
+        listModel.ItemClick += (s, e) =>
+        {
+            tbModel.Text = e.ClickedItem as string ?? tbModel.Text;
+            listModel.Visibility = Visibility.Collapsed;
+        };
+        // 焦点离开机型 TextBox → 隐藏候选（但点候选时让 ListView 拿到焦点）
+        tbModel.LostFocus += (s, e) =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                var focused = FocusManager.GetFocusedElement(XamlRoot);
+                if (focused == listModel) return;  // 焦点在候选列表，保持显示
+                listModel.Visibility = Visibility.Collapsed;
+            });
+        };
+
+        tbModel.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((s, e) =>
+        {
+            if (currentSuggestions.Count == 0) return;
+            switch (e.Key)
+            {
+                case VirtualKey.Down:
+                    selectedIndex = Math.Min(selectedIndex + 1, currentSuggestions.Count - 1);
+                    listModel.SelectedIndex = selectedIndex;
+                    e.Handled = true;
+                    break;
+                case VirtualKey.Up:
+                    selectedIndex = Math.Max(selectedIndex - 1, 0);
+                    listModel.SelectedIndex = selectedIndex;
+                    e.Handled = true;
+                    break;
+                case VirtualKey.Enter:
+                    PickCurrent();
+                    e.Handled = true;
+                    break;
+                case VirtualKey.Tab:
+                    PickCurrent();
+                    // 不 e.Handled = true，让 Tab 继续走焦点转移
+                    break;
+                case VirtualKey.Escape:
+                    listModel.Visibility = Visibility.Collapsed;
+                    e.Handled = true;
+                    break;
             }
         }), handledEventsToo: true);
 
-        var tbReg = new TextBox { Header = "注册号", Text = photo.RegistrationNumber ?? "" };
+        var tbReg = new TextBox
+        {
+            Header = "注册号",
+            Text = photo.RegistrationNumber ?? "",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
 
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox
@@ -382,17 +466,20 @@ public sealed partial class MainPage : Page
             Header = "IATA 三字代码 (如 PEK)",
             Text = photo.AirportIata ?? "",
             MaxLength = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var tbIcao = new TextBox
         {
             Header = "ICAO 四字代码 (如 ZBAA)",
             Text = photo.AirportIcao ?? "",
             MaxLength = 4,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var tbAirportName = new TextBox
         {
             Header = "机场名称",
             Text = photo.AirportName ?? "",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
         // IATA 失焦/变化 → 查目录回填 ICAO + Name
@@ -402,7 +489,16 @@ public sealed partial class MainPage : Page
         // 名称变化 → 反查 IATA + ICAO
         tbAirportName.TextChanged += (s, args) => FillAirportFromName(tbAirportName, tbIata, tbIcao);
 
-        var tbNotes = new TextBox { Header = "备注", Text = photo.Notes ?? "", AcceptsReturn = true, Height = 80 };
+        var tbNotes = new TextBox
+        {
+            Header = "备注",
+            Text = photo.Notes ?? "",
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            MinHeight = 80,    // 默认高度（空备注时）
+            MaxHeight = 200,   // 超过后内部滚动（不被外层 ScrollViewer 顶出去）
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
 
         // 初始反向回填：让三个字段对齐（以 Name 为准反向查 IATA/ICAO）
         if (!string.IsNullOrWhiteSpace(photo.AirportName))
@@ -410,7 +506,8 @@ public sealed partial class MainPage : Page
             FillAirportFromName(tbAirportName, tbIata, tbIcao);
         }
 
-        stack.Children.Add(asbModel);
+        stack.Children.Add(tbModel);
+        stack.Children.Add(listModel);  // 候选列表（默认 Collapsed，输入时显示）
         stack.Children.Add(tbReg);
         stack.Children.Add(tbIata);
         stack.Children.Add(tbIcao);
@@ -433,13 +530,13 @@ public sealed partial class MainPage : Page
             Content = stack,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            MaxHeight = 560,
+            MaxHeight = 560,  // 默认内容（约 460px）下不滚动；备注填长内容后撑高触发滚动
         };
         dialog.Content = scroll;
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary) return;
 
-        photo.AircraftModel = NullIfEmpty(asbModel.Text);
+        photo.AircraftModel = NullIfEmpty(tbModel.Text);
         photo.RegistrationNumber = NullIfEmpty(tbReg.Text);
         photo.AirportIata = NullIfEmpty(tbIata.Text?.ToUpperInvariant());
         photo.AirportIcao = NullIfEmpty(tbIcao.Text?.ToUpperInvariant());
@@ -527,4 +624,21 @@ public sealed partial class MainPage : Page
     }
 
     private static string? NullIfEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>
+    /// 在可视化树里按名字查找子元素（深度优先）。
+    /// 用于访问 WinUI 模板内部带 x:Name 的控件（如 AutoSuggestBox 内部的 QueryButton）。
+    /// </summary>
+    private static T? FindVisualChild<T>(DependencyObject root, Func<T, bool> match) where T : DependencyObject
+    {
+        int count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T t && match(t)) return t;
+            var deeper = FindVisualChild(child, match);
+            if (deeper is not null) return deeper;
+        }
+        return null;
+    }
 }

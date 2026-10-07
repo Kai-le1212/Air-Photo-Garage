@@ -85,11 +85,9 @@
                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                        TextWrapping="Wrap" />
 
-                            <AutoSuggestBox x:Name="AsbModel" Header="机型（如 Boeing 737-800）"
-                                            Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            PlaceholderText="输入机型或从候选中选择"
-                                            QueryIcon="Find"
-                                            TextChanged="OnModelTextChanged" />
+                            <TextBox Header="机型（如 Boeing 737-800）"
+                                     Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="输入机型" />
 
                             <TextBox Header="注册号（如 B-1234）"
                                      Text="{x:Bind ViewModel.RegistrationNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
