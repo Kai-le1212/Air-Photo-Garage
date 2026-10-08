@@ -100,22 +100,29 @@ public sealed partial class MainPage : Page
     private void OnSuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
         var ttb = FindOwningTokenizingTextBox(sender);
-        var text = args.SelectedItem?.ToString();
-        if (ttb is null || string.IsNullOrWhiteSpace(text)) return;
+        if (ttb is null) return;
 
-        // AddTokenItem(item, resetText: true) —— 加入 token 并清空输入框
-        ttb.AddTokenItem(text, true);
+        // 不在此处调用 AddTokenItem —— 控件自身会在点击候选项时完成提交。
+        // 手动 AddTokenItem 会重建内部 AutoSuggestBox 状态，导致「点过一次后
+        // 再也点不动 / 回车失效」。这里只负责把选择同步给 ViewModel。
         SyncTokenToViewModel(ttb);
         ViewModel.InvalidateFilter();
     }
 
     /// <summary>
-    /// 输入过程中的实时同步：
-    /// 直接把输入框里的文字写回筛选字段（用户不必回车也能生效），
-    /// 同时保留 token 场景（点选建议项后 SelectedTokenText 优先）。
+    /// 输入过程中的实时同步：把输入框文字写回筛选字段，用户不必回车即可看到结果。
+    /// <para>
+    /// 注意：这里<b>只同步、不提交 token</b>。若在此处调用 AddTokenItem 或在
+    /// QuerySubmitted 中抢先提交，会与控件自身的 token 提交逻辑打架，表现为
+    /// 「点过一次候选项之后，回车和点击都失效」。
+    /// </para>
     /// </summary>
     private void OnTokenTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
+        // Reason == ProgrammaticChange 时是控件回写文本，不应触发筛选；
+        // 否则点击候选项后控件回填文本会被误判为用户输入，反复刷新打断交互。
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
         var ttb = FindOwningTokenizingTextBox(sender);
         if (ttb is null) return;
 
@@ -123,16 +130,15 @@ public sealed partial class MainPage : Page
         ViewModel.InvalidateFilter();
     }
 
-    /// <summary>用户直接按回车提交输入框里的文字 → 同样落成 token。</summary>
+    /// <summary>
+    /// 控件已把选中项/输入内容提交为 token 后触发。这里只做 ViewModel 同步，
+    /// token 的提交交给控件自身完成（不要重复 AddTokenItem）。
+    /// </summary>
     private void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         var ttb = FindOwningTokenizingTextBox(sender);
         if (ttb is null) return;
 
-        var text = args.ChosenSuggestion?.ToString() ?? args.QueryText;
-        if (string.IsNullOrWhiteSpace(text)) return;
-
-        ttb.AddTokenItem(text.Trim(), true);
         SyncTokenToViewModel(ttb);
         ViewModel.InvalidateFilter();
     }

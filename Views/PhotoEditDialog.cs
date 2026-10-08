@@ -43,6 +43,10 @@ public static class PhotoEditDialog
         // 不用 AutoSuggestBox（ControlTemplate 里有不可消除的内部死区导致输入框窄 ~25px）。
         // 不用 Popup（Popup 在 ContentDialog 内嵌会破坏 Modal 焦点链，导致 PrimaryButton 无法响应）。
         // 直接把 ListView 放在 TextBox 下方（同一个 StackPanel），Visibility 控制显隐。
+        //
+        // 点击提交之所以不用 ListView.ItemClick：ItemClick 依赖 ListView 先拿到键盘焦点，
+        // 在 ContentDialog 模态链下经常不触发（表现为「点了没反应」）。改为在
+        // DataTemplate 的根元素上挂 Tapped —— 直接命中行本身，最可靠。
         var tbModel = new TextBox
         {
             Header = "机型",
@@ -54,96 +58,165 @@ public static class PhotoEditDialog
         {
             MaxHeight = 180,
             MinHeight = 32,
-            SelectionMode = ListViewSelectionMode.Single,
-            Visibility = Visibility.Collapsed,  // 默认隐藏，输入时显示
+            SelectionMode = ListViewSelectionMode.None,   // 不参与选择，避免抢焦点
+            IsItemClickEnabled = false,                   // 点击完全交给 DataTemplate 处理
+            Visibility = Visibility.Collapsed,            // 默认隐藏，输入时显示
             BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
-            Margin = new Thickness(0, -6, 0, 0),  // 紧贴 TextBox
+            Margin = new Thickness(0, -6, 0, 0),          // 紧贴 TextBox
         };
 
         IReadOnlyList<string> currentSuggestions = Array.Empty<string>();
         int selectedIndex = -1;
+        bool suppressModelRefresh = false;   // 程序化回填文本时，抑制候选刷新
 
-        void PickCurrent()
+        // 候选列表是否处于「用户正在浏览」状态：只有此时才让上下键/回车作用于候选，
+        // 否则按键应原样交给 TextBox（避免候选列表把输入框的按键全部吃掉）。
+        bool IsListVisible() => listModel.Visibility == Visibility.Visible;
+
+        void HideSuggestions()
         {
-            string pick;
-            if (selectedIndex >= 0 && selectedIndex < currentSuggestions.Count)
-                pick = currentSuggestions[selectedIndex];
-            else if (currentSuggestions.Count > 0)
-                pick = currentSuggestions[0];
-            else
-                return;
-            tbModel.Text = pick;
             listModel.Visibility = Visibility.Collapsed;
+            selectedIndex = -1;
+        }
+
+        /// <summary>
+        /// 面板是否处于「用户正在浏览候选」状态。此标志为 false 时，
+        /// TextChanged 一律不再弹出候选（用于点击提交后避免立刻又弹出来）。
+        /// </summary>
+        bool browsing = false;
+
+        /// <summary>把候选填进 TextBox，收起列表，并把焦点交回 TextBox。</summary>
+        void CommitSuggestion(string? pick)
+        {
+            if (string.IsNullOrWhiteSpace(pick)) return;
+
+            browsing = false;                    // 提交后停止浏览，杜绝列表立刻重开
+            suppressModelRefresh = true;
+            try
+            {
+                tbModel.Text = pick;
+                tbModel.SelectionStart = tbModel.Text.Length;
+            }
+            finally
+            {
+                suppressModelRefresh = false;
+            }
+
+            HideSuggestions();
+
+            // 关键：把焦点交回 TextBox，否则后续回车/方向键会落到 ListView 上，
+            // 表现为「点过一次候选之后，回车就再也选不动了」。
+            tbModel.Focus(FocusState.Programmatic);
         }
 
         void RefreshSuggestions()
         {
+            if (!browsing)
+            {
+                // 未处于浏览态（如刚从候选提交完）→ 不再弹列表。
+                return;
+            }
+
             var results = App.AircraftCatalog.Search(tbModel.Text ?? "").ToList();
             currentSuggestions = results;
             listModel.ItemsSource = results;
+
             if (results.Count > 0)
             {
                 selectedIndex = 0;
-                listModel.SelectedIndex = 0;
                 listModel.Visibility = Visibility.Visible;
             }
             else
             {
-                selectedIndex = -1;
-                listModel.SelectedIndex = -1;
-                listModel.Visibility = Visibility.Collapsed;
+                HideSuggestions();
             }
         }
 
-        tbModel.TextChanged += (s, e) => RefreshSuggestions();
-        listModel.ItemClick += (s, e) =>
+        // 候选项模板：根 Border 挂 Tapped —— 直接命中行，绕开 ItemClick 的焦点依赖。
+        var suggestionTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
+            "  <Border Padding='12,8' Background='Transparent'>" +
+            "    <TextBlock Text='{Binding}' TextTrimming='CharacterEllipsis' />" +
+            "  </Border>" +
+            "</DataTemplate>");
+        listModel.ItemTemplate = suggestionTemplate;
+
+        // Tapped 用 AddHandler 且 handledEventsToo，确保即使内层 TextBlock 先处理了也能拿到。
+        listModel.AddHandler(UIElement.TappedEvent, new TappedEventHandler((s, e) =>
         {
-            tbModel.Text = e.ClickedItem as string ?? tbModel.Text;
-            listModel.Visibility = Visibility.Collapsed;
+            // 从被点击的元素向上找到承载字符串的 DataContext
+            if (e.OriginalSource is DependencyObject src)
+            {
+                var picked = FindRowDataContext(src, listModel);
+                if (picked is not null)
+                {
+                    CommitSuggestion(picked);
+                    e.Handled = true;
+                }
+            }
+        }), handledEventsToo: true);
+
+        tbModel.TextChanged += (s, e) =>
+        {
+            // 程序化回填（CommitSuggestion 内部赋值）时不要重新弹列表，
+            // 否则收起后立刻又被打开，且会再次抢焦点。
+            if (suppressModelRefresh) return;
+
+            // 只有用户真实输入才进入「浏览候选」状态并弹列表。
+            browsing = true;
+            RefreshSuggestions();
         };
-        // 焦点离开机型 TextBox → 隐藏候选（但点候选时让 ListView 拿到焦点）
+
+        // 焦点离开且新焦点不在候选列表内 → 收起候选。
         tbModel.LostFocus += (s, e) =>
         {
             tbModel.DispatcherQueue.TryEnqueue(() =>
             {
+                if (!IsListVisible()) return;  // 已收起
                 var focused = FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
-                // 焦点可能在 ListView 内部的 ListViewItem 上，需沿视觉树向上判断是否为候选列表的子孙
-                if (IsDescendantOf(focused, listModel)) return;  // 焦点在候选列表，保持显示
-                listModel.Visibility = Visibility.Collapsed;
+                if (IsDescendantOf(focused, listModel)) return;
+                HideSuggestions();
             });
         };
 
-        tbModel.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((s, e) =>
+        // 键盘交互同时挂在 TextBox 与 ListView 上：
+        // 这样即使焦点短暂落到 ListView，上下键/回车依然可控，
+        // 从根本上避免「点过候选后回车失效」。
+        void HandleSuggestionKey(KeyRoutedEventArgs e)
         {
-            if (currentSuggestions.Count == 0) return;
+            if (!IsListVisible() || currentSuggestions.Count == 0)
+            {
+                return;  // 候选未展开时完全不干预，按键照常进 TextBox
+            }
+
             switch (e.Key)
             {
                 case VirtualKey.Down:
                     selectedIndex = Math.Min(selectedIndex + 1, currentSuggestions.Count - 1);
-                    listModel.SelectedIndex = selectedIndex;
                     e.Handled = true;
                     break;
                 case VirtualKey.Up:
                     selectedIndex = Math.Max(selectedIndex - 1, 0);
-                    listModel.SelectedIndex = selectedIndex;
                     e.Handled = true;
                     break;
                 case VirtualKey.Enter:
-                    PickCurrent();
+                    CommitSuggestion(
+                        selectedIndex >= 0 && selectedIndex < currentSuggestions.Count
+                            ? currentSuggestions[selectedIndex]
+                            : currentSuggestions[0]);
                     e.Handled = true;
                     break;
-                case VirtualKey.Tab:
-                    PickCurrent();
-                    // 不 e.Handled = true，让 Tab 继续走焦点转移
-                    break;
                 case VirtualKey.Escape:
-                    listModel.Visibility = Visibility.Collapsed;
+                    HideSuggestions();
                     e.Handled = true;
                     break;
             }
-        }), handledEventsToo: true);
+        }
+
+        tbModel.KeyDown += (s, e) => HandleSuggestionKey(e);
+        listModel.KeyDown += (s, e) => HandleSuggestionKey(e);
 
         var tbReg = new TextBox
         {
@@ -254,6 +327,23 @@ public static class PhotoEditDialog
             node = VisualTreeHelper.GetParent(node);
         }
         return false;
+    }
+
+    /// <summary>
+    /// 从被点击的元素向上回溯，取第一个非空且属于候选列表内的字符串 DataContext。
+    /// 用于 Tapped 命中判定：候选项数据就是字符串本身，其容器是 ListViewItem。
+    /// </summary>
+    private static string? FindRowDataContext(DependencyObject? node, DependencyObject listRoot)
+    {
+        while (node is not null && !ReferenceEquals(node, listRoot))
+        {
+            if (node is FrameworkElement { DataContext: string s } && !string.IsNullOrWhiteSpace(s))
+            {
+                return s;
+            }
+            node = VisualTreeHelper.GetParent(node);
+        }
+        return null;
     }
 
     /// <summary>用户输入 IATA 三字后，自动回填 ICAO + 机场名。</summary>
