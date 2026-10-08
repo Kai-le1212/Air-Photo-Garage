@@ -10,6 +10,9 @@ release/
 *.user
 *.suo
 
+# Agent workspace (本地工作记忆，不进版本库)
+.workbuddy/
+
 # Test
 TestResults/
 *.coverage
