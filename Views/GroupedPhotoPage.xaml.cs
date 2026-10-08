@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using AirPhotoGarage.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace AirPhotoGarage.Views;
@@ -56,7 +58,71 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (e.ClickedItem is PhotoCardViewModel card)
         {
-            _ = ShowPhotoDetailAsync(card);
+            _ = ShowPhotoDetailSafeAsync(card);
+        }
+    }
+
+    /// <summary>
+    /// 卡片上的常驻「详细信息」按钮。
+    /// 这是三条详情路径中最不依赖命中测试的一条，作为最终兜底。
+    /// 按钮在卡片模板内部，其 DataContext 即 <see cref="PhotoCardViewModel"/>。
+    /// </summary>
+    private void OnCardDetailButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoCardViewModel card })
+        {
+            _ = ShowPhotoDetailSafeAsync(card);
+        }
+    }
+
+    /// <summary>
+    /// 右键卡片 → 菜单。分组页此前只有左键 ItemClick 一条路径，
+    /// 与照片墙的交互不对齐；这里补齐右键菜单，提供「查看详细信息」入口。
+    /// </summary>
+    private void OnCardRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PhotoCardViewModel card })
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        var detailItem = new MenuFlyoutItem { Text = "查看详细信息" };
+        detailItem.Click += (_, _) => _ = ShowPhotoDetailSafeAsync(card);
+        flyout.Items.Add(detailItem);
+
+        flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
+        {
+            Position = e.GetPosition(sender as UIElement),
+        });
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 异常兜底：直接弃元 Task 会让构建详情时的异常完全静默，
+    /// 表现为「点了没反应且无任何提示」。这里记录日志并给出可视反馈。
+    /// </summary>
+    private async Task ShowPhotoDetailSafeAsync(PhotoCardViewModel card)
+    {
+        try
+        {
+            await ShowPhotoDetailAsync(card);
+        }
+        catch (Exception ex)
+        {
+            App.LogError("GroupedPhotoPage.ShowPhotoDetail", ex);
+            await new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "无法打开详细信息",
+                Content = new TextBlock
+                {
+                    Text = ex.ToString(),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                },
+                CloseButtonText = "关闭",
+            }.ShowAsync();
         }
     }
 
@@ -68,14 +134,7 @@ public sealed partial class GroupedPhotoPage : Page
     {
         var content = await PhotoDetailBuilder.BuildContentAsync(card.Photo);
 
-        var dialog = new ContentDialog
-        {
-            XamlRoot = XamlRoot,
-            Title = $"照片详情 · #{card.Photo.Id}",
-            Content = content,
-            CloseButtonText = "关闭",
-            DefaultButton = ContentDialogButton.Close,
-        };
+        var dialog = PhotoDetailBuilder.CreateDialog(XamlRoot, card.Photo.Id, content);
         await dialog.ShowAsync();
     }
 }

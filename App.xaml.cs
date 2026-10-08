@@ -114,6 +114,10 @@ public partial class App : Application
         catch { }
     }
 
+    /// <summary>记录异常（带上下文标签），用于排查「静默失败」类问题。</summary>
+    public static void LogError(string context, Exception ex) =>
+        Log($"ERROR [{context}] {ex.GetType().Name}: {ex.Message}\n{ex}");
+
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         Log("OnLaunched start");

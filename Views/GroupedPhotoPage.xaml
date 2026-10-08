@@ -10,13 +10,22 @@
     mc:Ignorable="d">
 
     <Page.Resources>
-        <!-- 照片卡片模板：分组页内多处复用（同一页面内 x:Key 引用是安全的） -->
+        <!--
+            照片卡片模板：分组页内多处复用（同一页面内 x:Key 引用是安全的）。
+
+            关于「详细信息」入口：为保证每个菜单都能打开详情，这里提供三条冗余路径：
+            1) 左键点击卡片 → GridView.ItemClick → OnPhotoClick
+            2) 右键卡片 → MenuFlyout「查看详细信息」→ OnCardMenuDetail
+            3) 卡片右下角常驻「详细信息」按钮 → Click → OnCardDetailButtonClick
+            任一路径失效都还有另外两条兜底。
+        -->
         <DataTemplate x:Key="PhotoCardTpl" x:DataType="vm:PhotoCardViewModel">
             <!-- DataTemplate 根元素必须显式 Width/Height，否则容器坍缩到 0 -->
             <Border Width="240" Height="300"
                     BorderThickness="1" CornerRadius="8"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    RightTapped="OnCardRightTapped">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
@@ -48,6 +57,12 @@
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                    TextTrimming="CharacterEllipsis" />
+                        <!-- 常驻详情入口：不依赖命中测试是否可靠 -->
+                        <Button Content="详细信息"
+                                Padding="8,2"
+                                Margin="0,4,0,0"
+                                HorizontalAlignment="Left"
+                                Click="OnCardDetailButtonClick" />
                     </StackPanel>
                 </Grid>
             </Border>

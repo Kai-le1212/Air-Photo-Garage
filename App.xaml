@@ -9,6 +9,15 @@
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!--
+                照片详情弹窗的内容宽度控制在 ~520，落在 WinUI 默认的
+                ContentDialog 宽度范围内，因此这里无需覆盖 ContentDialogMaxWidth。
+                保留此注释是为了记录踩坑结论：把该键写在 Application.Resources 顶层
+                或 dialog.Resources 上都无效（它由 XamlControlsResources 定义在
+                ThemeDictionaries 内，主题查找优先级更高）；真正可靠的做法是
+                让内容自身不超过窗口可用宽度。
+            -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

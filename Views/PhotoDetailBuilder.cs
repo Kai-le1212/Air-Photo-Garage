@@ -23,19 +23,27 @@ namespace AirPhotoGarage.Views;
 /// </para>
 ///
 /// <para>
-/// 布局：左侧大图，右侧「基本信息 / EXIF 参数」双列，底部跨列展示文件信息、
+/// 布局：纵向堆叠——顶部大图，其下「基本信息 / EXIF 参数」两列，最后是文件信息、
 /// AI 识别结果、路径，以及解析 <c>exif_json</c> 后的全部原始条目。
+/// </para>
+///
+/// <para>
+/// 为什么是纵向而不是「左图右参数」：<c>ContentDialog</c> 在内容期望宽度超过宿主
+/// 可用宽度时不会收缩，而是整体右移、被窗口右边缘裁掉，用户看到的现象就是
+/// 「详细信息没了」。纵向布局让各区域独占整行宽度，不依赖弹窗宽度的精确控制。
 /// </para>
 /// </summary>
 internal static class PhotoDetailBuilder
 {
-    /// <summary>构建详情弹窗的完整可滚动内容。</summary>
+    /// <summary>
+    /// 构建详情弹窗的完整可滚动内容。
+    /// </summary>
     public static async Task<ScrollViewer> BuildContentAsync(Photo photo)
     {
         var img = await CreatePreviewImageAsync(photo);
 
         // ---- 右上：基本元数据（全字段，含空值占位） ----
-        var basicInfo = new StackPanel { Spacing = 4, MinWidth = 240 };
+        var basicInfo = new StackPanel { Spacing = 4 };
         AddRowAlways(basicInfo, "ID", photo.Id.ToString());
         AddRowAlways(basicInfo, "机型", photo.AircraftModel);
         AddRowAlways(basicInfo, "注册号", photo.RegistrationNumber);
@@ -47,7 +55,7 @@ internal static class PhotoDetailBuilder
         AddRowAlways(basicInfo, "备注", photo.Notes);
 
         // ---- 右下：EXIF 详细信息（全字段） ----
-        var exifInfo = new StackPanel { Spacing = 4, MinWidth = 240 };
+        var exifInfo = new StackPanel { Spacing = 4 };
         AddRowAlways(exifInfo, "相机厂商", photo.CameraMake);
         AddRowAlways(exifInfo, "相机型号", photo.CameraModel);
         AddRowAlways(exifInfo, "镜头", photo.LensModel);
@@ -58,18 +66,8 @@ internal static class PhotoDetailBuilder
         AddRowAlways(exifInfo, "GPS 纬度", photo.Latitude?.ToString("0.######"));
         AddRowAlways(exifInfo, "GPS 经度", photo.Longitude?.ToString("0.######"));
 
-        // ---- 左右双列 ----
-        var rightGrid = new Grid();
-        rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
-        rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(basicInfo, 0);
-        Grid.SetColumn(exifInfo, 2);
-        rightGrid.Children.Add(basicInfo);
-        rightGrid.Children.Add(exifInfo);
-
         // ---- 底部：文件信息（全字段） ----
-        var footerInfo = new StackPanel { Spacing = 4, Margin = new Thickness(0, 12, 0, 0) };
+        var footerInfo = new StackPanel { Spacing = 4, Margin = new Thickness(0, 4, 0, 0) };
         AddRowAlways(footerInfo, "文件大小", FormatFileSize(photo.FileSize));
         AddRowAlways(footerInfo, "导入时间", photo.ImportedAt.ToString("yyyy-MM-dd HH:mm:ss"));
         AddRowAlways(footerInfo, "识别状态", photo.RecognitionStatus switch
@@ -102,44 +100,120 @@ internal static class PhotoDetailBuilder
             }
         }
 
-        // ---- 整体 Grid：左大图 + 右上双列 + 底部跨列 ----
-        var body = new Grid();
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(540) });
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
-        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
-        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) });
+        // ---- 参数区：基本信息 / EXIF 参数 左右两列 ----
+        var panels = new Grid();
+        panels.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        panels.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        panels.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        Grid.SetColumn(img, 0);
-        Grid.SetRow(img, 0);
+        var leftPanel = new StackPanel { Spacing = 4 };
+        leftPanel.Children.Add(SectionTitle("基本信息"));
+        leftPanel.Children.Add(basicInfo);
+
+        var rightPanel = new StackPanel { Spacing = 4 };
+        rightPanel.Children.Add(SectionTitle("EXIF 参数"));
+        rightPanel.Children.Add(exifInfo);
+
+        Grid.SetColumn(leftPanel, 0);
+        panels.Children.Add(leftPanel);
+        Grid.SetColumn(rightPanel, 2);
+        panels.Children.Add(rightPanel);
+
+        // ---- 整体：上图 + 下双列参数 + 底部文件信息 ----
+        // 采用纵向堆叠而不是「左图右参数」：
+        // ContentDialog 的可用宽度由主题资源限制且不易精确控制，横向排布时
+        // 图片列会把参数列挤出可视区（表现为右侧内容被裁掉）。纵向排布下
+        // 各区域独占整行宽度，无论弹窗多宽多窄都不会互相挤压。
+        var body = new StackPanel { Spacing = 16 };
         body.Children.Add(img);
-
-        Grid.SetColumn(rightGrid, 2);
-        Grid.SetRow(rightGrid, 0);
-        body.Children.Add(rightGrid);
-
-        Grid.SetColumnSpan(footerInfo, 3);
-        Grid.SetRow(footerInfo, 2);
+        body.Children.Add(panels);
         body.Children.Add(footerInfo);
+
+        // ---- 兜底：外层允许宽度不足时，把两列参数退化为单列 ----
+        // 这里不写死宽度，仅限制面板的最小宽度，避免极窄窗口下文字被压成竖条。
+        leftPanel.MinWidth = 200;
+        rightPanel.MinWidth = 200;
+
+        var host = new Border
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Child = body,
+        };
+
+        // 内容宽度上限。
+        //
+        // 实测：ContentDialog 在内容期望宽度超过宿主可用宽度时不会收缩，
+        // 而是整体右移并被窗口右边缘裁掉——这正是「详细信息没了」的成因。
+        // 因此这里显式给定一个足够保守的内容宽度（520），保证弹窗始终完整可见。
+        // 纵向布局下单列 520 足以展示全部字段（长文本会自动换行）。
+        host.MaxWidth = 520;
+        host.Width = 520;
 
         return new ScrollViewer
         {
-            Content = body,
+            Content = host,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            MaxHeight = 600,
+            // 让内容随窗口高度自适应，同时保留上限避免超高屏撑满
+            MaxHeight = 620,
         };
     }
+
+    /// <summary>
+    /// 构建「照片详情」弹窗（标题 / 按钮 / 内容装配）。
+    ///
+    /// <para>
+    /// 宽度相关的踩坑记录，避免以后重复尝试无效方案：
+    /// <list type="bullet">
+    /// <item>设 <c>dialog.Resources["ContentDialogMaxWidth"]</c> <b>不生效</b>——模板不从实例资源取。</item>
+    /// <item>设在 <c>Application.Resources</c> 顶层也 <b>不生效</b>——该键由
+    /// XamlControlsResources 定义在 ThemeDictionaries 内，主题查找优先级更高。</item>
+    /// <item>把内容做成 <c>Stretch</c> 会让弹窗跟着变宽并溢出窗口右边缘。</item>
+    /// <item><b>可行方案</b>：内容用纵向布局，并给内容容器一个保守的固定宽度
+    /// （见 <see cref="BuildContentAsync"/> 里的 520），让弹窗稳定落在可用宽度内。</item>
+    /// </list>
+    /// </para>
+    /// </summary>
+    public static ContentDialog CreateDialog(XamlRoot? xamlRoot, long photoId, UIElement content,
+        string? primaryButtonText = null)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = xamlRoot,
+            Title = $"照片详情 · #{photoId}",
+            Content = content,
+            CloseButtonText = "关闭",
+            DefaultButton = primaryButtonText is null
+                ? ContentDialogButton.Close
+                : ContentDialogButton.Primary,
+        };
+        if (primaryButtonText is not null)
+        {
+            dialog.PrimaryButtonText = primaryButtonText;
+        }
+
+        return dialog;
+    }
+
+    /// <summary>参数分区的小标题。</summary>
+    private static TextBlock SectionTitle(string text) => new()
+    {
+        Text = text,
+        Margin = new Thickness(0, 0, 0, 2),
+        Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+    };
 
     /// <summary>加载缩略图（缺失时回退原图）。失败时返回占位文字。</summary>
     private static async Task<FrameworkElement> CreatePreviewImageAsync(Photo photo)
     {
         var img = new Image
         {
-            Stretch = Stretch.UniformToFill,
-            MaxWidth = 540,
-            MaxHeight = 380,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            MaxHeight = 360,
+            MaxWidth = 620,
         };
         try
         {
@@ -160,7 +234,6 @@ internal static class PhotoDetailBuilder
 
         return new Border
         {
-            Width = 540,
             Height = 300,
             CornerRadius = new CornerRadius(8),
             Background = (Brush)Application.Current.Resources["ControlAltFillColorTertiaryBrush"],
@@ -180,7 +253,9 @@ internal static class PhotoDetailBuilder
     public static void AddRowAlways(StackPanel parent, string label, string? value)
     {
         var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        // 标签列收窄到 88：内容整体宽度有限（弹窗约 520），
+        // 标签太宽会把值列挤到没有空间换行。
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var t1 = new TextBlock
         {

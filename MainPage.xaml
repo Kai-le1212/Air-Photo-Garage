@@ -176,6 +176,13 @@
                                                        Style="{StaticResource CaptionTextBlockStyle}"
                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                                        TextTrimming="CharacterEllipsis" />
+                                            <!-- 常驻详情入口：与三个分组页保持一致，
+                                                 不依赖 ItemClick 命中测试是否可靠 -->
+                                            <Button Content="详细信息"
+                                                    Padding="8,2"
+                                                    Margin="0,4,0,0"
+                                                    HorizontalAlignment="Left"
+                                                    Click="OnCardDetailButtonClick" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>

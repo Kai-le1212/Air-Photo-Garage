@@ -139,7 +139,49 @@ public sealed partial class MainPage : Page
     {
         if (e.ClickedItem is PhotoCardViewModel card)
         {
-            _ = ShowDetailDialogAsync(card);
+            _ = ShowDetailDialogSafeAsync(card);
+        }
+    }
+
+    /// <summary>
+    /// 卡片上的常驻「详细信息」按钮。
+    /// 这是三条详情路径中最不依赖命中测试的一条，作为最终兜底。
+    /// 按钮位于卡片 DataTemplate 内，其 DataContext 即 <see cref="PhotoCardViewModel"/>。
+    /// </summary>
+    private void OnCardDetailButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoCardViewModel card })
+        {
+            _ = ShowDetailDialogSafeAsync(card);
+        }
+    }
+
+    /// <summary>
+    /// 包一层异常兜底：原先直接 `_ = ShowDetailDialogAsync(card)`，
+    /// 一旦构建内容时抛异常，Task 被丢弃后异常完全静默（弹窗不出现且无任何提示）。
+    /// 这里把失败原因写日志并在 UI 上给出提示，避免"点不开又不知道为什么"。
+    /// </summary>
+    private async Task ShowDetailDialogSafeAsync(PhotoCardViewModel card)
+    {
+        try
+        {
+            await ShowDetailDialogAsync(card);
+        }
+        catch (Exception ex)
+        {
+            App.LogError("ShowDetailDialog", ex);
+            await new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "无法打开详细信息",
+                Content = new TextBlock
+                {
+                    Text = ex.ToString(),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                },
+                CloseButtonText = "关闭",
+            }.ShowAsync();
         }
     }
 
@@ -155,7 +197,9 @@ public sealed partial class MainPage : Page
 
         var detailItem = new MenuFlyoutItem { Text = "查看详情" };
         detailItem.Icon = new FontIcon { Glyph = "\uE890" }; // Info
-        detailItem.Click += (_, _) => _ = ShowDetailDialogAsync(card);
+        // 注意：这里必须走 Safe 版本。原先直接用 ShowDetailDialogAsync，
+        // 异常被丢弃的 Task 吞掉后表现为「点了没反应」。
+        detailItem.Click += (_, _) => _ = ShowDetailDialogSafeAsync(card);
         menu.Items.Add(detailItem);
 
         var editItem = new MenuFlyoutItem { Text = "编辑信息..." };
@@ -203,15 +247,9 @@ public sealed partial class MainPage : Page
         var photo = card.Photo;
         var scroll = await Views.PhotoDetailBuilder.BuildContentAsync(photo);
 
-        var dialog = new ContentDialog
-        {
-            XamlRoot = this.XamlRoot,
-            Title = $"照片详情 · #{photo.Id}",
-            PrimaryButtonText = "编辑信息",
-            CloseButtonText = "关闭",
-            DefaultButton = ContentDialogButton.Close,
-            Content = scroll,
-        };
+        var dialog = Views.PhotoDetailBuilder.CreateDialog(
+            XamlRoot, photo.Id, scroll, primaryButtonText: "编辑信息");
+
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
         {
