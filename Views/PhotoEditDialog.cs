@@ -4,10 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Windows.System;
 
 namespace AirPhotoGarage.Views;
 
@@ -39,184 +38,46 @@ public static class PhotoEditDialog
 
         var stack = new StackPanel { Spacing = 10, Width = 460 };  // 固定宽度，确保所有列等宽
 
-        // ---------- 机型（TextBox + inline ListView 候选下拉） ----------
-        // 不用 AutoSuggestBox（ControlTemplate 里有不可消除的内部死区导致输入框窄 ~25px）。
-        // 不用 Popup（Popup 在 ContentDialog 内嵌会破坏 Modal 焦点链，导致 PrimaryButton 无法响应）。
-        // 直接把 ListView 放在 TextBox 下方（同一个 StackPanel），Visibility 控制显隐。
-        //
-        // 点击提交之所以不用 ListView.ItemClick：ItemClick 依赖 ListView 先拿到键盘焦点，
-        // 在 ContentDialog 模态链下经常不触发（表现为「点了没反应」）。改为在
-        // DataTemplate 的根元素上挂 Tapped —— 直接命中行本身，最可靠。
-        var tbModel = new TextBox
+        // ---------- 机型（原生 AutoSuggestBox） ----------
+        // 依 WinUI 3 规范使用 AutoSuggestBox：候选下拉是 Fluent 原生浮出层，
+        // 自带「点击外部收起」「单击即选中」「键盘导航」等行为，
+        // 无需自己用 ListView 模拟（自造下拉正是此前两个 bug 的根源）。
+        var asbModel = new AutoSuggestBox
         {
             Header = "机型",
+            PlaceholderText = "输入机型，或从下拉候选中选择",
             Text = photo.AircraftModel ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
+        AutomationProperties.SetName(asbModel, "机型");
 
-        var listModel = new ListView
+        // 候选内容：目录查询（按输入做包含匹配）。
+        IReadOnlyList<string> SearchModels(string? query)
         {
-            MaxHeight = 180,
-            MinHeight = 32,
-            SelectionMode = ListViewSelectionMode.None,   // 不参与选择，避免抢焦点
-            IsItemClickEnabled = false,                   // 点击完全交给 DataTemplate 处理
-            Visibility = Visibility.Collapsed,            // 默认隐藏，输入时显示
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Margin = new Thickness(0, -6, 0, 0),          // 紧贴 TextBox
+            if (string.IsNullOrWhiteSpace(query)) return Array.Empty<string>();
+            return App.AircraftCatalog.Search(query).ToList();
+        }
+
+        // TextChanged：仅用户输入时才更新候选，避免程序化回填反复触发。
+        asbModel.TextChanged += (s, e) =>
+        {
+            if (e.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+            asbModel.ItemsSource = SearchModels(asbModel.Text);
         };
 
-        IReadOnlyList<string> currentSuggestions = Array.Empty<string>();
-        int selectedIndex = -1;
-        bool suppressModelRefresh = false;   // 程序化回填文本时，抑制候选刷新
-
-        // 候选列表是否处于「用户正在浏览」状态：只有此时才让上下键/回车作用于候选，
-        // 否则按键应原样交给 TextBox（避免候选列表把输入框的按键全部吃掉）。
-        bool IsListVisible() => listModel.Visibility == Visibility.Visible;
-
-        void HideSuggestions()
+        // 选中候选项：把文本定为选中值（原生行为会同时收起下拉）。
+        asbModel.SuggestionChosen += (s, e) =>
         {
-            listModel.Visibility = Visibility.Collapsed;
-            selectedIndex = -1;
-        }
-
-        /// <summary>
-        /// 面板是否处于「用户正在浏览候选」状态。此标志为 false 时，
-        /// TextChanged 一律不再弹出候选（用于点击提交后避免立刻又弹出来）。
-        /// </summary>
-        bool browsing = false;
-
-        /// <summary>把候选填进 TextBox，收起列表，并把焦点交回 TextBox。</summary>
-        void CommitSuggestion(string? pick)
-        {
-            if (string.IsNullOrWhiteSpace(pick)) return;
-
-            browsing = false;                    // 提交后停止浏览，杜绝列表立刻重开
-            suppressModelRefresh = true;
-            try
-            {
-                tbModel.Text = pick;
-                tbModel.SelectionStart = tbModel.Text.Length;
-            }
-            finally
-            {
-                suppressModelRefresh = false;
-            }
-
-            HideSuggestions();
-
-            // 关键：把焦点交回 TextBox，否则后续回车/方向键会落到 ListView 上，
-            // 表现为「点过一次候选之后，回车就再也选不动了」。
-            tbModel.Focus(FocusState.Programmatic);
-        }
-
-        void RefreshSuggestions()
-        {
-            if (!browsing)
-            {
-                // 未处于浏览态（如刚从候选提交完）→ 不再弹列表。
-                return;
-            }
-
-            var results = App.AircraftCatalog.Search(tbModel.Text ?? "").ToList();
-            currentSuggestions = results;
-            listModel.ItemsSource = results;
-
-            if (results.Count > 0)
-            {
-                selectedIndex = 0;
-                listModel.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                HideSuggestions();
-            }
-        }
-
-        // 候选项模板：根 Border 挂 Tapped —— 直接命中行，绕开 ItemClick 的焦点依赖。
-        var suggestionTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
-            "  <Border Padding='12,8' Background='Transparent'>" +
-            "    <TextBlock Text='{Binding}' TextTrimming='CharacterEllipsis' />" +
-            "  </Border>" +
-            "</DataTemplate>");
-        listModel.ItemTemplate = suggestionTemplate;
-
-        // Tapped 用 AddHandler 且 handledEventsToo，确保即使内层 TextBlock 先处理了也能拿到。
-        listModel.AddHandler(UIElement.TappedEvent, new TappedEventHandler((s, e) =>
-        {
-            // 从被点击的元素向上找到承载字符串的 DataContext
-            if (e.OriginalSource is DependencyObject src)
-            {
-                var picked = FindRowDataContext(src, listModel);
-                if (picked is not null)
-                {
-                    CommitSuggestion(picked);
-                    e.Handled = true;
-                }
-            }
-        }), handledEventsToo: true);
-
-        tbModel.TextChanged += (s, e) =>
-        {
-            // 程序化回填（CommitSuggestion 内部赋值）时不要重新弹列表，
-            // 否则收起后立刻又被打开，且会再次抢焦点。
-            if (suppressModelRefresh) return;
-
-            // 只有用户真实输入才进入「浏览候选」状态并弹列表。
-            browsing = true;
-            RefreshSuggestions();
+            if (e.SelectedItem is string picked) asbModel.Text = picked;
         };
 
-        // 焦点离开且新焦点不在候选列表内 → 收起候选。
-        tbModel.LostFocus += (s, e) =>
+        // 回车 / 点击查询按钮提交：把当前文本作为机型；若候选未选则用第一条。
+        asbModel.QuerySubmitted += (s, e) =>
         {
-            tbModel.DispatcherQueue.TryEnqueue(() =>
-            {
-                if (!IsListVisible()) return;  // 已收起
-                var focused = FocusManager.GetFocusedElement(xamlRoot) as DependencyObject;
-                if (IsDescendantOf(focused, listModel)) return;
-                HideSuggestions();
-            });
+            var chosen = e.ChosenSuggestion as string;
+            if (!string.IsNullOrWhiteSpace(chosen)) asbModel.Text = chosen;
         };
 
-        // 键盘交互同时挂在 TextBox 与 ListView 上：
-        // 这样即使焦点短暂落到 ListView，上下键/回车依然可控，
-        // 从根本上避免「点过候选后回车失效」。
-        void HandleSuggestionKey(KeyRoutedEventArgs e)
-        {
-            if (!IsListVisible() || currentSuggestions.Count == 0)
-            {
-                return;  // 候选未展开时完全不干预，按键照常进 TextBox
-            }
-
-            switch (e.Key)
-            {
-                case VirtualKey.Down:
-                    selectedIndex = Math.Min(selectedIndex + 1, currentSuggestions.Count - 1);
-                    e.Handled = true;
-                    break;
-                case VirtualKey.Up:
-                    selectedIndex = Math.Max(selectedIndex - 1, 0);
-                    e.Handled = true;
-                    break;
-                case VirtualKey.Enter:
-                    CommitSuggestion(
-                        selectedIndex >= 0 && selectedIndex < currentSuggestions.Count
-                            ? currentSuggestions[selectedIndex]
-                            : currentSuggestions[0]);
-                    e.Handled = true;
-                    break;
-                case VirtualKey.Escape:
-                    HideSuggestions();
-                    e.Handled = true;
-                    break;
-            }
-        }
-
-        tbModel.KeyDown += (s, e) => HandleSuggestionKey(e);
-        listModel.KeyDown += (s, e) => HandleSuggestionKey(e);
 
         var tbReg = new TextBox
         {
@@ -271,8 +132,7 @@ public static class PhotoEditDialog
             FillAirportFromName(tbAirportName, tbIata, tbIcao);
         }
 
-        stack.Children.Add(tbModel);
-        stack.Children.Add(listModel);  // 候选列表（默认 Collapsed，输入时显示）
+        stack.Children.Add(asbModel);
         stack.Children.Add(tbReg);
         stack.Children.Add(tbIata);
         stack.Children.Add(tbIcao);
@@ -302,7 +162,7 @@ public static class PhotoEditDialog
         var result = await dialog.ShowAsync();
         if (result != ContentDialogResult.Primary) return false;
 
-        photo.AircraftModel = NullIfEmpty(tbModel.Text);
+        photo.AircraftModel = NullIfEmpty(asbModel.Text);
         photo.RegistrationNumber = NullIfEmpty(tbReg.Text);
         photo.AirportIata = NullIfEmpty(tbIata.Text?.ToUpperInvariant());
         photo.AirportIcao = NullIfEmpty(tbIcao.Text?.ToUpperInvariant());
@@ -317,34 +177,6 @@ public static class PhotoEditDialog
 
     private static string? NullIfEmpty(string? s) =>
         string.IsNullOrWhiteSpace(s) ? null : s.Trim();
-
-    /// <summary>沿视觉树向上判断 <paramref name="node"/> 是否为 <paramref name="ancestor"/> 的子孙。</summary>
-    private static bool IsDescendantOf(DependencyObject? node, DependencyObject ancestor)
-    {
-        while (node is not null)
-        {
-            if (ReferenceEquals(node, ancestor)) return true;
-            node = VisualTreeHelper.GetParent(node);
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// 从被点击的元素向上回溯，取第一个非空且属于候选列表内的字符串 DataContext。
-    /// 用于 Tapped 命中判定：候选项数据就是字符串本身，其容器是 ListViewItem。
-    /// </summary>
-    private static string? FindRowDataContext(DependencyObject? node, DependencyObject listRoot)
-    {
-        while (node is not null && !ReferenceEquals(node, listRoot))
-        {
-            if (node is FrameworkElement { DataContext: string s } && !string.IsNullOrWhiteSpace(s))
-            {
-                return s;
-            }
-            node = VisualTreeHelper.GetParent(node);
-        }
-        return null;
-    }
 
     /// <summary>用户输入 IATA 三字后，自动回填 ICAO + 机场名。</summary>
     private static void FillAirportFromIata(TextBox tbIata, TextBox tbIcao, TextBox tbName)
