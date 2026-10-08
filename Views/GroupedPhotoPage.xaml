@@ -62,30 +62,50 @@
 
         <!-- 顶部标题栏 + 排序 -->
         <Grid Grid.Row="0" Padding="20,16,20,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <Button Grid.Column="0"
-                    Content="← 返回"
-                    Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}"
-                    Click="OnBackClick" />
+            <!-- 第 1 行：返回按钮 + 标题 -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="1"
-                       Margin="12,0,0,0"
-                       VerticalAlignment="Center"
-                       Style="{StaticResource TitleTextBlockStyle}"
-                       TextTrimming="CharacterEllipsis"
-                       Text="{x:Bind ViewModel.HeaderText, Mode=OneWay}" />
+                <Button Grid.Column="0"
+                        Content="← 返回"
+                        Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}"
+                        Click="OnBackClick" />
 
-            <ComboBox Grid.Column="2"
-                      MinWidth="200"
-                      VerticalAlignment="Center"
-                      ItemsSource="{x:Bind ViewModel.SortOptions}"
-                      SelectedIndex="{x:Bind ViewModel.SortIndex, Mode=TwoWay}"
-                      Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}" />
+                <TextBlock Grid.Column="1"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource TitleTextBlockStyle}"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{x:Bind ViewModel.HeaderText, Mode=OneWay}" />
+            </Grid>
+
+            <!-- 第 2 行：排序控件。单独一行，避免与长标题抢宽度被挤出可视区 -->
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        Margin="0,10,0,0"
+                        Spacing="12">
+                <!-- 列表态：分组排序 -->
+                <ComboBox MinWidth="210"
+                          Header="分组排序"
+                          ItemsSource="{x:Bind ViewModel.GroupSortOptions}"
+                          SelectedIndex="{x:Bind ViewModel.GroupSortIndex, Mode=TwoWay}"
+                          Visibility="{x:Bind ViewModel.GroupListSortVisibility, Mode=OneWay}" />
+
+                <!-- 详情态：照片排序（默认按拍摄时间） -->
+                <ComboBox MinWidth="210"
+                          Header="照片排序"
+                          ItemsSource="{x:Bind ViewModel.SortOptions}"
+                          SelectedIndex="{x:Bind ViewModel.SortIndex, Mode=TwoWay}"
+                          Visibility="{x:Bind ViewModel.PhotoSortVisibility, Mode=OneWay}" />
+            </StackPanel>
         </Grid>
 
         <!-- 内容区 -->
@@ -94,46 +114,57 @@
             <ScrollViewer Visibility="{x:Bind ViewModel.GroupListVisibility, Mode=OneWay}"
                           Padding="20,0,20,20"
                           VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}">
-                    <ItemsControl.ItemTemplate>
+                <!-- 分组列表：用 ListView + IsItemClickEnabled，命中测试比 ItemsControl+Button 可靠 -->
+                <ListView ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                          SelectionMode="None"
+                          IsItemClickEnabled="True"
+                          ItemClick="OnGroupClick"
+                          Padding="0"
+                          Background="Transparent">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="16,14" />
+                            <Setter Property="Margin" Value="0,0,0,10" />
+                            <Setter Property="CornerRadius" Value="6" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:GroupItemViewModel">
-                            <Button HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Margin="0,0,0,8"
-                                    Padding="16,12"
-                                    Click="OnGroupClick">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="{x:Bind Value}"
-                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{x:Bind RangeText}"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1"
-                                               VerticalAlignment="Center"
-                                               Margin="12,0,0,0"
-                                               Style="{StaticResource BodyTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                               Text="{x:Bind CountText}" />
-                                    <FontIcon Grid.Column="2"
-                                              VerticalAlignment="Center"
-                                              Margin="8,0,0,0"
-                                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                              Glyph="&#xE76C;"
-                                              FontSize="12"
-                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </Grid>
-                            </Button>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{x:Bind Value}"
+                                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind RangeText}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           Margin="12,0,0,0"
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Text="{x:Bind CountText}" />
+                                <FontIcon Grid.Column="2"
+                                          VerticalAlignment="Center"
+                                          Margin="8,0,0,0"
+                                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                          Glyph="&#xE76C;"
+                                          FontSize="12"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                            </Grid>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ListView.ItemTemplate>
+                </ListView>
             </ScrollViewer>
 
             <!-- 分组详情 -->
