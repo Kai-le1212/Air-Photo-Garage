@@ -34,22 +34,22 @@ public sealed partial class GarageViewModel : ObservableObject
 
     // ---- 筛选条件（双向绑定） ----
 
-    [ObservableProperty] private string? _keyword;
-    [ObservableProperty] private string? _aircraftModelFilter;
-    [ObservableProperty] private string? _registrationFilter;
-    [ObservableProperty] private string? _airportCodeFilter;
-    [ObservableProperty] private DateTimeOffset? _shotFrom;
-    [ObservableProperty] private DateTimeOffset? _shotTo;
+    [ObservableProperty] public partial string? Keyword { get; set; }
+    [ObservableProperty] public partial string? AircraftModelFilter { get; set; }
+    [ObservableProperty] public partial string? RegistrationFilter { get; set; }
+    [ObservableProperty] public partial string? AirportCodeFilter { get; set; }
+    [ObservableProperty] public partial DateTimeOffset? ShotFrom { get; set; }
+    [ObservableProperty] public partial DateTimeOffset? ShotTo { get; set; }
 
     public IReadOnlyList<string> SortOptions { get; } = new[]
     {
         "拍摄时间倒序", "拍摄时间正序", "导入时间倒序", "机型 A→Z", "注册号 A→Z"
     };
 
-    [ObservableProperty] private int _sortIndex;
+    [ObservableProperty] public partial int SortIndex { get; set; }
 
-    [ObservableProperty] private string _statusMessage = "准备就绪";
-    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] public partial string StatusMessage { get; set; } = "准备就绪";
+    [ObservableProperty] public partial bool IsBusy { get; set; }
 
     // ---- 自动补全候选 ----
     public ObservableCollection<string> AircraftSuggestions { get; } = new();

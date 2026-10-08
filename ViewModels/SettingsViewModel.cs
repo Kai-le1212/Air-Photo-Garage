@@ -24,11 +24,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     public static Action<int>? ApplyTheme;
 
     [ObservableProperty]
-    private int _themeIndex;
+    public partial int ThemeIndex { get; set; }
 
     public SettingsViewModel()
     {
-        _themeIndex = LoadFromDisk();
+        // 初始化时直接写属性：ApplyTheme 尚未注入（null，被 ?. 跳过），
+        // SaveToDisk 幂等写出同一值，无副作用。
+        ThemeIndex = LoadFromDisk();
     }
 
     partial void OnThemeIndexChanged(int value)

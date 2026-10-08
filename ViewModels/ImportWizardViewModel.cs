@@ -31,25 +31,25 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     private readonly List<Photo> _photos = new();
     private readonly List<ImageSource?> _thumbnails = new();
 
-    [ObservableProperty] private bool _isOpen;
-    [ObservableProperty] private bool _isBusy;
-    [ObservableProperty] private string _statusMessage = "";
-    [ObservableProperty] private int _currentIndex;
+    [ObservableProperty] public partial bool IsOpen { get; set; }
+    [ObservableProperty] public partial bool IsBusy { get; set; }
+    [ObservableProperty] public partial string StatusMessage { get; set; } = "";
+    [ObservableProperty] public partial int CurrentIndex { get; set; }
 
     // 当前编辑字段
-    [ObservableProperty] private string _aircraftModel = "";
-    [ObservableProperty] private string _registrationNumber = "";
-    [ObservableProperty] private string _airportIata = "";
-    [ObservableProperty] private string _airportIcao = "";
-    [ObservableProperty] private string _airportName = "";
-    [ObservableProperty] private string _notes = "";
+    [ObservableProperty] public partial string AircraftModel { get; set; } = "";
+    [ObservableProperty] public partial string RegistrationNumber { get; set; } = "";
+    [ObservableProperty] public partial string AirportIata { get; set; } = "";
+    [ObservableProperty] public partial string AirportIcao { get; set; } = "";
+    [ObservableProperty] public partial string AirportName { get; set; } = "";
+    [ObservableProperty] public partial string Notes { get; set; } = "";
 
     // 派生显示
-    [ObservableProperty] private ImageSource? _currentThumbnail;
-    [ObservableProperty] private string _stepText = "";
-    [ObservableProperty] private string _nextButtonText = "下一张 >";
-    [ObservableProperty] private string _shotAtText = "";
-    [ObservableProperty] private string _exifHint = "";
+    [ObservableProperty] public partial ImageSource? CurrentThumbnail { get; set; }
+    [ObservableProperty] public partial string StepText { get; set; } = "";
+    [ObservableProperty] public partial string NextButtonText { get; set; } = "下一张 >";
+    [ObservableProperty] public partial string ShotAtText { get; set; } = "";
+    [ObservableProperty] public partial string ExifHint { get; set; } = "";
 
     public ImportWizardViewModel(
         IPhotoImportService importer,

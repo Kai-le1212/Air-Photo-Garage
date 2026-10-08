@@ -330,6 +330,19 @@ public sealed partial class MainPage : Page
     // ---------- 编辑对话框 ----------
 
     /// <summary>
+    /// 判断 <paramref name="node"/> 是否是 <paramref name="ancestor"/> 本身或其视觉树子孙。
+    /// 用于 LostFocus 时判断焦点是否仍落在候选列表内部（ListView 内实际聚焦的是 ListViewItem）。
+    /// </summary>
+    private static bool IsDescendantOf(DependencyObject? node, DependencyObject ancestor)
+    {
+        for (var cur = node; cur is not null; cur = VisualTreeHelper.GetParent(cur))
+        {
+            if (ReferenceEquals(cur, ancestor)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 编辑对话框：修改已入库照片的元数据。
     /// - 机型用 AutoSuggestBox + 内置 AircraftCatalogService 提供候选
     /// - 机场三字段（IATA/ICAO/Name）任一变化时，其他两个自动回填
@@ -417,8 +430,9 @@ public sealed partial class MainPage : Page
         {
             DispatcherQueue.TryEnqueue(() =>
             {
-                var focused = FocusManager.GetFocusedElement(XamlRoot);
-                if (focused == listModel) return;  // 焦点在候选列表，保持显示
+                var focused = FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+                // 焦点可能在 ListView 内部的 ListViewItem 上，需沿视觉树向上判断是否为候选列表的子孙
+                if (IsDescendantOf(focused, listModel)) return;  // 焦点在候选列表，保持显示
                 listModel.Visibility = Visibility.Collapsed;
             });
         };

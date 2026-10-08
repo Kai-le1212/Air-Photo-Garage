@@ -26,10 +26,10 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     public Photo Photo { get; }
 
     [ObservableProperty]
-    private ImageSource? _thumbnail;
+    public partial ImageSource? Thumbnail { get; set; }
 
     [ObservableProperty]
-    private bool _isThumbnailLoaded;
+    public partial bool IsThumbnailLoaded { get; set; }
 
     public PhotoCardViewModel(Photo photo, IUiDispatcher uiDispatcher)
     {
