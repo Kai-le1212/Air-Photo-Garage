@@ -77,7 +77,7 @@ public sealed partial class GroupedPhotoPage : Page
 
     /// <summary>
     /// 右键卡片 → 菜单。分组页此前只有左键 ItemClick 一条路径，
-    /// 与照片墙的交互不对齐；这里补齐右键菜单，提供「查看详细信息」入口。
+    /// 与照片墙的交互不对齐；这里补齐右键菜单，提供「查看详细信息」与「编辑信息」入口。
     /// </summary>
     private void OnCardRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
@@ -87,15 +87,52 @@ public sealed partial class GroupedPhotoPage : Page
         }
 
         var flyout = new MenuFlyout();
+
         var detailItem = new MenuFlyoutItem { Text = "查看详细信息" };
         detailItem.Click += (_, _) => _ = ShowPhotoDetailSafeAsync(card);
         flyout.Items.Add(detailItem);
+
+        var editItem = new MenuFlyoutItem { Text = "编辑信息..." };
+        editItem.Click += (_, _) => _ = ShowEditDialogSafeAsync(card);
+        flyout.Items.Add(editItem);
 
         flyout.ShowAt(sender as FrameworkElement, new FlyoutShowOptions
         {
             Position = e.GetPosition(sender as UIElement),
         });
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 编辑信息对话框（与照片墙共用 <see cref="PhotoEditDialog"/>）。
+    /// 保存后刷新卡片显示属性；异常兜底避免静默失败。
+    /// </summary>
+    private async Task ShowEditDialogSafeAsync(PhotoCardViewModel card)
+    {
+        try
+        {
+            var saved = await PhotoEditDialog.ShowAsync(XamlRoot, card.Photo);
+            if (saved)
+            {
+                card.RefreshDisplayProperties();
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError("GroupedPhotoPage.ShowEditDialog", ex);
+            await new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "无法打开编辑对话框",
+                Content = new TextBlock
+                {
+                    Text = ex.ToString(),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsTextSelectionEnabled = true,
+                },
+                CloseButtonText = "关闭",
+            }.ShowAsync();
+        }
     }
 
     /// <summary>

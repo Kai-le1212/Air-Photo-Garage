@@ -47,27 +47,37 @@
                                  Text="{x:Bind ViewModel.Keyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  TextChanged="OnFilterChanged" />
 
+                        <!--
+                            注意：TokenizingTextBox 的 ItemsSource 是「已选 token 集合」，
+                            自动补全候选必须挂到 SuggestedItemsSource，否则下拉框永远不会出现。
+                        -->
                         <controls:TokenizingTextBox x:Name="TtbAircraft"
                                                     Header="机型"
                                                     PlaceholderText="选择或输入机型"
-                                                    ItemsSource="{x:Bind ViewModel.AircraftSuggestions}"
-                                                    Text="{x:Bind ViewModel.AircraftModelFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    SuggestedItemsSource="{x:Bind ViewModel.AircraftSuggestions}"
+                                                    SuggestionChosen="OnSuggestionChosen"
+                                                    QuerySubmitted="OnQuerySubmitted"
+                                                    TextChanged="OnTokenTextChanged"
                                                     TokenItemAdded="OnTokenChanged"
                                                     TokenItemRemoved="OnTokenChanged" />
 
                         <controls:TokenizingTextBox x:Name="TtbRegistration"
                                                     Header="注册号"
                                                     PlaceholderText="如 B-1234"
-                                                    ItemsSource="{x:Bind ViewModel.RegistrationSuggestions}"
-                                                    Text="{x:Bind ViewModel.RegistrationFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    SuggestedItemsSource="{x:Bind ViewModel.RegistrationSuggestions}"
+                                                    SuggestionChosen="OnSuggestionChosen"
+                                                    QuerySubmitted="OnQuerySubmitted"
+                                                    TextChanged="OnTokenTextChanged"
                                                     TokenItemAdded="OnTokenChanged"
                                                     TokenItemRemoved="OnTokenChanged" />
 
                         <controls:TokenizingTextBox x:Name="TtbAirport"
                                                     Header="机场代码"
                                                     PlaceholderText="如 ZBAA"
-                                                    ItemsSource="{x:Bind ViewModel.AirportSuggestions}"
-                                                    Text="{x:Bind ViewModel.AirportCodeFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    SuggestedItemsSource="{x:Bind ViewModel.AirportSuggestions}"
+                                                    SuggestionChosen="OnSuggestionChosen"
+                                                    QuerySubmitted="OnQuerySubmitted"
+                                                    TextChanged="OnTokenTextChanged"
                                                     TokenItemAdded="OnTokenChanged"
                                                     TokenItemRemoved="OnTokenChanged" />
 
