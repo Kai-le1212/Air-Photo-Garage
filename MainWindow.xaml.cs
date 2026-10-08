@@ -46,10 +46,31 @@ public sealed partial class MainWindow : Window
         ViewModels.SettingsViewModel.ApplyTheme = ApplyTheme;
     }
 
+    private bool _started;
+
     private void NavView_Loaded(object sender, RoutedEventArgs e)
     {
         ContentFrame.Navigated += ContentFrame_Navigated;
-        // 默认进入照片库页
+
+        // 首次启动引导期间不导航：此刻 App 的 ViewModel 尚未创建。
+        // 引导结束后由 App 调用 StartAfterSetup() 再进入首页。
+        if (Views.FirstRunSetup.IsCompleted)
+        {
+            StartAfterSetup();
+        }
+    }
+
+    /// <summary>
+    /// 服务与 ViewModel 就绪后进入首页。
+    /// 首次启动引导结束（或无需引导）时由 <see cref="App"/> 调用。
+    /// 重复调用是安全的。
+    /// </summary>
+    public void StartAfterSetup()
+    {
+        if (_started) return;
+        _started = true;
+
+        // 默认进入照片墙页
         NavigateTo("gallery");
 
         // 应用持久化的主题
