@@ -103,11 +103,15 @@ public sealed partial class GarageViewModel : ObservableObject
         if (filePaths is null || filePaths.Count == 0) return;
         if (IsBusy) return;
 
-        // 1. 弹出导入向导，让用户填写机型/注册号/机场
+        // 1. 打开导入向导（预处理照片），并等待用户在界面上完成或取消
         var wizard = App.ImportWizardViewModel;
         var started = await wizard.StartAsync(filePaths);
-        if (!started || wizard.CompletedPhotos.Count == 0) return;
+        if (!started) return;
 
+        var confirmed = await wizard.WaitForCompletionAsync();
+        if (!confirmed || wizard.CompletedPhotos.Count == 0) return;
+
+        // 2. 用户确认后，把填好元数据的照片写入数据库
         IsBusy = true;
         var imported = 0;
         var failed = 0;

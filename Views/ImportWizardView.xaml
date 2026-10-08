@@ -85,9 +85,25 @@
                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                        TextWrapping="Wrap" />
 
-                            <TextBox Header="机型（如 Boeing 737-800）"
-                                     Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="输入机型" />
+                            <!-- 机型：TextBox + inline ListView 候选（与编辑对话框一致的模式）
+                                 不用 AutoSuggestBox：其 ControlTemplate 内部有不可消除的死区，
+                                 在 ContentDialog/覆盖层场景下会让输入框变窄。 -->
+                            <StackPanel>
+                                <TextBox x:Name="TbModel"
+                                         Header="机型（如 Boeing 737-800）"
+                                         Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="输入机型，或从下拉候选中选择" />
+                                <ListView x:Name="ListModelSuggestion"
+                                          MaxHeight="150"
+                                          MinHeight="0"
+                                          Visibility="Collapsed"
+                                          SelectionMode="Single"
+                                          Margin="0,-6,0,0"
+                                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                          BorderThickness="1"
+                                          CornerRadius="0,0,4,4"
+                                          ItemClick="OnModelSuggestionClick" />
+                            </StackPanel>
 
                             <TextBox Header="注册号（如 B-1234）"
                                      Text="{x:Bind ViewModel.RegistrationNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

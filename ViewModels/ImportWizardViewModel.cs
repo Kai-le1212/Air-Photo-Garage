@@ -51,6 +51,18 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     [ObservableProperty] public partial string ShotAtText { get; set; } = "";
     [ObservableProperty] public partial string ExifHint { get; set; } = "";
 
+    /// <summary>
+    /// 用户是否通过「完成导入」按钮正常结束向导。
+    /// false 表示用户点了「取消」/「✕」——此时不应把照片写入数据库。
+    /// </summary>
+    public bool IsConfirmed { get; private set; }
+
+    /// <summary>
+    /// 用于让调用方（GarageViewModel）等待用户走完整个向导。
+    /// 用户在 UI 上点「完成导入」或「取消」时被 SetResult。
+    /// </summary>
+    private TaskCompletionSource<bool>? _completionTcs;
+
     public ImportWizardViewModel(
         IPhotoImportService importer,
         IUiDispatcher uiDispatcher,
@@ -74,10 +86,26 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     /// <summary>完成向导后，向调用方返回的所有 Photo 对象（已含用户填写的元数据）。</summary>
     public IReadOnlyList<Photo> CompletedPhotos => _photos;
 
-    /// <summary>向所有照片写入 EXIF 自动提取的字段，并打开向导。</summary>
+    /// <summary>机型候选（供 UI 下拉使用，来自内置机型库 + 已入库机型）。</summary>
+    public IReadOnlyList<string> AircraftSuggestions(string keyword)
+        => _aircraftCatalog.Search(keyword);
+
+    /// <summary>全部机型（无关键字时的完整列表）。</summary>
+    public IReadOnlyList<string> AllAircraftModels => _aircraftCatalog.All;
+
+    /// <summary>
+    /// 预处理照片（复制 + 缩略图 + EXIF），然后打开向导等待用户逐张填写。
+    /// <para>
+    /// 注意：<b>本方法不返回后即代表导入完成</b>。它只负责"打开向导"；
+    /// 用户填写完毕后需由调用方 await <see cref="WaitForCompletionAsync"/> 取得确认结果。
+    /// </para>
+    /// </summary>
     public async Task<bool> StartAsync(IReadOnlyList<string> sourceFiles)
     {
         if (sourceFiles is null || sourceFiles.Count == 0) return false;
+
+        IsConfirmed = false;   // 新一轮导入，重置确认标志
+        _completionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         IsBusy = true;
         StatusMessage = $"准备导入 {sourceFiles.Count} 张...";
@@ -107,6 +135,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             {
                 StatusMessage = $"预处理全部失败：{failed} 张";
                 IsOpen = false;
+                _completionTcs.TrySetResult(false);
                 return false;
             }
 
@@ -129,6 +158,16 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>
+    /// 等待用户在向导中做出最终决定（完成导入 / 取消）。
+    /// 返回 true 表示用户确认导入，可安全读取 <see cref="CompletedPhotos"/> 并入库。
+    /// </summary>
+    public Task<bool> WaitForCompletionAsync()
+    {
+        if (_completionTcs is null) return Task.FromResult(false);
+        return _completionTcs.Task;
     }
 
     partial void OnCurrentIndexChanged(int value)
@@ -243,8 +282,10 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         }
         else
         {
-            // 最后一张：完成向导
+            // 最后一张：代表用户确认完成导入
+            IsConfirmed = true;
             IsOpen = false;
+            _completionTcs?.TrySetResult(true);
         }
     }
 
@@ -272,7 +313,10 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     [RelayCommand]
     private void Cancel()
     {
+        // 取消：不回写字段、不入库，直接关闭。
+        IsConfirmed = false;
         IsOpen = false;
+        _completionTcs?.TrySetResult(false);
     }
 
     private async Task LoadThumbnailFor(Photo photo, int index)

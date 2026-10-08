@@ -47,21 +47,24 @@
                                  Text="{x:Bind ViewModel.Keyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  TextChanged="OnFilterChanged" />
 
-                        <controls:TokenizingTextBox Header="机型"
+                        <controls:TokenizingTextBox x:Name="TtbAircraft"
+                                                    Header="机型"
                                                     PlaceholderText="选择或输入机型"
                                                     ItemsSource="{x:Bind ViewModel.AircraftSuggestions}"
                                                     Text="{x:Bind ViewModel.AircraftModelFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     TokenItemAdded="OnTokenChanged"
                                                     TokenItemRemoved="OnTokenChanged" />
 
-                        <controls:TokenizingTextBox Header="注册号"
+                        <controls:TokenizingTextBox x:Name="TtbRegistration"
+                                                    Header="注册号"
                                                     PlaceholderText="如 B-1234"
                                                     ItemsSource="{x:Bind ViewModel.RegistrationSuggestions}"
                                                     Text="{x:Bind ViewModel.RegistrationFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     TokenItemAdded="OnTokenChanged"
                                                     TokenItemRemoved="OnTokenChanged" />
 
-                        <controls:TokenizingTextBox Header="机场代码"
+                        <controls:TokenizingTextBox x:Name="TtbAirport"
+                                                    Header="机场代码"
                                                     PlaceholderText="如 ZBAA"
                                                     ItemsSource="{x:Bind ViewModel.AirportSuggestions}"
                                                     Text="{x:Bind ViewModel.AirportCodeFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

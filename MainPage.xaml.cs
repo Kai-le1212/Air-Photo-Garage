@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
 using AirPhotoGarage.ViewModels;
+using CommunityToolkit.WinUI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -85,10 +86,42 @@ public sealed partial class MainPage : Page
 
     /// <summary>
     /// TokenizingTextBox 的 TokenItemAdded/Removed 事件统一路由到此。
+    /// <para>
+    /// 关键：token 的增删<b>不一定</b>同步更新控件的 Text 属性，因此在移除「叉」时
+    /// ViewModel 的筛选字段可能仍是旧值，导致筛选无法取消。这里显式读取当前 token
+    /// 集合回写到 ViewModel，保证「叉」能真正清掉对应筛选条件。
+    /// </para>
     /// </summary>
     private void OnTokenChanged(object sender, object e)
     {
+        // token 事件触发时，控件的 token 集合已更新；Text 属性可能滞后。
+        // 用 token 集合重建筛选值（取第一个非空 token；无 token 则视为清空）。
+        if (sender is TokenizingTextBox ttb)
+        {
+            var value = GetFirstTokenText(ttb);
+            if (ReferenceEquals(ttb, TtbAircraft))
+                ViewModel.AircraftModelFilter = value;
+            else if (ReferenceEquals(ttb, TtbRegistration))
+                ViewModel.RegistrationFilter = value;
+            else if (ReferenceEquals(ttb, TtbAirport))
+                ViewModel.AirportCodeFilter = value;
+        }
+
         ViewModel.InvalidateFilter();
+    }
+
+    /// <summary>
+    /// 从 TokenizingTextBox 取出第一个有效 token 的文本；无 token 时返回 null。
+    /// </summary>
+    private static string? GetFirstTokenText(TokenizingTextBox ttb)
+    {
+        if (ttb.ItemsSource is not System.Collections.IEnumerable items) return null;
+        foreach (var item in items)
+        {
+            var s = item?.ToString();
+            if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+        }
+        return null;
     }
 
     private void OnApplyFilter(object sender, RoutedEventArgs e)
