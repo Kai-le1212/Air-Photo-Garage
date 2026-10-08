@@ -27,7 +27,20 @@ public interface IDatabaseService
 
     /// <summary>读取所有不同的机型/机场/注册号（用于自动补全）。</summary>
     Task<IReadOnlyList<string>> GetDistinctValuesAsync(string column);
+
+    /// <summary>
+    /// 按分组维度聚合。返回每个分组值及其照片数量，按指定方式排序。
+    /// <paramref name="column"/> 只能是白名单列（aircraft_model / registration_number /
+    /// airport_iata / airport_icao / airport_name / airport_code）。
+    /// </summary>
+    Task<IReadOnlyList<GroupCount>> GetGroupCountsAsync(string column, bool byCountDescending = false);
+
+    /// <summary>按某个精确值筛出该分组下的全部照片（分页）。</summary>
+    Task<IReadOnlyList<Photo>> GetPhotosByColumnValueAsync(string column, string value, PhotoSortOrder order);
 }
+
+/// <summary>分组统计结果：分组值 + 照片数 + 最早/最晚拍摄时间。</summary>
+public sealed record GroupCount(string Value, int Count, DateTimeOffset? FirstShotAt, DateTimeOffset? LastShotAt);
 
 /// <summary>
 /// SQLite 数据访问层。所有 SQL 集中在本类，避免散落各处。
@@ -246,6 +259,85 @@ public sealed class DatabaseService : IDatabaseService
     }
 
     // ---------- helpers ----------
+
+    /// <summary>分组/筛选允许的列白名单，防 SQL 注入。</summary>
+    private static readonly HashSet<string> GroupableColumns = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "aircraft_model", "registration_number",
+        "airport_iata", "airport_icao", "airport_name", "airport_code",
+    };
+
+    private static void EnsureGroupableColumn(string column)
+    {
+        if (!GroupableColumns.Contains(column))
+        {
+            throw new ArgumentException($"Column not allowed for grouping: {column}");
+        }
+    }
+
+    public async Task<IReadOnlyList<GroupCount>> GetGroupCountsAsync(string column, bool byCountDescending = false)
+    {
+        EnsureGroupableColumn(column);
+
+        var order = byCountDescending ? "cnt DESC, value ASC" : "value ASC";
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"""
+            SELECT {column} AS value,
+                   COUNT(*) AS cnt,
+                   MIN(shot_at) AS first_shot,
+                   MAX(shot_at) AS last_shot
+            FROM photos
+            WHERE {column} IS NOT NULL AND TRIM({column}) <> ''
+            GROUP BY {column}
+            ORDER BY {order}
+            """;
+
+        var list = new List<GroupCount>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var value = reader.GetString(0);
+            var cnt = reader.GetInt32(1);
+            DateTimeOffset? first = reader.IsDBNull(2)
+                ? null
+                : DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture);
+            DateTimeOffset? last = reader.IsDBNull(3)
+                ? null
+                : DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture);
+            list.Add(new GroupCount(value, cnt, first, last));
+        }
+        return list;
+    }
+
+    public async Task<IReadOnlyList<Photo>> GetPhotosByColumnValueAsync(string column, string value, PhotoSortOrder order)
+    {
+        EnsureGroupableColumn(column);
+
+        var orderSql = order switch
+        {
+            PhotoSortOrder.ShotAtAscending => "shot_at ASC",
+            PhotoSortOrder.ImportedAtDescending => "imported_at DESC",
+            PhotoSortOrder.AircraftModelAscending => "aircraft_model ASC",
+            PhotoSortOrder.RegistrationAscending => "registration_number ASC",
+            _ => "shot_at DESC, imported_at DESC",
+        };
+
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT * FROM photos WHERE {column} = $v ORDER BY {orderSql}";
+        cmd.Parameters.AddWithValue("$v", value);
+
+        var list = new List<Photo>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(ReadPhoto(reader));
+        }
+        return list;
+    }
 
     private const string InsertSql = """
         INSERT INTO photos (

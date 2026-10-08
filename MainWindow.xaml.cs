@@ -16,8 +16,23 @@ public sealed partial class MainWindow : Window
 {
     private static readonly Dictionary<string, Type> _pages = new()
     {
-        { "gallery",  typeof(MainPage) },
-        { "settings", typeof(Views.SettingsPage) },
+        { "gallery",      typeof(MainPage) },
+        { "aircraft",     typeof(Views.GroupedPhotoPage) },
+        { "airport",      typeof(Views.GroupedPhotoPage) },
+        { "registration", typeof(Views.GroupedPhotoPage) },
+        { "settings",     typeof(Views.SettingsPage) },
+    };
+
+    /// <summary>
+    /// 各菜单项对应的导航参数。分组页共用同一 Page 类型，靠参数区分维度；
+    /// 照片墙 / 设置传 null。
+    /// </summary>
+    private static object? GetNavParameter(string tag) => tag switch
+    {
+        "aircraft" => Views.GroupedPhotoPageParameter.Aircraft,
+        "airport" => Views.GroupedPhotoPageParameter.Airport,
+        "registration" => Views.GroupedPhotoPageParameter.Registration,
+        _ => null,
     };
 
     public MainWindow()
@@ -74,8 +89,7 @@ public sealed partial class MainWindow : Window
 
     private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
     {
-        var pageType = e.SourcePageType;
-        var tag = _pages.FirstOrDefault(p => p.Value == pageType).Key;
+        var tag = GetTagByPageType(e.SourcePageType, e.Parameter);
         if (tag is null) return;
 
         var item = NavView.MenuItems
@@ -93,11 +107,31 @@ public sealed partial class MainWindow : Window
 
     private void NavigateTo(string tag)
     {
-        if (_pages.TryGetValue(tag, out var pageType) &&
-            ContentFrame.CurrentSourcePageType != pageType)
+        if (!_pages.TryGetValue(tag, out var pageType)) return;
+
+        var param = GetNavParameter(tag);
+
+        // 分组页共用同一 Page：即使 CurrentSourcePageType 相同，只要参数不同也必须重新导航。
+        var sameType = ContentFrame.CurrentSourcePageType == pageType;
+        if (sameType && param is null) return;   // 照片墙/设置：同页不重复导航
+
+        ContentFrame.Navigate(pageType, param);
+    }
+
+    private string? GetTagByPageType(Type pageType, object? parameter)
+    {
+        // 分组页按参数区分 tag
+        if (pageType == typeof(Views.GroupedPhotoPage))
         {
-            ContentFrame.Navigate(pageType);
+            return parameter switch
+            {
+                Views.GroupedPhotoPageParameter p when p.Column == "aircraft_model" => "aircraft",
+                Views.GroupedPhotoPageParameter p when p.Column == "airport_icao" => "airport",
+                Views.GroupedPhotoPageParameter p when p.Column == "registration_number" => "registration",
+                _ => "aircraft",
+            };
         }
+        return _pages.FirstOrDefault(p => p.Value == pageType).Key;
     }
 
     /// <summary>

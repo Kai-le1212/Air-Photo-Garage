@@ -221,28 +221,29 @@ public sealed partial class MainPage : Page
         }
         catch { /* ignore */ }
 
-        // ---- 右上：基本元数据 ----
+        // ---- 右上：基本元数据（全字段，含空值占位） ----
         var basicInfo = new StackPanel { Spacing = 4, MinWidth = 240 };
-        AddRow(basicInfo, "机型", photo.AircraftModel);
-        AddRow(basicInfo, "注册号", photo.RegistrationNumber);
-        AddRow(basicInfo, "拍摄时间", photo.ShotAt?.ToString("yyyy-MM-dd HH:mm"));
-        AddRow(basicInfo, "机场 IATA", photo.AirportIata);
-        AddRow(basicInfo, "机场 ICAO", photo.AirportIcao);
-        AddRow(basicInfo, "机场名称", photo.AirportName);
-        AddRow(basicInfo, "机场代码 (旧)", photo.AirportCode);
-        AddRow(basicInfo, "备注", photo.Notes);
+        AddRowAlways(basicInfo, "ID", photo.Id.ToString());
+        AddRowAlways(basicInfo, "机型", photo.AircraftModel);
+        AddRowAlways(basicInfo, "注册号", photo.RegistrationNumber);
+        AddRowAlways(basicInfo, "拍摄时间", photo.ShotAt?.ToString("yyyy-MM-dd HH:mm:ss"));
+        AddRowAlways(basicInfo, "机场 IATA", photo.AirportIata);
+        AddRowAlways(basicInfo, "机场 ICAO", photo.AirportIcao);
+        AddRowAlways(basicInfo, "机场名称", photo.AirportName);
+        AddRowAlways(basicInfo, "机场代码 (旧)", photo.AirportCode);
+        AddRowAlways(basicInfo, "备注", photo.Notes);
 
-        // ---- 右下：EXIF 详细信息 ----
+        // ---- 右下：EXIF 详细信息（全字段） ----
         var exifInfo = new StackPanel { Spacing = 4, MinWidth = 240 };
-        AddRow(exifInfo, "相机厂商", photo.CameraMake);
-        AddRow(exifInfo, "相机型号", photo.CameraModel);
-        AddRow(exifInfo, "镜头", photo.LensModel);
-        AddRow(exifInfo, "焦距", photo.FocalLength.HasValue ? $"{photo.FocalLength.Value:0.##} mm" : null);
-        AddRow(exifInfo, "光圈", photo.Aperture);
-        AddRow(exifInfo, "快门", photo.ShutterSpeed);
-        AddRow(exifInfo, "ISO", photo.Iso?.ToString());
-        AddRow(exifInfo, "GPS 纬度", photo.Latitude?.ToString("0.######"));
-        AddRow(exifInfo, "GPS 经度", photo.Longitude?.ToString("0.######"));
+        AddRowAlways(exifInfo, "相机厂商", photo.CameraMake);
+        AddRowAlways(exifInfo, "相机型号", photo.CameraModel);
+        AddRowAlways(exifInfo, "镜头", photo.LensModel);
+        AddRowAlways(exifInfo, "焦距", photo.FocalLength.HasValue ? $"{photo.FocalLength.Value:0.##} mm" : null);
+        AddRowAlways(exifInfo, "光圈", photo.Aperture);
+        AddRowAlways(exifInfo, "快门", photo.ShutterSpeed);
+        AddRowAlways(exifInfo, "ISO", photo.Iso?.ToString());
+        AddRowAlways(exifInfo, "GPS 纬度", photo.Latitude?.ToString("0.######"));
+        AddRowAlways(exifInfo, "GPS 经度", photo.Longitude?.ToString("0.######"));
 
         // ---- 右上+右下并排 ----
         var rightGrid = new Grid();
@@ -254,18 +255,39 @@ public sealed partial class MainPage : Page
         rightGrid.Children.Add(basicInfo);
         rightGrid.Children.Add(exifInfo);
 
-        // ---- 底部：文件信息 ----
+        // ---- 底部：文件信息（全字段） ----
         var footerInfo = new StackPanel { Spacing = 4, Margin = new Thickness(0, 12, 0, 0) };
-        AddRow(footerInfo, "文件大小", FormatFileSize(photo.FileSize));
-        AddRow(footerInfo, "导入时间", photo.ImportedAt.ToString("yyyy-MM-dd HH:mm"));
-        if (photo.RecognitionStatus > 0)
+        AddRowAlways(footerInfo, "文件大小", FormatFileSize(photo.FileSize));
+        AddRowAlways(footerInfo, "导入时间", photo.ImportedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+        AddRowAlways(footerInfo, "识别状态", photo.RecognitionStatus switch
         {
-            AddRow(footerInfo, "AI 识别", photo.RecognizedAircraftModel is null
-                ? "已识别（无结果）"
-                : $"{photo.RecognizedAircraftModel}（置信度 {(photo.RecognitionConfidence ?? 0):P0}）");
+            0 => "0 · 未识别",
+            1 => "1 · 已识别",
+            2 => "2 · 用户已修正",
+            _ => photo.RecognitionStatus.ToString(),
+        });
+        AddRowAlways(footerInfo, "AI 识别机型", photo.RecognizedAircraftModel);
+        AddRowAlways(footerInfo, "AI 置信度", photo.RecognitionConfidence is null
+            ? null
+            : photo.RecognitionConfidence.Value.ToString("P0"));
+        AddRowAlways(footerInfo, "原图路径", photo.FilePath);
+        AddRowAlways(footerInfo, "缩略图路径", photo.ThumbnailPath);
+
+        // ---- 原始 EXIF（解析 exif_json 展开全部条目） ----
+        var rawExif = ParseExifJson(photo.ExifJson);
+        if (rawExif.Count > 0)
+        {
+            footerInfo.Children.Add(new TextBlock
+            {
+                Text = "原始 EXIF 数据",
+                Margin = new Thickness(0, 10, 0, 2),
+                Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
+            });
+            foreach (var kv in rawExif)
+            {
+                AddRowAlways(footerInfo, kv.Key, kv.Value);
+            }
         }
-        AddRow(footerInfo, "原图路径", photo.FilePath);
-        AddRow(footerInfo, "缩略图路径", photo.ThumbnailPath);
 
         // ---- 整体 Grid：左大图 + 右上双列 + 底部跨列 ----
         var body = new Grid();
@@ -337,6 +359,83 @@ public sealed partial class MainPage : Page
         row.Children.Add(t1);
         row.Children.Add(t2);
         parent.Children.Add(row);
+    }
+
+    /// <summary>
+    /// 与 <see cref="AddRow"/> 相同，但空值也显示「—」，用于「展示全部参数」场景。
+    /// </summary>
+    private static void AddRowAlways(StackPanel parent, string label, string? value)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var t1 = new TextBlock
+        {
+            Text = label,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        var t2 = new TextBlock
+        {
+            Text = string.IsNullOrWhiteSpace(value) ? "—" : value,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,   // 便于复制路径等长文本
+            Foreground = string.IsNullOrWhiteSpace(value)
+                ? (Brush)Application.Current.Resources["TextFillColorTertiaryBrush"]
+                : (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+        };
+        Grid.SetColumn(t1, 0);
+        Grid.SetColumn(t2, 1);
+        row.Children.Add(t1);
+        row.Children.Add(t2);
+        parent.Children.Add(row);
+    }
+
+    /// <summary>
+    /// 解析 exif_json（形如 {"Make":"Canon","Model":"..."} 的扁平对象或嵌套对象），
+    /// 展平成 键→值 列表供详情展示。解析失败返回空列表。
+    /// </summary>
+    private static List<KeyValuePair<string, string>> ParseExifJson(string? json)
+    {
+        var result = new List<KeyValuePair<string, string>>();
+        if (string.IsNullOrWhiteSpace(json)) return result;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            FlattenJson(doc.RootElement, null, result);
+        }
+        catch
+        {
+            // 非 JSON 或格式异常：原样给出一行，避免信息丢失
+            result.Add(new KeyValuePair<string, string>("(原始)", json));
+        }
+        return result;
+    }
+
+    private static void FlattenJson(System.Text.Json.JsonElement el, string? prefix, List<KeyValuePair<string, string>> sink)
+    {
+        switch (el.ValueKind)
+        {
+            case System.Text.Json.JsonValueKind.Object:
+                foreach (var prop in el.EnumerateObject())
+                {
+                    var key = string.IsNullOrEmpty(prefix) ? prop.Name : $"{prefix}.{prop.Name}";
+                    FlattenJson(prop.Value, key, sink);
+                }
+                break;
+            case System.Text.Json.JsonValueKind.Array:
+                var i = 0;
+                foreach (var item in el.EnumerateArray())
+                {
+                    var key = $"{prefix}[{i++}]";
+                    FlattenJson(item, key, sink);
+                }
+                break;
+            default:
+                sink.Add(new KeyValuePair<string, string>(prefix ?? "(值)", el.ToString()));
+                break;
+        }
     }
 
     private static string? Combine(string? a, string? b)

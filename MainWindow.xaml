@@ -17,11 +17,35 @@
                     Loaded="NavView_Loaded">
 
         <NavigationView.MenuItems>
-            <NavigationViewItem Content="照片库"
+            <NavigationViewItem Content="照片墙"
                                 Tag="gallery"
-                                AutomationProperties.Name="照片库">
+                                AutomationProperties.Name="照片墙">
                 <NavigationViewItem.Icon>
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <NavigationViewItem Content="机型"
+                                Tag="aircraft"
+                                AutomationProperties.Name="机型">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE709;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <NavigationViewItem Content="机场"
+                                Tag="airport"
+                                AutomationProperties.Name="机场">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE707;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <NavigationViewItem Content="注册号"
+                                Tag="registration"
+                                AutomationProperties.Name="注册号">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8AC;" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>

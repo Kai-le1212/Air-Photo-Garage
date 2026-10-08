@@ -13,13 +13,56 @@ public partial class App : Application
     public static Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; private set; } = null!;
     public static nint WindowHandle => WinRT.Interop.WindowNative.GetWindowHandle(Window);
 
-    public static string DatabasePath { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AirPhotoGarage", "library.db");
-
-    public static string LibraryRoot { get; } =
+    internal static readonly string DefaultLibraryRoot =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "AirPhotoGarage");
+
+    /// <summary>
+    /// 照片库根目录。可通过设置页更改（更改后需重启应用生效）。
+    /// 默认：%LocalAppData%\AirPhotoGarage
+    /// </summary>
+    public static string LibraryRoot { get; private set; } = DefaultLibraryRoot;
+
+    /// <summary>数据库文件路径 = 库根目录下的 library.db。</summary>
+    public static string DatabasePath => Path.Combine(LibraryRoot, "library.db");
+
+    /// <summary>库根目录配置文件的路径（固定放在默认目录下，保证总能找到）。</summary>
+    private static string LibraryRootConfigPath =>
+        Path.Combine(DefaultLibraryRoot, "library-root.txt");
+
+    /// <summary>
+    /// 从配置文件载入照片库根目录；不存在或无效时回退到默认目录。
+    /// 在 <see cref="OnLaunched"/> 创建服务之前调用。
+    /// </summary>
+    public static void LoadLibraryRoot()
+    {
+        try
+        {
+            if (File.Exists(LibraryRootConfigPath))
+            {
+                var p = File.ReadAllText(LibraryRootConfigPath).Trim();
+                if (!string.IsNullOrWhiteSpace(p))
+                {
+                    Directory.CreateDirectory(p);
+                    LibraryRoot = p;
+                    return;
+                }
+            }
+        }
+        catch { /* 回退默认 */ }
+        LibraryRoot = DefaultLibraryRoot;
+        try { Directory.CreateDirectory(LibraryRoot); } catch { }
+    }
+
+    /// <summary>
+    /// 保存新的照片库根目录到配置（不立即切换运行时实例；调用方应提示重启）。
+    /// </summary>
+    public static void SaveLibraryRoot(string path)
+    {
+        var dir = Path.GetDirectoryName(LibraryRootConfigPath)!;
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(LibraryRootConfigPath, path.Trim());
+    }
 
     public static IDatabaseService Database { get; private set; } = null!;
     public static IExifService Exif { get; private set; } = null!;
@@ -79,6 +122,10 @@ public partial class App : Application
             DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
             UiDispatcher = new DispatcherQueueAdapter(DispatcherQueue);
             Log("DispatcherQueue ready");
+
+            // 载入用户配置的照片库根目录（必须在创建 Database / Importer 之前）
+            LoadLibraryRoot();
+            Log($"LibraryRoot = {LibraryRoot}");
 
             Database = new DatabaseService(DatabasePath);
             Database.InitializeAsync().GetAwaiter().GetResult();

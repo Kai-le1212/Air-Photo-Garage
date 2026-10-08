@@ -55,15 +55,28 @@ public sealed partial class SettingsViewModel : ObservableObject
         "© 2026 AirPhotoGarage Team\n" +
         "使用 .NET 10 + Windows App SDK 2.3 + WinUI 3 + SQLite 构建";
 
-    public string DatabasePathText =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AirPhotoGarage", "library.db");
+    public string DatabasePathText => App.DatabasePath;
 
-    public string LibraryRootText =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AirPhotoGarage");
+    public string LibraryRootText => App.LibraryRoot;
+
+    /// <summary>
+    /// 由设置页在用户选定新库目录后调用：把路径写入配置。
+    /// 运行时实例（Database/Importer）不在此切换，需重启应用生效。
+    /// </summary>
+    public void SetLibraryRoot(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        App.SaveLibraryRoot(path);
+        OnPropertyChanged(nameof(LibraryRootText));
+        OnPropertyChanged(nameof(DatabasePathText));
+    }
+
+    /// <summary>判断给定路径是否与当前库目录一致。</summary>
+    public bool IsCurrentLibraryRoot(string path) =>
+        string.Equals(
+            Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar),
+            Path.GetFullPath(App.LibraryRoot).TrimEnd(Path.DirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase);
 
     // ---------- 持久化 ----------
 
