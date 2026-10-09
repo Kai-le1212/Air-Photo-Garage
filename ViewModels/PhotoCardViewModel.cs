@@ -68,16 +68,23 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     public string? MetaDisplay =>
         $"{AircraftDisplay}  ·  {ShotAtDisplay}";
 
+    /// <summary>
+    /// 机场显示行。统一为「机场名 · 代码」顺序，与机场页的分组行保持一致。
+    /// <para>
+    /// 此前这里是「代码 · 机场名」，而机场页分组行是「机场名 · 代码」——
+    /// 同一份数据在应用里出现两种顺序，来回切换时读起来割裂。
+    /// 名字比代码更好认，所以统一以名字开头；名字缺失时才退回代码。
+    /// </para>
+    /// </summary>
     public string? AirportDisplay
     {
         get
         {
-            // 优先显示 IATA + ICAO + Name 组合
             var code = Photo.AirportIata ?? Photo.AirportIcao ?? Photo.AirportCode;
-            if (!string.IsNullOrWhiteSpace(code) && !string.IsNullOrWhiteSpace(Photo.AirportName))
-                return $"{code} · {Photo.AirportName}";
-            if (!string.IsNullOrWhiteSpace(code)) return code;
+            if (!string.IsNullOrWhiteSpace(Photo.AirportName) && !string.IsNullOrWhiteSpace(code))
+                return $"{Photo.AirportName} · {code}";
             if (!string.IsNullOrWhiteSpace(Photo.AirportName)) return Photo.AirportName;
+            if (!string.IsNullOrWhiteSpace(code)) return code;
             return "未填写机场";
         }
     }

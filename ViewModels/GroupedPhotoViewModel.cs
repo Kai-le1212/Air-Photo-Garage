@@ -187,16 +187,26 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     /// <summary>
     /// 页面标题，随三级状态变化：
-    /// 列表态「机型」→ 子分组态「机型 · A330-300」→ 照片态「A330-300 · B-8870」。
-    /// 分组名用展示标题（机场页因此显示「香港国际机场 · HKG」而不是裸码 VHHH）。
+    /// 列表态「机型」→ 子分组态「机型 · A330-300」→ 照片态「机型 · A330-300 · B-8870」。
+    ///
+    /// <para>
+    /// 带复合展示标签的维度（机场页＝「机场名 · IATA」）在照片态<b>只显示标签</b>：
+    /// 标签本身已自带分隔符，再拼上维度名会变成
+    /// 「机场 · 香港国际机场 · HKG」这种两个「·」的啰嗦写法。
+    /// </para>
     /// </summary>
     public string HeaderText => IsViewingSubGroups
         ? $"{_dimensionLabel} · {GroupLabel}"
         : IsViewingGroup
-            ? (_enableRegistrationSubLevel
-                ? $"{GroupLabel} · {SelectedSubGroup}"
-                : $"{_dimensionLabel} · {GroupLabel}")
+            ? (HasCompositeLabel
+                ? GroupLabel
+                : _enableRegistrationSubLevel
+                    ? $"{GroupLabel} · {SelectedSubGroup}"
+                    : $"{_dimensionLabel} · {GroupLabel}")
             : _dimensionLabel;
+
+    /// <summary>分组行是否带复合展示标签（机场页 = [机场名, IATA]）。</summary>
+    private bool HasCompositeLabel => _rowLabelColumns.Count > 0;
 
     /// <summary>外层分组的展示标题；未选中时退回空串。</summary>
     private string GroupLabel => _selectedGroupLabel ?? SelectedGroup ?? string.Empty;
