@@ -18,9 +18,9 @@
         无新增功能(修复/调整) → 升第四位：0.2.0.x
       每次提交的版本号必须唯一。
     -->
-    <Version>0.2.2.1</Version>
-    <AssemblyVersion>0.2.2.1</AssemblyVersion>
-    <FileVersion>0.2.2.1</FileVersion>
+    <Version>0.2.2.2</Version>
+    <AssemblyVersion>0.2.2.2</AssemblyVersion>
+    <FileVersion>0.2.2.2</FileVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
