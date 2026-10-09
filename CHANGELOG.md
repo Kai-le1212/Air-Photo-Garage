@@ -5,6 +5,15 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.2.3] - 2026-10-09
+
+### 文档
+
+- README 精简：删去冗长的项目结构 / 版本号规则 / 打包命令等章节，
+  只保留「这是什么 / 主要功能 / 安装 / 数据位置 / 系统要求 / 从源码构建 / 已知限制」，
+  从 200 余行压缩到约 90 行
+- 明确说明单文件 exe 在启用 SAC / WDAC 的机器上无法启动，引导用户使用 MSIX
+
 ## [0.2.2.2] - 2026-10-09
 
 ### 文档与打包
@@ -86,6 +95,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.2.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.3
 [0.2.2.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.2
 [0.2.2.1]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.1
 [0.2.2.0]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.0
