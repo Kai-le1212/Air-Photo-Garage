@@ -32,6 +32,75 @@ public sealed partial class GarageViewModel : ObservableObject
 
     public ObservableCollection<PhotoCardViewModel> Photos { get; }
 
+    /// <summary>
+    /// 照片墙的「按注册号」分组视图。注册号才唯一标识一架飞机，
+    /// 平铺视图下同型机混在一起难以对号入座。
+    /// </summary>
+    public ObservableCollection<RegistrationGroup> RegistrationGroups { get; } = new();
+
+    /// <summary>是否按注册号分组显示照片墙（默认开）。关掉即回到平铺视图。</summary>
+    [ObservableProperty] public partial bool GroupByRegistration { get; set; } = true;
+
+    partial void OnGroupByRegistrationChanged(bool value)
+    {
+        if (value) BuildRegistrationGroups();
+        RaisePhotoViewProperties();
+    }
+
+    /// <summary>分组视图可见性：开关打开且确实分出了组。</summary>
+    public Microsoft.UI.Xaml.Visibility GroupedWallVisibility =>
+        (GroupByRegistration && RegistrationGroups.Count > 0)
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>平铺视图可见性（与分组视图互斥）。</summary>
+    public Microsoft.UI.Xaml.Visibility FlatWallVisibility =>
+        (!GroupByRegistration || RegistrationGroups.Count == 0)
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    private void RaisePhotoViewProperties()
+    {
+        OnPropertyChanged(nameof(GroupedWallVisibility));
+        OnPropertyChanged(nameof(FlatWallVisibility));
+    }
+
+    /// <summary>
+    /// 按注册号把已加载的照片切片。
+    ///
+    /// <para>
+    /// 组的顺序<b>不</b>单独排序，而是沿用该组第一张照片在 <see cref="Photos"/> 里的位置 ——
+    /// 这样组序会自动跟随筛选面板里的「排序方式」，不需要再维护第二套排序规则。
+    /// </para>
+    /// </summary>
+    private void BuildRegistrationGroups()
+    {
+        RegistrationGroups.Clear();
+        if (!GroupByRegistration) return;
+
+        if (Photos.Count == 0)
+        {
+            RaisePhotoViewProperties();
+            return;
+        }
+
+        var order = new Dictionary<long, int>(Photos.Count);
+        for (var i = 0; i < Photos.Count; i++) order[Photos[i].Id] = i;
+
+        var grouped = Photos
+            .GroupBy(c => string.IsNullOrWhiteSpace(c.Photo.RegistrationNumber)
+                ? null
+                : c.Photo.RegistrationNumber!.Trim())
+            .OrderBy(g => g.Min(c => order[c.Id]))
+            .ToList();
+
+        foreach (var g in grouped)
+        {
+            RegistrationGroups.Add(new RegistrationGroup(g.Key, g.ToList()));
+        }
+        RaisePhotoViewProperties();
+    }
+
     // ---- 筛选条件（双向绑定） ----
 
     [ObservableProperty] public partial string? Keyword { get; set; }
@@ -83,7 +152,11 @@ public sealed partial class GarageViewModel : ObservableObject
             {
                 Photos.Add(new PhotoCardViewModel(p, _ui));
             }
-            StatusMessage = $"共 {Photos.Count} 张照片";
+            BuildRegistrationGroups();
+
+            StatusMessage = GroupByRegistration && RegistrationGroups.Count > 0
+                ? $"共 {Photos.Count} 张照片 · {RegistrationGroups.Count} 架飞机"
+                : $"共 {Photos.Count} 张照片";
 
             await RefreshSuggestionsAsync();
         }
@@ -149,6 +222,7 @@ public sealed partial class GarageViewModel : ObservableObject
         {
             await _db.DeletePhotoAsync(card.Id);
             Photos.Remove(card);
+            BuildRegistrationGroups();   // 卡片同时存在于分组视图里，必须一起重建
             StatusMessage = $"已删除照片 #{card.Id}";
         }
         catch (Exception ex)
@@ -217,6 +291,85 @@ public sealed partial class GarageViewModel : ObservableObject
         catch
         {
             // ignore
+        }
+    }
+}
+
+/// <summary>
+/// 照片墙上的一个「按注册号」分组。注册号相同即视为同一架飞机。
+/// </summary>
+public sealed class RegistrationGroup
+{
+    public RegistrationGroup(string? registration, IReadOnlyList<PhotoCardViewModel> photos)
+    {
+        Registration = registration;
+        Photos = photos;
+    }
+
+    /// <summary>注册号；<c>null</c> 表示这是「未填写注册号」的兜底分组。</summary>
+    public string? Registration { get; }
+
+    /// <summary>组内照片，顺序沿用照片墙当前的排序。</summary>
+    public IReadOnlyList<PhotoCardViewModel> Photos { get; }
+
+    public string Title => Registration ?? "未填写注册号";
+
+    public string CountText => $"{Photos.Count} 张";
+
+    /// <summary>「未填写注册号」徽标可见性。</summary>
+    public Microsoft.UI.Xaml.Visibility MissingBadgeVisibility =>
+        Registration is null
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>
+    /// 该注册号下出现过的机型。同一架飞机可能换装/重录机型，故用「/」连接去重后的多个机型。
+    /// </summary>
+    public string ModelsText
+    {
+        get
+        {
+            var models = Photos
+                .Select(c => c.Photo.AircraftModel)
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Select(m => m!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return models.Count == 0 ? "未填写机型" : string.Join(" / ", models);
+        }
+    }
+
+    /// <summary>组内拍摄时间范围，例如 "2021-05-01 ~ 2026-10-02"。</summary>
+    public string RangeText
+    {
+        get
+        {
+            var times = Photos
+                .Where(c => c.Photo.ShotAt.HasValue)
+                .Select(c => c.Photo.ShotAt!.Value)
+                .OrderBy(t => t)
+                .ToList();
+            if (times.Count == 0) return "无拍摄时间";
+            // ShotAt 存的是相机本地时间（EXIF 无时区，按 UTC+0 原样保存），不可再 ToLocalTime
+            return $"{times[0]:yyyy-MM-dd} ~ {times[^1]:yyyy-MM-dd}";
+        }
+    }
+
+    /// <summary>组副标题：机型 · 时间范围 · 机场。</summary>
+    public string SummaryText => $"{ModelsText}  ·  {RangeText}  ·  {AirportsText}";
+
+    /// <summary>出现过的机场数（去重），用于一句话概括这架飞机的拍摄足迹。</summary>
+    public string AirportsText
+    {
+        get
+        {
+            var airports = Photos
+                .Select(c => c.Photo.AirportIata ?? c.Photo.AirportIcao ?? c.Photo.AirportCode)
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .Select(a => a!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return airports.Count == 0 ? "未填写机场" : string.Join(" / ", airports);
         }
     }
 }

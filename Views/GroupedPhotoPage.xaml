@@ -47,7 +47,8 @@
                     </Grid>
 
                     <StackPanel Grid.Row="1" Padding="10,8" Spacing="2">
-                        <TextBlock Text="{x:Bind AircraftDisplay, Mode=OneWay}"
+                        <!-- 主标题统一为注册号（机型降为副信息） -->
+                        <TextBlock Text="{x:Bind PrimaryDisplay, Mode=OneWay}"
                                    Style="{StaticResource BodyStrongTextBlockStyle}"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
@@ -91,7 +92,7 @@
 
                 <Button Grid.Column="0"
                         Content="← 返回"
-                        Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.BackButtonVisibility, Mode=OneWay}"
                         Click="OnBackClick" />
 
                 <TextBlock Grid.Column="1"
@@ -156,12 +157,24 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="{x:Bind Value}"
+                                    <TextBlock Text="{x:Bind DisplayText}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{x:Bind RangeText}"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{x:Bind RangeText}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                        <!-- 「未填写」兜底行标记 -->
+                                        <Border Visibility="{x:Bind MissingBadgeVisibility}"
+                                                VerticalAlignment="Center"
+                                                Padding="6,0"
+                                                CornerRadius="3"
+                                                Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
+                                            <TextBlock Text="待补全"
+                                                       FontSize="11"
+                                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                                 <TextBlock Grid.Column="1"
                                            VerticalAlignment="Center"
@@ -182,44 +195,212 @@
                 </ListView>
             </ScrollViewer>
 
+            <!--
+                中间层：注册号列表（仅机型页）。
+                机型是共享概念（一次航展可能十几架同型机），所以必须先下钻到
+                具体哪一架飞机（注册号），再看照片。
+            -->
+            <ScrollViewer Visibility="{x:Bind ViewModel.SubGroupListVisibility, Mode=OneWay}"
+                          Padding="20,0,20,20"
+                          VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <ListView ItemsSource="{x:Bind ViewModel.SubGroups, Mode=OneWay}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnSubGroupClick"
+                              Padding="0"
+                              Background="Transparent">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="16,14" />
+                                <Setter Property="Margin" Value="0,0,0,10" />
+                                <Setter Property="CornerRadius" Value="6" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GroupItemViewModel">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Grid.Column="0"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,12,0"
+                                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                              Glyph="&#xE709;"
+                                              FontSize="16"
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{x:Bind DisplayText}"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind RangeText}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            <!-- 「未填写注册号」兜底行标记：提示这批照片补全后即可归组 -->
+                                            <Border Visibility="{x:Bind MissingBadgeVisibility}"
+                                                    VerticalAlignment="Center"
+                                                    Padding="6,0"
+                                                    CornerRadius="3"
+                                                    Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
+                                                <TextBlock Text="待补全"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"
+                                               Style="{StaticResource BodyTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Text="{x:Bind CountText}" />
+                                    <FontIcon Grid.Column="3"
+                                              VerticalAlignment="Center"
+                                              Margin="8,0,0,0"
+                                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                              Glyph="&#xE76C;"
+                                              FontSize="12"
+                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <TextBlock Margin="24"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               Style="{StaticResource BodyTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               Visibility="{x:Bind ViewModel.SubGroupEmptyHintVisibility, Mode=OneWay}"
+                               Text="该机型下暂无可展示的照片。" />
+                </Grid>
+            </ScrollViewer>
+
             <!-- 分组详情 -->
             <ScrollViewer Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}"
                           Padding="20,0,20,20"
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16">
-                    <!-- 按天分组（注册号页） -->
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.DayGroups, Mode=OneWay}"
-                                  Visibility="{x:Bind ViewModel.DayGroupsVisibility, Mode=OneWay}">
+                    <!-- 分组用法提示（仅注册号详情态显示） -->
+                    <InfoBar IsOpen="True"
+                             IsClosable="False"
+                             Severity="Informational"
+                             Visibility="{x:Bind ViewModel.GroupingHintVisibility, Mode=OneWay}"
+                             Message="{x:Bind ViewModel.UserGroupHint, Mode=OneWay}" />
+
+                    <!--
+                        时间轴（二层分组）：同一注册号 = 同一架飞机，
+                        节点分「自定义分组」与「自动按天」两类，互斥且不重复。
+
+                        轴线布局要点：
+                        - 外层 Grid 不设纵向 Margin，否则相邻节点的轴线会断开；
+                          间距改由右侧内容 StackPanel 的 Bottom Margin 提供。
+                        - 轴线条用 Width=2 的 Border，VerticalAlignment 默认 Stretch 即可贯穿整行。
+                        - 圆点用 14x14 + CornerRadius=7 的 Border 做成圆形，
+                          再叠一圈 3px 的底色描边，压在轴线上时边缘不会糊。
+                    -->
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Timeline, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.TimelineVisibility, Mode=OneWay}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:DayGroup">
-                                <StackPanel Margin="0,0,0,16">
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,0,0,8">
-                                        <TextBlock Text="{x:Bind Title}"
-                                                   Style="{StaticResource SubtitleTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind CountText}"
-                                                   VerticalAlignment="Bottom"
-                                                   Margin="0,0,0,4"
+                            <DataTemplate x:DataType="vm:TimelineNode">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!--
+                                        贯穿整行的垂直轴线。
+                                        用色注意：这里不能用 CardStrokeColorDefaultBrush ——
+                                        它专供卡片描边，深色主题下只有 ~4 个色阶的对比（实测
+                                        背景 (39,39,42) vs 轴线 (35,35,37)），等于画了看不见。
+                                        改用 TextFillColorTertiaryBrush 配 50% 不透明度：
+                                        既清晰可辨，又比同色的节点圆点弱一档，形成主次。
+                                    -->
+                                    <Border Grid.Column="0"
+                                            Width="2"
+                                            Opacity="0.5"
+                                            HorizontalAlignment="Center"
+                                            Background="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                                    <!-- 节点圆点：自定义分组（强调色） -->
+                                    <Border Grid.Column="0"
+                                            Width="14" Height="14"
+                                            CornerRadius="7"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Top"
+                                            Margin="0,10,0,0"
+                                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                            BorderThickness="3"
+                                            BorderBrush="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                            Visibility="{x:Bind BadgeVisibility}" />
+
+                                    <!-- 节点圆点：按天自动分组（中性色） -->
+                                    <Border Grid.Column="0"
+                                            Width="14" Height="14"
+                                            CornerRadius="7"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Top"
+                                            Margin="0,10,0,0"
+                                            Background="{ThemeResource TextFillColorTertiaryBrush}"
+                                            BorderThickness="3"
+                                            BorderBrush="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                                            Visibility="{x:Bind DayDotVisibility}" />
+
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,26" Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind Title}"
+                                                       Style="{StaticResource SubtitleTextBlockStyle}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Border Visibility="{x:Bind BadgeVisibility}"
+                                                    VerticalAlignment="Center"
+                                                    Padding="6,1"
+                                                    CornerRadius="4"
+                                                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                                                <TextBlock Text="自定义分组"
+                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                            </Border>
+                                            <TextBlock Text="{x:Bind CountText}"
+                                                       VerticalAlignment="Bottom"
+                                                       Margin="0,0,0,4"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+
+                                        <TextBlock Text="{x:Bind Subtitle}"
                                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+
+                                        <GridView ItemsSource="{x:Bind Photos}"
+                                                  SelectionMode="None"
+                                                  IsItemClickEnabled="True"
+                                                  ItemClick="OnPhotoClick"
+                                                  ItemTemplate="{StaticResource PhotoCardTpl}">
+                                            <GridView.ItemContainerStyle>
+                                                <Style TargetType="GridViewItem">
+                                                    <Setter Property="Margin" Value="4" />
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                </Style>
+                                            </GridView.ItemContainerStyle>
+                                        </GridView>
                                     </StackPanel>
-                                    <GridView ItemsSource="{x:Bind Photos}"
-                                              SelectionMode="None"
-                                              IsItemClickEnabled="True"
-                                              ItemClick="OnPhotoClick"
-                                              ItemTemplate="{StaticResource PhotoCardTpl}">
-                                        <GridView.ItemContainerStyle>
-                                            <Style TargetType="GridViewItem">
-                                                <Setter Property="Margin" Value="4" />
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </GridView.ItemContainerStyle>
-                                    </GridView>
-                                </StackPanel>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- 平铺照片 -->
+                    <!-- 平铺照片（未启用二层分组，或时间轴为空时兜底） -->
                     <GridView ItemsSource="{x:Bind ViewModel.Photos, Mode=OneWay}"
                               Visibility="{x:Bind ViewModel.FlatPhotosVisibility, Mode=OneWay}"
                               SelectionMode="None"

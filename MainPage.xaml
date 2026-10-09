@@ -11,6 +11,72 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
+    <Page.Resources>
+        <!--
+            照片墙卡片模板。
+            抽成资源是因为「按注册号分组」与「平铺」两个视图都要用它 ——
+            内联写两份会立刻产生漂移，改一处忘一处。
+
+            按 winui3-full-skill/snippets/collections/gridview.md：
+            DataTemplate 根元素必须显式 Width/Height，否则 GridViewItem 容器坍缩到 0、卡片完全不可见。
+        -->
+        <DataTemplate x:Key="WallCardTpl" x:DataType="vm:PhotoCardViewModel">
+            <Border Width="240" Height="300"
+                    BorderThickness="1" CornerRadius="8"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    RightTapped="OnCardRightTapped">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 缩略图区域 + 覆盖文字 -->
+                    <Grid Grid.Row="0"
+                          Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
+                               Stretch="UniformToFill" />
+
+                        <!-- 未提供信息覆盖层 -->
+                        <Border VerticalAlignment="Top"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,4"
+                                CornerRadius="0,0,0,8"
+                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                                Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
+                            <TextBlock Text="未提供机型/注册号信息"
+                                       Foreground="White"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                        </Border>
+                    </Grid>
+
+                    <!-- 文本信息：主标题统一为注册号 -->
+                    <StackPanel Grid.Row="1" Padding="10,10,10,8" Spacing="2">
+                        <TextBlock Text="{x:Bind PrimaryDisplay, Mode=OneWay}"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind AirportDisplay, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <!-- 常驻详情入口：与三个分组页保持一致，
+                             不依赖 ItemClick 命中测试是否可靠 -->
+                        <Button Content="详细信息"
+                                Padding="8,2"
+                                Margin="0,4,0,0"
+                                HorizontalAlignment="Left"
+                                Click="OnCardDetailButtonClick" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -22,6 +88,14 @@
         <CommandBar Grid.Row="0" DefaultLabelPosition="Right" Background="Transparent">
             <AppBarButton Label="导入照片" Icon="Add" Click="OnImportClick" />
             <AppBarButton Label="刷新" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
+            <AppBarSeparator />
+            <AppBarToggleButton Label="按注册号分组"
+                                IsChecked="{x:Bind ViewModel.GroupByRegistration, Mode=TwoWay}"
+                                AutomationProperties.Name="按注册号分组">
+                <AppBarToggleButton.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
+                </AppBarToggleButton.Icon>
+            </AppBarToggleButton>
             <AppBarSeparator />
             <AppBarButton Label="清空筛选" Icon="Clear" Command="{x:Bind ViewModel.ClearFilterCommand}" />
         </CommandBar>
@@ -118,6 +192,67 @@
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                    <!--
+                        分组视图：按注册号把照片聚成一组组。
+                        组序沿用该组首张照片在当前排序里的位置，因此会自动跟随左侧「排序方式」。
+                    -->
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.RegistrationGroups, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RegistrationGroup">
+                                <StackPanel Margin="4,0,4,18" Spacing="8">
+                                    <!-- 组头：注册号 + 张数 -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{x:Bind Title}"
+                                                   Style="{StaticResource SubtitleTextBlockStyle}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <Border Visibility="{x:Bind MissingBadgeVisibility}"
+                                                VerticalAlignment="Center"
+                                                Padding="6,1"
+                                                CornerRadius="4"
+                                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}">
+                                            <TextBlock Text="补全后可归组"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="White" />
+                                        </Border>
+                                        <TextBlock Text="{x:Bind CountText}"
+                                                   VerticalAlignment="Bottom"
+                                                   Margin="0,0,0,4"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+
+                                    <!--
+                                        组副标题：机型 / 时间范围 / 机场。
+                                        刻意用单个派生属性而不是 <Run> 拼接 ——
+                                        WinAppSDK 2.3 编译器对 DataTemplate 内 <Run> 上的 x:Bind
+                                        有 WMC1111 上下文丢失问题（项目里已踩过）。
+                                    -->
+                                    <TextBlock Text="{x:Bind SummaryText}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+
+                                    <GridView ItemsSource="{x:Bind Photos}"
+                                              SelectionMode="None"
+                                              IsItemClickEnabled="True"
+                                              ItemClick="OnPhotoItemClick"
+                                              ItemTemplate="{StaticResource WallCardTpl}">
+                                        <GridView.ItemContainerStyle>
+                                            <Style TargetType="GridViewItem">
+                                                <Setter Property="Margin" Value="6" />
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                                <Setter Property="Background" Value="Transparent" />
+                                            </Style>
+                                        </GridView.ItemContainerStyle>
+                                    </GridView>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <!--
                         按 winui3-full-skill/snippets/collections/gridview.md 推荐：
                         照片墙用 GridView 而不是 ItemsRepeater，自带 ItemClick 标准事件。
@@ -126,9 +261,11 @@
                         - DataTemplate 内不再用 Button 包裹，避免事件路由不可靠
                     -->
                     <GridView ItemsSource="{x:Bind ViewModel.Photos, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.FlatWallVisibility, Mode=OneWay}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="OnPhotoItemClick"
+                              ItemTemplate="{StaticResource WallCardTpl}"
                               AutomationProperties.Name="照片墙">
                         <GridView.ItemContainerStyle>
                             <Style TargetType="GridViewItem">
@@ -138,67 +275,8 @@
                                 <Setter Property="Background" Value="Transparent" />
                             </Style>
                         </GridView.ItemContainerStyle>
-                        <GridView.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PhotoCardViewModel">
-                                <!--
-                                    按 winui3-full-skill/snippets/collections/gridview.md：
-                                    DataTemplate 根元素必须显式 Width/Height，否则 GridViewItem 容器坍缩到 0、卡片完全不可见。
-                                -->
-                                <Border Width="240" Height="300"
-                                        BorderThickness="1" CornerRadius="8"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                        RightTapped="OnCardRightTapped">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="*" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-
-                                        <!-- 缩略图区域 + 覆盖文字 -->
-                                        <Grid Grid.Row="0"
-                                              Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                                            <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
-                                                   Stretch="UniformToFill" />
-
-                                            <!-- 未提供信息覆盖层 -->
-                                            <Border VerticalAlignment="Top"
-                                                    HorizontalAlignment="Stretch"
-                                                    Padding="8,4"
-                                                    CornerRadius="0,0,0,8"
-                                                    Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                                                    Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
-                                                <TextBlock Text="未提供机型/注册号信息"
-                                                           Foreground="White"
-                                                           Style="{StaticResource CaptionTextBlockStyle}" />
-                                            </Border>
-                                        </Grid>
-
-                                        <!-- 文本信息 -->
-                                        <StackPanel Grid.Row="1" Padding="10,10,10,8" Spacing="2">
-                                            <TextBlock Text="{x:Bind AircraftDisplay, Mode=OneWay}"
-                                                       Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
-                                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{x:Bind AirportDisplay, Mode=OneWay}"
-                                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <!-- 常驻详情入口：与三个分组页保持一致，
-                                                 不依赖 ItemClick 命中测试是否可靠 -->
-                                            <Button Content="详细信息"
-                                                    Padding="8,2"
-                                                    Margin="0,4,0,0"
-                                                    HorizontalAlignment="Left"
-                                                    Click="OnCardDetailButtonClick" />
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </GridView.ItemTemplate>
                     </GridView>
+                    </Grid>
                 </ScrollViewer>
             </Grid>
         </Grid>

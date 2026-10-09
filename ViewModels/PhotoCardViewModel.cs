@@ -40,6 +40,20 @@ public sealed partial class PhotoCardViewModel : ObservableObject
 
     public long Id => Photo.Id;
 
+    /// <summary>
+    /// 卡片<b>主标题</b>：统一显示注册号。
+    ///
+    /// <para>
+    /// 为什么用注册号而不是机型：机型（如 "Airbus A330-300"）是<b>共享</b>的，
+    /// 一次航展可能拍到十几架同型机；只有注册号唯一标识一架具体飞机。
+    /// 照片墙 / 机型 / 机场 / 注册号四处视图统一用注册号做标题，
+    /// 用户扫一眼就能对上"这是哪一架"。
+    /// </para>
+    /// </summary>
+    public string PrimaryDisplay =>
+        string.IsNullOrWhiteSpace(Photo.RegistrationNumber) ? "未填写注册号" : Photo.RegistrationNumber!;
+
+    /// <summary>机型显示（缺失时给占位文案）。作为副信息使用。</summary>
     public string? AircraftDisplay =>
         string.IsNullOrWhiteSpace(Photo.AircraftModel) ? "未填写机型" : Photo.AircraftModel;
 
@@ -47,11 +61,12 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         string.IsNullOrWhiteSpace(Photo.RegistrationNumber) ? "—" : Photo.RegistrationNumber;
 
     /// <summary>
-    /// 注册号 + 拍摄时间的合并显示字符串。单独做成派生属性而不是用 <Run> 拼接，
-    /// 是因为 WinAppSDK 2.3 编译器对 DataTemplate 内 <Run> 上的 x:Bind 处理存在 WMC1111 上下文丢失问题。
+    /// 副信息行：机型 + 拍摄时间。
+    /// 做成单个派生属性而不是用 <Run> 拼接，是因为 WinAppSDK 2.3 编译器
+    /// 对 DataTemplate 内 <Run> 上的 x:Bind 处理存在 WMC1111 上下文丢失问题。
     /// </summary>
     public string? MetaDisplay =>
-        $"{RegistrationDisplay}  ·  {ShotAtDisplay}";
+        $"{AircraftDisplay}  ·  {ShotAtDisplay}";
 
     public string? AirportDisplay
     {
@@ -86,6 +101,7 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     /// </summary>
     public void RefreshDisplayProperties()
     {
+        OnPropertyChanged(nameof(PrimaryDisplay));
         OnPropertyChanged(nameof(AircraftDisplay));
         OnPropertyChanged(nameof(RegistrationDisplay));
         OnPropertyChanged(nameof(MetaDisplay));
