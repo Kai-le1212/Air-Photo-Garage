@@ -39,13 +39,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         SaveToDisk(value);
     }
 
-    /// <summary>版本号文本，例如 "v0.1.0"。</summary>
+    /// <summary>
+    /// 版本号文本，例如 "v0.2.2.3"。
+    ///
+    /// <para>
+    /// ⚠️ 必须包含第<b>四</b>位（Revision）。本项目用第四位区分「无新增功能」的迭代
+    /// （有新增功能升第三位、无新增功能升第四位），此前只取 Major.Minor.Build，
+    /// 结果 0.2.2.0 / 0.2.2.1 / 0.2.2.2 / 0.2.2.3 在界面上全都显示成「v0.2.2」，
+    /// 根本分不出装的是哪一版。
+    /// </para>
+    /// </summary>
     public string VersionText
     {
         get
         {
             var v = Assembly.GetExecutingAssembly().GetName().Version;
-            return v is null ? "v0.1.0" : $"v{v.Major}.{v.Minor}.{v.Build}";
+            return v is null ? "未知版本" : $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
         }
     }
 
