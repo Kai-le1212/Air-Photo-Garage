@@ -21,12 +21,14 @@
         -->
         <DataTemplate x:Key="PhotoCardTpl" x:DataType="vm:PhotoCardViewModel">
             <!--
-                卡片上【不再印任何文字】：注册号 / 机型 / 拍摄时间 / 机场这些小字
-                已统一挪到上方日期节点的说明区展示。卡片只留图片，视觉干净很多。
-
-                宽度固定 240、**高度由图片比例决定**（CardImageHeight）：
+                宽度固定 240、图片高度由原图比例决定（CardImageHeight）：
                 固定高度的框会让图片上下留空带，UniformToFill 又会裁掉画面边缘 ——
-                让框跟着图片走，才能既不空也不裁，并且自动适配不同尺寸的照片。
+                让框跟着图片走，才能既不空也不裁，并自动适配不同尺寸的照片。
+
+                文字区由 ShowCardText 控制：
+                - 注册号页：隐藏（信息已挪到日期节点的说明区）
+                - 机型 / 机场页：保留（一个日期节点里可能混着不同飞机，
+                  挪到说明区不好一一对应）
 
                 注意：根元素必须有宽度，否则 GridViewItem 会坍缩到 0。
             -->
@@ -35,21 +37,42 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     RightTapped="OnCardRightTapped">
-                <Grid Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                    <!-- 高度绑定到按缩略图比例算出的值，图片正好填满整个框 -->
-                    <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
-                           Height="{x:Bind CardImageHeight, Mode=OneWay}"
-                           Stretch="Uniform" />
-                    <Border VerticalAlignment="Top"
-                            HorizontalAlignment="Stretch"
-                            Padding="8,4"
-                            CornerRadius="0,0,0,8"
-                            Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                            Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
-                        <TextBlock Text="未提供机型/注册号信息"
-                                   Foreground="White"
-                                   Style="{StaticResource CaptionTextBlockStyle}" />
-                    </Border>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
+                               Height="{x:Bind CardImageHeight, Mode=OneWay}"
+                               Stretch="Uniform" />
+                        <Border VerticalAlignment="Top"
+                                HorizontalAlignment="Stretch"
+                                Padding="8,4"
+                                CornerRadius="0,0,0,8"
+                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                                Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
+                            <TextBlock Text="未提供机型/注册号信息"
+                                       Foreground="White"
+                                       Style="{StaticResource CaptionTextBlockStyle}" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Padding="10,8" Spacing="2"
+                                Visibility="{x:Bind CardTextVisibility}">
+                        <!-- 主标题统一为注册号（机型降为副信息） -->
+                        <TextBlock Text="{x:Bind PrimaryDisplay, Mode=OneWay}"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{x:Bind AirportDisplay, Mode=OneWay}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </DataTemplate>

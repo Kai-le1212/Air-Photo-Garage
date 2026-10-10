@@ -43,6 +43,23 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     public const double CardWidth = 240;
 
     /// <summary>
+    /// 卡片上是否显示文字信息（注册号 / 机型·时间 / 机场）。
+    ///
+    /// <para>
+    /// 「注册号」页把这些文字挪到了日期节点的说明区，卡片只留图片；
+    /// 「机型」「机场」页**保持原样**，文字仍印在卡片上 ——
+    /// 那两页一个日期节点里可能混着不同飞机，全挪到说明区反而不好一一对应。
+    /// </para>
+    /// <para>由页面加载时一次性设定，因此不做变更通知（x:Bind 默认 OneTime 足够）。</para>
+    /// </summary>
+    public bool ShowCardText { get; set; } = true;
+
+    /// <summary>卡片文字区的可见性（对应 <see cref="ShowCardText"/>）。</summary>
+    public Microsoft.UI.Xaml.Visibility CardTextVisibility => ShowCardText
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>
     /// 卡片图片区应有的高度。
     ///
     /// <para>

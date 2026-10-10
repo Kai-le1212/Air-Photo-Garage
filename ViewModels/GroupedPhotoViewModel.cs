@@ -574,8 +574,14 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 : await _db.GetPhotosByColumnValueAsync(_groupColumn, GroupMatch, order);
 
             // 每张照片只建一个卡片实例，平铺区与时间轴共用，避免重复解码缩略图
+            //
+            // 只有「注册号」页把卡片文字挪到日期说明区（卡片只留图片）；
+            // 机型 / 机场页保持原样，文字仍印在卡片上。
             var cards = items
-                .Select(p => new PhotoCardViewModel(p, App.UiDispatcher))
+                .Select(p => new PhotoCardViewModel(p, App.UiDispatcher)
+                {
+                    ShowCardText = !_enableUserGroups,
+                })
                 .ToList();
 
             Photos.Clear();
@@ -618,23 +624,21 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     /// <summary>
     /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一行一张</b>。
+    ///
+    /// <para>
+    /// 只在<b>「注册号」页</b>使用：该页把卡片上的文字挪到了这里，
+    /// 而一个节点本来就是同一架飞机，所以<b>不重复印注册号</b>。
+    /// 机型 / 机场页的卡片自带文字，说明区不显示这些内容。
+    /// </para>
     /// </summary>
-    /// <param name="includeRegistration">
-    /// 是否在每行开头带上注册号。注册号页传 false —— 该节点本来就是同一架飞机，
-    /// 每行都重复印一遍纯属噪音。
-    /// </param>
-    private static string BuildPhotoInfoText(IReadOnlyList<PhotoCardViewModel> cards, bool includeRegistration)
+    private static string BuildPhotoInfoText(IReadOnlyList<PhotoCardViewModel> cards)
     {
         return string.Join("\n", cards.Select(c =>
         {
-            var registration = c.Photo.RegistrationNumber;
-            var head = includeRegistration && !string.IsNullOrWhiteSpace(registration)
-                ? registration.Trim() + " · "
-                : string.Empty;
             var airport = string.IsNullOrWhiteSpace(c.AirportDisplay)
                 ? string.Empty
                 : " · " + c.AirportDisplay;
-            return head + c.MetaDisplay + airport;
+            return c.MetaDisplay + airport;
         }));
     }
 
@@ -683,9 +687,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         var cardById = cards.ToDictionary(c => c.Id);
         var nodes = new List<TimelineNode>();
 
-        // 注册号维度：一个节点里的照片全是同一架飞机，说明区不必每行都重复注册号。
-        // userGroupScope 只有注册号页会传（机型/机场页不支持自定义分组），正好当判据。
-        var includeRegistration = string.IsNullOrEmpty(userGroupScope);
+        // userGroupScope 只有「注册号」页会传（机型 / 机场页不支持自定义分组），正好当判据：
+        // 只有注册号页把卡片文字挪到日期说明区；机型 / 机场页卡片自带文字，说明区保持原样。
+        var showPhotoInfo = !string.IsNullOrEmpty(userGroupScope);
 
         // 1) 自定义分组节点（空分组不进时间轴，避免占位噪音）
         foreach (var g in groups)
@@ -705,7 +709,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: g.Name,
                 subtitle: FormatRange(members),
-                photoInfo: BuildPhotoInfoText(members, includeRegistration),
+                photoInfo: showPhotoInfo ? BuildPhotoInfoText(members) : string.Empty,
                 sortKey: sortKey,
                 isUserGroup: true,
                 groupId: g.Id,
@@ -729,7 +733,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: day.Key.ToString("yyyy-MM-dd"),
                 subtitle: WeekdayText(day.Key) + " · 自动按天",
-                photoInfo: BuildPhotoInfoText(members, includeRegistration),
+                photoInfo: showPhotoInfo ? BuildPhotoInfoText(members) : string.Empty,
                 sortKey: day.Key,
                 isUserGroup: false,
                 groupId: null,
@@ -743,7 +747,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: "未知拍摄时间",
                 subtitle: "自动按天",
-                photoInfo: BuildPhotoInfoText(noTime, includeRegistration),
+                photoInfo: showPhotoInfo ? BuildPhotoInfoText(noTime) : string.Empty,
                 sortKey: DateTime.MinValue,
                 isUserGroup: false,
                 groupId: null,

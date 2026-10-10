@@ -5,6 +5,19 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.3] - 2026-10-10
+
+### 修复（按维度区分卡片样式）
+
+- **「机型」「机场」页恢复原样**：卡片重新显示注册号 / 机型·时间 / 机场，
+  日期节点说明区回到只有「星期 · 类型」
+- **「注册号」页保持新样式**：卡片只留图片，文字在日期说明区
+- 理由：注册号页一个日期节点里全是同一架飞机，把文字挪到说明区才成立；
+  机型 / 机场页一个节点里可能混着不同飞机，挪上去反而不好一一对应
+- 实现：`PhotoCardViewModel` 新增 `ShowCardText`（卡片加载时按维度设定），
+  `PhotoInfoText` 只在注册号维度生成
+- 图片高度自适应（0.2.3.2）仍然三页通用
+
 ## [0.2.3.2] - 2026-10-10
 
 ### 变更（图片区高度自适应）
@@ -158,6 +171,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.3
 [0.2.3.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.2
 [0.2.3.1]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.1
 [0.2.3.0]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.0
