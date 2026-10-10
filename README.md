@@ -34,8 +34,6 @@ Windows 桌面应用 · WinUI 3 / .NET 10 · 全程本地，不联网
 - **信息可改** —— 拍摄时间、机型、注册号、机场、相机与镜头参数、备注都能手动修正
 - **机场三字段联动** —— IATA ↔ ICAO ↔ 机场名，内置机场目录自动补全
 
-![照片墙](docs/screenshots/01-photo-wall.png)
-
 ## 安装
 
 从 [Releases](../../releases) 下载 `AirPhotoGarage_X.Y.Z_x64.msix` 和 `devcert.cer`：
