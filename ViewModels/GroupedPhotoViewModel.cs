@@ -617,6 +617,28 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     public bool HasTimeline => EnableDayGrouping && Timeline.Count > 0;
 
     /// <summary>
+    /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一行一张</b>。
+    /// </summary>
+    /// <param name="includeRegistration">
+    /// 是否在每行开头带上注册号。注册号页传 false —— 该节点本来就是同一架飞机，
+    /// 每行都重复印一遍纯属噪音。
+    /// </param>
+    private static string BuildPhotoInfoText(IReadOnlyList<PhotoCardViewModel> cards, bool includeRegistration)
+    {
+        return string.Join("\n", cards.Select(c =>
+        {
+            var registration = c.Photo.RegistrationNumber;
+            var head = includeRegistration && !string.IsNullOrWhiteSpace(registration)
+                ? registration.Trim() + " · "
+                : string.Empty;
+            var airport = string.IsNullOrWhiteSpace(c.AirportDisplay)
+                ? string.Empty
+                : " · " + c.AirportDisplay;
+            return head + c.MetaDisplay + airport;
+        }));
+    }
+
+    /// <summary>
     /// 构建时间轴。
     ///
     /// <para>
@@ -661,6 +683,10 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         var cardById = cards.ToDictionary(c => c.Id);
         var nodes = new List<TimelineNode>();
 
+        // 注册号维度：一个节点里的照片全是同一架飞机，说明区不必每行都重复注册号。
+        // userGroupScope 只有注册号页会传（机型/机场页不支持自定义分组），正好当判据。
+        var includeRegistration = string.IsNullOrEmpty(userGroupScope);
+
         // 1) 自定义分组节点（空分组不进时间轴，避免占位噪音）
         foreach (var g in groups)
         {
@@ -679,6 +705,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: g.Name,
                 subtitle: FormatRange(members),
+                photoInfo: BuildPhotoInfoText(members, includeRegistration),
                 sortKey: sortKey,
                 isUserGroup: true,
                 groupId: g.Id,
@@ -702,6 +729,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: day.Key.ToString("yyyy-MM-dd"),
                 subtitle: WeekdayText(day.Key) + " · 自动按天",
+                photoInfo: BuildPhotoInfoText(members, includeRegistration),
                 sortKey: day.Key,
                 isUserGroup: false,
                 groupId: null,
@@ -715,6 +743,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             nodes.Add(new TimelineNode(
                 title: "未知拍摄时间",
                 subtitle: "自动按天",
+                photoInfo: BuildPhotoInfoText(noTime, includeRegistration),
                 sortKey: DateTime.MinValue,
                 isUserGroup: false,
                 groupId: null,
@@ -881,11 +910,12 @@ public sealed class GroupItemViewModel
 /// </summary>
 public sealed class TimelineNode
 {
-    public TimelineNode(string title, string subtitle, DateTime sortKey, bool isUserGroup,
-        long? groupId, IReadOnlyList<PhotoCardViewModel> photos)
+    public TimelineNode(string title, string subtitle, string photoInfo, DateTime sortKey,
+        bool isUserGroup, long? groupId, IReadOnlyList<PhotoCardViewModel> photos)
     {
         Title = title;
         Subtitle = subtitle;
+        PhotoInfoText = photoInfo;
         SortKey = sortKey;
         IsUserGroup = isUserGroup;
         GroupId = groupId;
@@ -897,6 +927,16 @@ public sealed class TimelineNode
 
     /// <summary>副标题：时间范围 / 星期 / 类型说明。</summary>
     public string Subtitle { get; }
+
+    /// <summary>
+    /// 节点内每张照片的元信息，<b>一行一张</b>，显示在日期下面的说明区。
+    ///
+    /// <para>
+    /// 这些文字原先印在每张照片卡片下方，让卡片又高又吵。现在卡片只留图片，
+    /// 信息统一挪到日期节点这里展示 —— 一眼就能看清这个节点里都是些什么飞机。
+    /// </para>
+    /// </summary>
+    public string PhotoInfoText { get; }
 
     /// <summary>排序键（节点内最晚拍摄时间）。</summary>
     public DateTime SortKey { get; }

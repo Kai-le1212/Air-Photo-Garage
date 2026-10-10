@@ -13,53 +13,37 @@
         <!--
             照片卡片模板：分组页内多处复用（同一页面内 x:Key 引用是安全的）。
 
-            关于「详细信息」入口：卡片上<b>不再</b>放常驻按钮（每张都挂一个太吵），
-            改为两条路径 + 日期节点说明行的一处入口：
+            卡片上<b>不放任何文字与入口</b>，只留图片 ——
+            注册号 / 机型 / 时间 / 机场都挪到日期节点的说明区展示了。
+            打开详情有两条路径：
             1) 左键点击卡片 → GridView.ItemClick → OnPhotoClick
             2) 右键卡片 → MenuFlyout「查看详情」→ 打开详情
-            3) 日期节点下的「详细信息」链接 → OnNodeDetailClick（打开该节点第一张）
         -->
         <DataTemplate x:Key="PhotoCardTpl" x:DataType="vm:PhotoCardViewModel">
-            <!-- DataTemplate 根元素必须显式 Width/Height，否则容器坍缩到 0 -->
-            <Border Width="240" Height="300"
+            <!--
+                卡片上【不再印任何文字】：注册号 / 机型 / 拍摄时间 / 机场这些小字
+                已统一挪到上方日期节点的说明区展示。卡片只留图片，视觉干净很多。
+
+                DataTemplate 根元素必须显式 Width/Height，否则容器坍缩到 0。
+            -->
+            <Border Width="240" Height="200"
                     BorderThickness="1" CornerRadius="8"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     RightTapped="OnCardRightTapped">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                        <!-- Uniform：完整显示、保持原比例，不裁掉画面边缘 -->
-                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="Uniform" />
-                        <Border VerticalAlignment="Top"
-                                HorizontalAlignment="Stretch"
-                                Padding="8,4"
-                                CornerRadius="0,0,0,8"
-                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                                Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
-                            <TextBlock Text="未提供机型/注册号信息"
-                                       Foreground="White"
-                                       Style="{StaticResource CaptionTextBlockStyle}" />
-                        </Border>
-                    </Grid>
-
-                    <StackPanel Grid.Row="1" Padding="10,8" Spacing="2">
-                        <!-- 主标题统一为注册号（机型降为副信息） -->
-                        <TextBlock Text="{x:Bind PrimaryDisplay, Mode=OneWay}"
-                                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock Text="{x:Bind AirportDisplay, Mode=OneWay}"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                <Grid Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                    <!-- Uniform：完整显示、保持原比例，不裁掉画面边缘 -->
+                    <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="Uniform" />
+                    <Border VerticalAlignment="Top"
+                            HorizontalAlignment="Stretch"
+                            Padding="8,4"
+                            CornerRadius="0,0,0,8"
+                            Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                            Visibility="{x:Bind HasNoInfo, Mode=OneWay}">
+                        <TextBlock Text="未提供机型/注册号信息"
+                                   Foreground="White"
+                                   Style="{StaticResource CaptionTextBlockStyle}" />
+                    </Border>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -374,20 +358,19 @@
                                         </StackPanel>
 
                                         <!--
-                                            日期下的说明行，末尾挂「详细信息」入口。
-                                            入口从卡片上挪到了这里 —— 每张卡片都挂一个按钮太吵，
-                                            而一个日期节点通常只有一两张照片，放这儿更清爽。
+                                            日期下的说明区：
+                                            第一行是节点自身说明（星期 / 类型），
+                                            之后是节点内每张照片的元信息（一行一张）。
+                                            照片卡片上已不再印字，信息统一在这里看。
                                         -->
-                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <StackPanel Spacing="1" Margin="0,2,0,0">
                                             <TextBlock Text="{x:Bind Subtitle}"
-                                                       VerticalAlignment="Center"
                                                        Style="{StaticResource CaptionTextBlockStyle}"
                                                        Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                            <HyperlinkButton Content="详细信息"
-                                                             Padding="0"
-                                                             MinHeight="0"
-                                                             VerticalAlignment="Center"
-                                                             Click="OnNodeDetailClick" />
+                                            <TextBlock Text="{x:Bind PhotoInfoText}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                       TextWrapping="Wrap" />
                                         </StackPanel>
 
                                         <GridView ItemsSource="{x:Bind Photos}"

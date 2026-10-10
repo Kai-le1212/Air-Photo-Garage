@@ -75,22 +75,6 @@ public sealed partial class GroupedPhotoPage : Page
         await ViewModel.OpenSubGroupAsync(item);
     }
 
-    /// <summary>
-    /// 日期节点说明行里的「详细信息」：打开该节点<b>第一张</b>照片的详情。
-    ///
-    /// <para>
-    /// 一个节点只有一个入口，所以多照片节点取第一张 —— 想看别的照片，
-    /// 直接点（<c>ItemClick</c>）或右键「查看详情」都能打开，路径没有变少。
-    /// </para>
-    /// </summary>
-    private void OnNodeDetailClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: TimelineNode node } && node.Photos.Count > 0)
-        {
-            _ = ShowPhotoDetailSafeAsync(node.Photos[0]);
-        }
-    }
-
     /// <summary>点击分组列表中的某一项 → 进入该分组。</summary>
     private async void OnGroupClick(object sender, ItemClickEventArgs e)
     {

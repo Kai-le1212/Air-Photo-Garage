@@ -5,6 +5,17 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.1] - 2026-10-10
+
+### 变更（说明区重新分工）
+
+- **照片卡片不再印任何文字**：注册号 / 机型 / 拍摄时间 / 机场这些小字从卡片下方移除，
+  卡片只留图片（240×300 → 240×200）
+- 这些信息**改到日期节点的说明区展示**（日期 → 星期/类型 → 每张照片一行元信息），
+  一眼就能看清这个节点里都是些什么飞机
+- 在「注册号」页里，说明区**不重复印注册号** —— 该节点本来就是同一架飞机
+- 说明区是**纯文字**，不再是可点链接；打开照片详情仍有点照片与右键「查看详情」两条路径
+
 ## [0.2.3.0] - 2026-10-10
 
 ### 新增
@@ -131,6 +142,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.1]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.1
 [0.2.3.0]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.0
 [0.2.2.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.3
 [0.2.2.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.2
