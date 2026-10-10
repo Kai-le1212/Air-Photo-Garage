@@ -5,6 +5,22 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.2] - 2026-10-10
+
+### 变更（图片区高度自适应）
+
+- **卡片与窗格的图片区不再上下留空**：图片区高度改为**按缩略图的实际宽高比计算**
+  （`PhotoCardViewModel.CardImageHeight = 卡片宽度 ÷ 缩略图宽高比`），
+  图片正好填满整个框 —— 既不出现上下空带，也不必裁切画面边缘，且**自动适配各种尺寸的照片**
+- 宽高比直接取自解码后的 `BitmapImage.PixelWidth / PixelHeight`
+  （缩略图固定按 `DecodePixelHeight = 480` 解码，比例即原图比例），
+  无需在数据库里另存尺寸
+- 缩略图未就绪时用 3:2 占位，避免卡片高度先塌后跳
+- 卡片/窗格根元素不再写死高度（只固定宽度 240），高度由图片决定
+
+> 背景：固定高度 + `Uniform` 会留空带，`UniformToFill` 会裁切 —— 两者用户都不接受。
+> 让框跟随图片比例，是同时满足「不留空」与「不裁切」的唯一做法。
+
 ## [0.2.3.1] - 2026-10-10
 
 ### 变更（说明区重新分工）
@@ -142,6 +158,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.2
 [0.2.3.1]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.1
 [0.2.3.0]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.0
 [0.2.2.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.2.3

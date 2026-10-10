@@ -31,6 +31,32 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsThumbnailLoaded { get; set; }
 
+    /// <summary>
+    /// 已加载缩略图的宽高比（宽 ÷ 高）。缩略图未就绪时为 0。
+    /// 缩略图按 <c>DecodePixelHeight = 480</c> 解码，所以 <c>PixelWidth/PixelHeight</c>
+    /// 直接就是原始比例，不必再去库里存一份尺寸。
+    /// </summary>
+    [ObservableProperty]
+    public partial double ThumbnailAspect { get; set; }
+
+    /// <summary>卡片宽度。必须与 XAML 里卡片根元素的 Width 保持一致。</summary>
+    public const double CardWidth = 240;
+
+    /// <summary>
+    /// 卡片图片区应有的高度。
+    ///
+    /// <para>
+    /// 让<b>框的高度跟着图片比例走</b>，而不是把图片塞进一个固定高度的框：
+    /// 固定框 + Uniform 会在上下留出空带，UniformToFill 又会裁掉画面边缘 ——
+    /// 两者用户都不接受。高度随比例走，图片正好填满，既不空也不裁。
+    /// </para>
+    /// <para>缩略图未就绪时退回 3:2 的占位高度，避免卡片高度先塌后跳。</para>
+    /// </summary>
+    public double CardImageHeight =>
+        ThumbnailAspect > 0.01 ? CardWidth / ThumbnailAspect : CardWidth * 2.0 / 3.0;
+
+    partial void OnThumbnailAspectChanged(double value) => OnPropertyChanged(nameof(CardImageHeight));
+
     public PhotoCardViewModel(Photo photo, IUiDispatcher uiDispatcher)
     {
         Photo = photo;
@@ -154,6 +180,14 @@ public sealed partial class PhotoCardViewModel : ObservableObject
             };
             using var ms = new MemoryStream(bytes);
             await bmp.SetSourceAsync(ms.AsRandomAccessStream());
+
+            // 解码完成后 PixelWidth/PixelHeight 即可用；转成宽高比给卡片算图片区高度。
+            // 放在赋值 Thumbnail 之前，让 CardImageHeight 与图片同一次通知一起生效。
+            if (bmp.PixelWidth > 0 && bmp.PixelHeight > 0)
+            {
+                ThumbnailAspect = (double)bmp.PixelWidth / bmp.PixelHeight;
+            }
+
             Thumbnail = bmp;
             IsThumbnailLoaded = true;
         }

@@ -21,14 +21,14 @@
             DataTemplate 根元素必须显式 Width/Height，否则 GridViewItem 容器坍缩到 0、卡片完全不可见。
         -->
         <DataTemplate x:Key="WallCardTpl" x:DataType="vm:PhotoCardViewModel">
-            <Border Width="240" Height="300"
+            <Border Width="240"
                     BorderThickness="1" CornerRadius="8"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     RightTapped="OnCardRightTapped">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
@@ -36,12 +36,12 @@
                     <Grid Grid.Row="0"
                           Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
                         <!--
-                            用 Uniform（完整显示、保持原比例）而不是 UniformToFill。
-                            UniformToFill 会为填满方框而裁掉画面边缘 —— 对航拍照片来说
-                            机头机尾经常正好被裁掉。代价是长宽比不匹配时会留边，
-                            这里用中性的面板底色承托，排面上仍然整齐。
+                            高度绑定到按缩略图比例算出的值（CardImageHeight）：
+                            框跟着图片走，上下不留空带、也不裁切画面边缘，
+                            并且自动适配不同尺寸的照片。
                         -->
                         <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
+                               Height="{x:Bind CardImageHeight, Mode=OneWay}"
                                Stretch="Uniform" />
 
                         <!-- 未提供信息覆盖层 -->
@@ -83,19 +83,22 @@
             同样必须显式 Width/Height，否则 GridViewItem 容器坍缩到 0。
         -->
         <DataTemplate x:Key="RegistrationTileTpl" x:DataType="vm:RegistrationGroup">
-            <Border Width="240" Height="300"
+            <Border Width="240"
                     BorderThickness="1" CornerRadius="8"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
+                        <!-- Auto：封面高度由图片比例决定，上下不留空 -->
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- 封面 + 角标 -->
                     <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                        <Image Source="{x:Bind CoverThumbnail, Mode=OneWay}" Stretch="Uniform" />
+                        <Image Source="{x:Bind CoverThumbnail, Mode=OneWay}"
+                               Height="{x:Bind CoverHeight, Mode=OneWay}"
+                               Stretch="Uniform" />
 
                         <!-- 张数角标 -->
                         <Border VerticalAlignment="Top" HorizontalAlignment="Right"

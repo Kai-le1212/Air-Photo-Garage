@@ -310,8 +310,8 @@ public sealed class RegistrationGroup : ObservableObject
         Photos = photos;
         _cover = photos.Count > 0 ? photos[0] : null;
 
-        // 封面缩略图是构造后异步加载的。不转发这个通知，窗格上的封面会一直空着 ——
-        // x:Bind 无从得知 Thumbnail 已经就绪。
+        // 封面缩略图与它的宽高比都是构造后异步拿到的。不转发这些通知，
+        // 窗格上的封面会一直空着、高度也定不下来。
         if (_cover is not null)
         {
             _cover.PropertyChanged += (_, e) =>
@@ -319,6 +319,10 @@ public sealed class RegistrationGroup : ObservableObject
                 if (e.PropertyName == nameof(PhotoCardViewModel.Thumbnail))
                 {
                     OnPropertyChanged(nameof(CoverThumbnail));
+                }
+                else if (e.PropertyName == nameof(PhotoCardViewModel.CardImageHeight))
+                {
+                    OnPropertyChanged(nameof(CoverHeight));
                 }
             };
         }
@@ -332,6 +336,12 @@ public sealed class RegistrationGroup : ObservableObject
 
     /// <summary>窗格封面：取组内第一张的缩略图。</summary>
     public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbnail => _cover?.Thumbnail;
+
+    /// <summary>
+    /// 封面图片区的应有高度 —— 跟随封面照片的比例，上下不留空、也不裁切。
+    /// </summary>
+    public double CoverHeight =>
+        _cover?.CardImageHeight ?? PhotoCardViewModel.CardWidth * 2.0 / 3.0;
 
     public string Title => Registration ?? "未填写注册号";
 
