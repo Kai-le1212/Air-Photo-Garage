@@ -46,6 +46,27 @@ public sealed partial class ImportWizardViewModel : ObservableObject
 
     // 派生显示
     [ObservableProperty] public partial ImageSource? CurrentThumbnail { get; set; }
+
+    /// <summary>
+    /// 当前缩略图的宽高比（宽 ÷ 高）。未就绪时为 0。
+    /// 缩略图按 <c>DecodePixelHeight = 480</c> 解码，所以 <c>PixelWidth/PixelHeight</c>
+    /// 就是原始比例。
+    /// </summary>
+    [ObservableProperty] public partial double ThumbnailAspect { get; set; }
+
+    /// <summary>预览区宽度。必须与 XAML 里左栏列宽一致。</summary>
+    public const double PreviewWidth = 240;
+
+    /// <summary>
+    /// 预览区应有的高度：按图片比例算，图片正好填满 —— 不裁切、上下也不留空。
+    /// 上限 360，避免竖幅照片把对话框撑高。
+    /// </summary>
+    public double PreviewHeight =>
+        ThumbnailAspect > 0.01
+            ? Math.Min(PreviewWidth / ThumbnailAspect, 360)
+            : PreviewWidth * 2.0 / 3.0;
+
+    partial void OnThumbnailAspectChanged(double value) => OnPropertyChanged(nameof(PreviewHeight));
     [ObservableProperty] public partial string StepText { get; set; } = "";
     [ObservableProperty] public partial string NextButtonText { get; set; } = "下一张 >";
     [ObservableProperty] public partial string ShotAtText { get; set; } = "";
@@ -351,6 +372,13 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             var bmp = new BitmapImage { DecodePixelHeight = 480 };
             using var ms = new MemoryStream(bytes);
             await bmp.SetSourceAsync(ms.AsRandomAccessStream());
+
+            // 解码后 PixelWidth/PixelHeight 可用；转成宽高比给预览区算高度
+            if (bmp.PixelWidth > 0 && bmp.PixelHeight > 0)
+            {
+                ThumbnailAspect = (double)bmp.PixelWidth / bmp.PixelHeight;
+            }
+
             if (index < _thumbnails.Count)
             {
                 _thumbnails[index] = bmp;

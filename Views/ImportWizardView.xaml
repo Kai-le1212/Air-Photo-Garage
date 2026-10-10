@@ -60,13 +60,18 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- 左侧：缩略图 -->
+                    <!--
+                        左侧：缩略图。
+                        高度按图片比例算（PreviewHeight）—— 此前是固定 MinHeight + UniformToFill，
+                        会为填满方框而裁掉画面边缘。
+                    -->
                     <Border Grid.Column="0"
+                            VerticalAlignment="Top"
                             Background="{ThemeResource ControlAltFillColorTertiaryBrush}"
-                            CornerRadius="6"
-                            MinHeight="240">
+                            CornerRadius="6">
                         <Image Source="{x:Bind ViewModel.CurrentThumbnail, Mode=OneWay}"
-                               Stretch="UniformToFill" />
+                               Height="{x:Bind ViewModel.PreviewHeight, Mode=OneWay}"
+                               Stretch="Uniform" />
                     </Border>
 
                     <!-- 右侧：表单 -->

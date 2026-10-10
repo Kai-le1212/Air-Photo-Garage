@@ -5,6 +5,18 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.7] - 2026-10-10
+
+### 修复
+
+- **导入向导的预览图被裁切**：左侧缩略图原为固定高度 + `UniformToFill`，
+  为填满方框会裁掉画面边缘。现改为按图片实际比例计算预览高度
+  （`ImportWizardViewModel.PreviewHeight`），既不裁切、上下也不留空，
+  上限 360 以免竖幅照片把对话框撑高
+- **镜头型号过长看不全**：编辑对话框里「镜头型号 / 相机厂牌 / 相机型号」
+  原为单行 `TextBox`，长型号（如 `NIKKOR Z 100-400mm f/4.5-5.6 VR S`）
+  只显示前半截。现改为 `TextWrapping="Wrap"` 换行显示
+
 ## [0.2.3.6] - 2026-10-10
 
 ### 修复
@@ -198,6 +210,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.7]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.7
 [0.2.3.6]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.6
 [0.2.3.5]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.5
 [0.2.3.4]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.4

@@ -170,6 +170,7 @@ public static class PhotoEditDialog
             PlaceholderText = "如 NIKON CORPORATION",
             Text = photo.CameraMake ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            TextWrapping = TextWrapping.Wrap,   // 厂牌全称也可能很长，同样别截断
         };
         var tbCameraModel = new TextBox
         {
@@ -177,6 +178,7 @@ public static class PhotoEditDialog
             PlaceholderText = "如 NIKON Z6_2",
             Text = photo.CameraModel ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            TextWrapping = TextWrapping.Wrap,
         };
         var tbLensModel = new TextBox
         {
@@ -184,6 +186,9 @@ public static class PhotoEditDialog
             PlaceholderText = "如 NIKKOR Z 100-400mm f/4.5-5.6 VR S",
             Text = photo.LensModel ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            // 镜头型号动辄二三十个字符（「NIKKOR Z 100-400mm f/4.5-5.6 VR S」），
+            // 单行 TextBox 只会显示前半截、后半截看不到。改成换行显示。
+            TextWrapping = TextWrapping.Wrap,
         };
 
         // NumberBox：空值用 NaN 表示，比 TextBox 手写解析更稳（不会因半截输入报错）
