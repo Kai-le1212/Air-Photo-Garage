@@ -104,14 +104,6 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         string.IsNullOrWhiteSpace(Photo.RegistrationNumber) ? "—" : Photo.RegistrationNumber;
 
     /// <summary>
-    /// 副信息行：机型 + 拍摄时间。
-    /// 做成单个派生属性而不是用 <Run> 拼接，是因为 WinAppSDK 2.3 编译器
-    /// 对 DataTemplate 内 <Run> 上的 x:Bind 处理存在 WMC1111 上下文丢失问题。
-    /// </summary>
-    public string? MetaDisplay =>
-        $"{AircraftDisplay}  ·  {ShotAtDisplay}";
-
-    /// <summary>
     /// 机场显示行。统一为「机场名 · 代码」顺序，与机场页的分组行保持一致。
     /// <para>
     /// 此前这里是「代码 · 机场名」，而机场页分组行是「机场名 · 代码」——
@@ -154,7 +146,6 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         OnPropertyChanged(nameof(PrimaryDisplay));
         OnPropertyChanged(nameof(AircraftDisplay));
         OnPropertyChanged(nameof(RegistrationDisplay));
-        OnPropertyChanged(nameof(MetaDisplay));
         OnPropertyChanged(nameof(AirportDisplay));
         OnPropertyChanged(nameof(ShotAtDisplay));
         OnPropertyChanged(nameof(HasNoInfo));

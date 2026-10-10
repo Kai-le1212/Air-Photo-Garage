@@ -65,7 +65,7 @@
                         <TextBlock Text="{x:Bind PrimaryDisplay, Mode=OneWay}"
                                    Style="{StaticResource BodyStrongTextBlockStyle}"
                                    TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{x:Bind MetaDisplay, Mode=OneWay}"
+                        <TextBlock Text="{x:Bind AircraftDisplay, Mode=OneWay}"
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <TextBlock Text="{x:Bind AirportDisplay, Mode=OneWay}"

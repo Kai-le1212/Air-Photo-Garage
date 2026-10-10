@@ -5,6 +5,15 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.4] - 2026-10-10
+
+### 变更（去掉重复的拍摄日期时间）
+
+- **照片卡片上的拍摄日期时间去掉**：`MetaDisplay`（机型 · 拍摄时间）已删除，
+  三处展示统一改用 `AircraftDisplay`（只显示机型）
+- **「注册号」页日期说明区里的日期时间也去掉**：那一行现在是「机型 · 机场」
+- 理由：时间轴的节点标题**已经是日期**，卡片/说明区再逐行重复一遍纯属噪音
+
 ## [0.2.3.3] - 2026-10-10
 
 ### 修复（按维度区分卡片样式）
@@ -171,6 +180,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.4]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.4
 [0.2.3.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.3
 [0.2.3.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.2
 [0.2.3.1]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.1

@@ -630,6 +630,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// 而一个节点本来就是同一架飞机，所以<b>不重复印注册号</b>。
     /// 机型 / 机场页的卡片自带文字，说明区不显示这些内容。
     /// </para>
+    /// <para>
+    /// <b>不含拍摄日期时间</b>：节点标题已经是日期了，再逐行重复一遍纯属噪音。
+    /// </para>
     /// </summary>
     private static string BuildPhotoInfoText(IReadOnlyList<PhotoCardViewModel> cards)
     {
@@ -638,7 +641,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             var airport = string.IsNullOrWhiteSpace(c.AirportDisplay)
                 ? string.Empty
                 : " · " + c.AirportDisplay;
-            return c.MetaDisplay + airport;
+            return c.AircraftDisplay + airport;
         }));
     }
 
