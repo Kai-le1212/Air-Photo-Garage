@@ -133,6 +133,9 @@ internal static class PhotoDetailBuilder
         // 这里不写死宽度，仅限制面板的最小宽度，避免极窄窗口下文字被压成竖条。
         leftPanel.MinWidth = 200;
         rightPanel.MinWidth = 200;
+        // 右侧留一点余量：右列是最后一列，值文本紧贴内容右边缘时，
+        // 万一估算略差就会被弹窗边缘切掉最后一个字。
+        rightPanel.Margin = new Thickness(0, 0, 8, 0);
 
         var host = new Border
         {
@@ -144,10 +147,21 @@ internal static class PhotoDetailBuilder
         //
         // 实测：ContentDialog 在内容期望宽度超过宿主可用宽度时不会收缩，
         // 而是整体右移并被窗口右边缘裁掉——这正是「详细信息没了」的成因。
-        // 因此这里显式给定一个足够保守的内容宽度（520），保证弹窗始终完整可见。
-        // 纵向布局下单列 520 足以展示全部字段（长文本会自动换行）。
-        host.MaxWidth = 520;
-        host.Width = 520;
+        // 因此这里显式给定一个足够保守的内容宽度，保证弹窗始终完整可见。
+        //
+        // ⚠️ 这个宽度必须**明显小于**弹窗的可用宽度（ContentDialogMaxWidth 548
+        // 减掉内容内边距后约 500）。曾写死 520 —— 比可用宽度还大，于是整块内容
+        // 向右溢出、被弹窗右边缘切掉：右列值文本末端的「G | Contemporary 025」
+        // 直接消失，预览图右边一条也被同时削掉 —— 看起来像「图片被裁」，
+        // 其实是布局溢出，与 <c>Stretch</c> 模式无关。
+        //
+        // 这里**只设上限、不写死 Width**：
+        // <list type="bullet">
+        // <item><c>MaxWidth</c> 把内容压在可用宽度以内，杜绝溢出；</item>
+        // <item>不写 <c>Width</c> 才能随宿主自适应 —— 窗口变窄时内容跟着收窄，
+        // 而不是继续保持 480 再度溢出（写死宽度是这个 bug 的根因，别再写回去）。</item>
+        // </list>
+        host.MaxWidth = 480;
 
         return new ScrollViewer
         {
@@ -171,8 +185,8 @@ internal static class PhotoDetailBuilder
     /// <item>设在 <c>Application.Resources</c> 顶层也 <b>不生效</b>——该键由
     /// XamlControlsResources 定义在 ThemeDictionaries 内，主题查找优先级更高。</item>
     /// <item>把内容做成 <c>Stretch</c> 会让弹窗跟着变宽并溢出窗口右边缘。</item>
-    /// <item><b>可行方案</b>：内容用纵向布局，并给内容容器一个保守的固定宽度
-    /// （见 <see cref="BuildContentAsync"/> 里的 520），让弹窗稳定落在可用宽度内。</item>
+    /// <item><b>可行方案</b>：内容用纵向布局，并给内容容器一个**不超过弹窗可用宽度**的
+    /// 上限（见 <see cref="BuildContentAsync"/> 里的 480），让弹窗稳定落在可用宽度内。</item>
     /// </list>
     /// </para>
     /// </summary>
@@ -272,8 +286,8 @@ internal static class PhotoDetailBuilder
     public static void AddRowAlways(StackPanel parent, string label, string? value)
     {
         var row = new Grid();
-        // 标签列收窄到 88：内容整体宽度有限（弹窗约 520），
-        // 标签太宽会把值列挤到没有空间换行。
+        // 标签列收窄到 88：内容整体宽度有限（详情弹窗约 480），
+        // 标签太宽会把值列挤到没有空间换行（长文本只能硬溢出被裁）。
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var t1 = new TextBlock
