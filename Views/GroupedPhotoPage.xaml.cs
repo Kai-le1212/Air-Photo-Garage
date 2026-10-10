@@ -441,13 +441,16 @@ public sealed class GroupedPhotoPageParameter
     public string? OpenGroupValue { get; init; }
 
     /// <summary>
-    /// 机型页：机型 → 注册号 → 照片。
+    /// 机型页：机型 → 注册号 → 照片（按天时间轴）。
     /// 机型是共享概念，必须再落到具体哪一架飞机（注册号）才有管理意义。
+    /// 落到某架飞机后的照片同样按天成节点，与机场 / 注册号页保持一致
+    /// （此前这里漏了 EnableDayGrouping，导致机型页的照片是平铺的、唯独它没有时间轴）。
     /// </summary>
     public static GroupedPhotoPageParameter Aircraft => new()
     {
         Column = "aircraft_model",
         Label = "机型",
+        EnableDayGrouping = true,
         EnableRegistrationSubLevel = true,
     };
 

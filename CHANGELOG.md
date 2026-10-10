@@ -5,6 +5,17 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.6] - 2026-10-10
+
+### 修复
+
+- **「机型」页漏了按天时间轴**：三个分组维度里，「机场」与「注册号」页的照片
+  本来就按天成节点，机型页也应当是同样的——但
+  `GroupedPhotoPageParameter.Aircraft` 漏配了 `EnableDayGrouping`，
+  导致下钻到某架飞机后照片是平铺的。现已补上
+- 机型页仍保持自己的两级结构（机型 → 注册号 → 照片），时间轴出现在最后一级；
+  说明区按既有约定只显示「星期 · 自动按天」，照片文字留在卡片上（与机场页一致）
+
 ## [0.2.3.5] - 2026-10-10
 
 ### 修复（返回该回哪儿）
@@ -187,6 +198,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.6]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.6
 [0.2.3.5]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.5
 [0.2.3.4]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.4
 [0.2.3.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.3
