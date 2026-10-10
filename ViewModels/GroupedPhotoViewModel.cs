@@ -55,6 +55,14 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     private IReadOnlyList<string> _rowLabelColumns = Array.Empty<string>();
 
     /// <summary>
+    /// 外层分组行的<b>小字附件</b>列（注册号页 = [机型]）。
+    /// 与 <see cref="_rowLabelColumns"/> 的区别是进标题还是进小字：
+    /// 注册号行的标题就是注册号本身，补成「B-8870 · Airbus A330-300」会喧宾夺主，
+    /// 所以机型放到下面的摘要行里。
+    /// </summary>
+    private IReadOnlyList<string> _summaryColumns = Array.Empty<string>();
+
+    /// <summary>
     /// 当前选中分组行的<b>展示标题</b>（如「香港国际机场 · HKG」）。
     /// 与 <see cref="SelectedGroup"/> 分开存：后者是查询用的原始分组键（"VHHH"），
     /// 拿展示标题去查库一定查不到。
@@ -108,14 +116,17 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// </summary>
     public void SwitchDimension(string groupColumn, string dimensionLabel, bool enableDayGrouping,
         bool enableRegistrationSubLevel, bool enableUserGroups,
-        IReadOnlyList<string>? rowLabelColumns = null)
+        IReadOnlyList<string>? rowLabelColumns = null,
+        IReadOnlyList<string>? summaryColumns = null)
     {
         var labels = rowLabelColumns ?? Array.Empty<string>();
+        var summaries = summaryColumns ?? Array.Empty<string>();
         if (_groupColumn == groupColumn && _dimensionLabel == dimensionLabel
             && _enableDayGrouping == enableDayGrouping
             && _enableRegistrationSubLevel == enableRegistrationSubLevel
             && _enableUserGroups == enableUserGroups
-            && _rowLabelColumns.SequenceEqual(labels))
+            && _rowLabelColumns.SequenceEqual(labels)
+            && _summaryColumns.SequenceEqual(summaries))
         {
             return;
         }
@@ -126,6 +137,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         _enableRegistrationSubLevel = enableRegistrationSubLevel;
         _enableUserGroups = enableUserGroups;
         _rowLabelColumns = labels;
+        _summaryColumns = summaries;
 
         // 清空上一维度的数据与状态，再刷新所有派生属性
         SelectedGroup = null;
@@ -397,7 +409,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         StatusMessage = $"正在加载{_dimensionLabel}...";
         try
         {
-            var counts = await _db.GetGroupCountsAsync(_groupColumn, rowLabelColumns: _rowLabelColumns);
+            var counts = await _db.GetGroupCountsAsync(
+                _groupColumn, rowLabelColumns: _rowLabelColumns, summaryColumns: _summaryColumns);
             Groups.Clear();
             foreach (var c in counts.Values)
             {
@@ -910,6 +923,41 @@ public sealed class GroupItemViewModel
         _count.FirstShotAt.HasValue && _count.LastShotAt.HasValue
             ? $"{_count.FirstShotAt.Value:yyyy-MM-dd} ~ {_count.LastShotAt.Value:yyyy-MM-dd}"
             : "无拍摄时间";
+
+    /// <summary>
+    /// 分组行的小字摘要：<b>小字附件 + 拍摄时间范围</b>。
+    ///
+    /// <para>
+    /// 注册号页的行标题只有注册号，看不出是哪种飞机，所以把机型补在这里，
+    /// 例如「Airbus A330-300 · 2021-05-01 ~ 2026-10-02」。
+    /// 附加字段由 <c>GetGroupCountsAsync</c> 的 <c>summaryColumns</c> 取回（每组取 MAX）。
+    /// </para>
+    ///
+    /// <para>
+    /// 机型页不补（行标题就是机型，重复）；机场页也不补（一个机场机型混杂，
+    /// 取 MAX 会给出误导性的单一型号）。「一架飞机 = 一种机型」只有注册号维度成立。
+    /// </para>
+    ///
+    /// <para>
+    /// 「未填写」兜底行没有 <c>SummaryParts</c>，自动退回纯时间范围 ——
+    /// 否则会把该桶里任意一张照片的机型当成整行的机型展示。
+    /// </para>
+    /// </summary>
+    public string SummaryText
+    {
+        get
+        {
+            var parts = _count.SummaryParts?
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return parts is not { Count: > 0 }
+                ? RangeText
+                : $"{string.Join(" / ", parts)} · {RangeText}";
+        }
+    }
 }
 
 /// <summary>

@@ -55,7 +55,7 @@ public sealed partial class GroupedPhotoPage : Page
         ViewModel.SwitchDimension(
             param.Column, param.Label,
             param.EnableDayGrouping, param.EnableRegistrationSubLevel, param.EnableUserGroups,
-            param.RowLabelColumns);
+            param.RowLabelColumns, param.SummaryColumns);
 
         _ = LoadAndMaybeOpenAsync(param.OpenGroupValue);
     }
@@ -435,6 +435,14 @@ public sealed class GroupedPhotoPageParameter
     public IReadOnlyList<string> RowLabelColumns { get; init; } = Array.Empty<string>();
 
     /// <summary>
+    /// 分组行<b>小字摘要</b>里额外补的列。
+    /// 注册号页用它把机型补进小字：「B-8870 / Airbus A330-300 · 起止日期」——
+    /// 行标题只有注册号，看不出是哪种飞机。
+    /// 与 <see cref="RowLabelColumns"/> 的区别是<b>进标题还是进小字</b>。
+    /// </summary>
+    public IReadOnlyList<string> SummaryColumns { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// 进页后自动打开的分组值。
     /// 照片墙点注册号窗格跳过来时带上它，省得用户再在列表里找一遍。
     /// </summary>
@@ -463,12 +471,17 @@ public sealed class GroupedPhotoPageParameter
         RowLabelColumns = new[] { "airport_name", "airport_iata" },
     };
 
-    /// <summary>注册号页：注册号 → 该飞机的照片，按天分 + 支持自定义分组。</summary>
+    /// <summary>
+    /// 注册号页：注册号 → 该飞机的照片，按天分 + 支持自定义分组。
+    /// 小字里补机型：行标题只有注册号，看不出是哪种飞机，
+    /// 而「一架飞机 = 一种机型」在注册号维度上是成立的（机型页/机场页不成立）。
+    /// </summary>
     public static GroupedPhotoPageParameter Registration => new()
     {
         Column = "registration_number",
         Label = "注册号",
         EnableDayGrouping = true,
         EnableUserGroups = true,
+        SummaryColumns = new[] { "aircraft_model" },
     };
 }

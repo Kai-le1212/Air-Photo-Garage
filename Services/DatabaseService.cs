@@ -39,8 +39,16 @@ public interface IDatabaseService
     /// 供 UI 拼「名称 · 代码」这类复合标题（机场行要显示「香港国际机场 · HKG」）。
     /// 传 null 表示不需要。
     /// </param>
+    /// <param name="summaryColumns">
+    /// 可选的「小字附件」列。每组取 MAX(列) 放进 <see cref="GroupCount.SummaryParts"/>，
+    /// 供 UI 补在行的小字摘要里（注册号行要补机型 —— 行标题只有注册号，
+    /// 看不出是哪种飞机）。与 <paramref name="rowLabelColumns"/> 的区别是
+    /// <b>进标题还是进小字</b>。传 null 表示不需要。
+    /// </param>
     Task<ColumnGroupCounts> GetGroupCountsAsync(
-        string column, bool byCountDescending = false, IReadOnlyList<string>? rowLabelColumns = null);
+        string column, bool byCountDescending = false,
+        IReadOnlyList<string>? rowLabelColumns = null,
+        IReadOnlyList<string>? summaryColumns = null);
 
     /// <summary>
     /// 在父列匹配约束下，按子列再聚合一层（同样是真实值分布 + 未填写桶）。
@@ -95,9 +103,14 @@ public interface IDatabaseService
 /// 附加展示字段（如机场维度的 [机场名, IATA]），供调用方拼「名称 · 代码」这类复合标题。
 /// 为 null 表示该维度不需要附加字段，直接用 <paramref name="Value"/> 作为标题。
 /// </param>
+/// <param name="SummaryParts">
+/// 「小字附件」字段（如注册号维度的 [机型]），补在行的小字摘要里，<b>不进标题</b>。
+/// 为 null 表示该维度不需要。
+/// </param>
 public sealed record GroupCount(
     string Value, int Count, DateTimeOffset? FirstShotAt, DateTimeOffset? LastShotAt,
-    IReadOnlyList<string?>? DisplayParts = null);
+    IReadOnlyList<string?>? DisplayParts = null,
+    IReadOnlyList<string?>? SummaryParts = null);
 
 /// <summary>
 /// 分组/筛选时对某一列取值的匹配方式：要么「等于某个真实值」，要么「未填写桶」。
@@ -397,18 +410,24 @@ public sealed class DatabaseService : IDatabaseService
     }
 
     public async Task<ColumnGroupCounts> GetGroupCountsAsync(
-        string column, bool byCountDescending = false, IReadOnlyList<string>? rowLabelColumns = null)
+        string column, bool byCountDescending = false,
+        IReadOnlyList<string>? rowLabelColumns = null,
+        IReadOnlyList<string>? summaryColumns = null)
     {
         EnsureGroupableColumn(column);
         if (rowLabelColumns is not null)
         {
             foreach (var c in rowLabelColumns) EnsureGroupableColumn(c);
         }
+        if (summaryColumns is not null)
+        {
+            foreach (var c in summaryColumns) EnsureGroupableColumn(c);
+        }
 
         var labelCount = rowLabelColumns?.Count ?? 0;
-        var labelSelect = labelCount == 0
-            ? string.Empty
-            : ", " + string.Join(", ", rowLabelColumns!.Select((c, i) => $"MAX({c}) AS label{i}"));
+        var summaryCount = summaryColumns?.Count ?? 0;
+        var labelSelect = BuildMaxSelect(rowLabelColumns, labelCount, "label");
+        var summarySelect = BuildMaxSelect(summaryColumns, summaryCount, "summary");
 
         var order = byCountDescending ? "cnt DESC, value ASC" : "value ASC";
         await using var conn = new SqliteConnection(_connectionString);
@@ -419,16 +438,25 @@ public sealed class DatabaseService : IDatabaseService
             SELECT {column} AS value,
                    COUNT(*) AS cnt,
                    MIN(shot_at) AS first_shot,
-                   MAX(shot_at) AS last_shot{labelSelect}
+                   MAX(shot_at) AS last_shot{labelSelect}{summarySelect}
             FROM photos
             WHERE {column} IS NOT NULL AND TRIM({column}) <> ''
             GROUP BY {column}
             ORDER BY {order}
             """;
-        var values = await ReadGroupCountsAsync(cmd, labelCount);
+        var values = await ReadGroupCountsAsync(cmd, labelCount, summaryCount);
         var missing = await ReadMissingCountAsync(conn, MissingCondition(column));
         return new ColumnGroupCounts(values, missing);
     }
+
+    /// <summary>
+    /// 把「每组取一列 MAX 值」拼成 SELECT 片段（别名 <c>{prefix}0, {prefix}1 …</c>）。
+    /// 附加展示列与小字附件列共用这段逻辑，避免各写一遍。
+    /// </summary>
+    private static string BuildMaxSelect(IReadOnlyList<string>? columns, int count, string prefix)
+        => count == 0
+            ? string.Empty
+            : ", " + string.Join(", ", columns!.Select((c, i) => $"MAX({c}) AS {prefix}{i}"));
 
     public async Task<IReadOnlyList<Photo>> GetPhotosByColumnValueAsync(
         string column, ColumnValueMatch match, PhotoSortOrder order)
@@ -552,32 +580,39 @@ public sealed class DatabaseService : IDatabaseService
     /// 读「值 + 数量 + 最早/最晚拍摄时间 [+ 附加展示列]」的结果集。
     /// </summary>
     /// <param name="labelCount">结果集尾部的附加展示列数量（0 表示没有）。</param>
-    private static async Task<List<GroupCount>> ReadGroupCountsAsync(SqliteCommand cmd, int labelCount = 0)
+    private static async Task<List<GroupCount>> ReadGroupCountsAsync(
+        SqliteCommand cmd, int labelCount = 0, int summaryCount = 0)
     {
         var list = new List<GroupCount>();
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            IReadOnlyList<string?>? parts = null;
-            if (labelCount > 0)
-            {
-                var buf = new string?[labelCount];
-                for (var i = 0; i < labelCount; i++)
-                {
-                    var idx = 4 + i;
-                    buf[i] = reader.IsDBNull(idx) ? null : reader.GetString(idx);
-                }
-                parts = buf;
-            }
+            // 列序：0=value 1=cnt 2=first_shot 3=last_shot，随后是 label0.. 与 summary0..
+            var parts = ReadParts(reader, 4, labelCount);
+            var summary = ReadParts(reader, 4 + labelCount, summaryCount);
 
             list.Add(new GroupCount(
                 reader.GetString(0),
                 reader.GetInt32(1),
                 reader.IsDBNull(2) ? null : DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture),
                 reader.IsDBNull(3) ? null : DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
-                parts));
+                parts,
+                summary));
         }
         return list;
+    }
+
+    /// <summary>从 <paramref name="start"/> 起连续读 <paramref name="count"/> 个可空文本列。</summary>
+    private static IReadOnlyList<string?>? ReadParts(SqliteDataReader reader, int start, int count)
+    {
+        if (count <= 0) return null;
+        var buf = new string?[count];
+        for (var i = 0; i < count; i++)
+        {
+            var idx = start + i;
+            buf[i] = reader.IsDBNull(idx) ? null : reader.GetString(idx);
+        }
+        return buf;
     }
 
     /// <summary>
