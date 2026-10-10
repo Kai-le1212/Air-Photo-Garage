@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
 using AirPhotoGarage.ViewModels;
@@ -225,17 +224,50 @@ public sealed partial class MainPage : Page
         }
     }
 
+    // ---------- 注册号窗格 ----------
+
     /// <summary>
-    /// 卡片上的常驻「详细信息」按钮。
-    /// 这是三条详情路径中最不依赖命中测试的一条，作为最终兜底。
-    /// 按钮位于卡片 DataTemplate 内，其 DataContext 即 <see cref="PhotoCardViewModel"/>。
+    /// 点击注册号窗格 → 跳到「注册号」页并**直接打开这架飞机**的详情（时间轴）。
+    ///
+    /// <para>
+    /// 早先这里是弹一个面板；改成跳页是因为「注册号」页本来就有完整的浏览能力
+    /// （按天时间轴 + 自定义分组 + 排序 + 右键菜单），没必要再维护第二套只读视图。
+    /// </para>
     /// </summary>
-    private void OnCardDetailButtonClick(object sender, RoutedEventArgs e)
+    private void OnRegistrationTileClick(object sender, ItemClickEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: PhotoCardViewModel card })
+        if (e.ClickedItem is RegistrationGroup group)
         {
-            _ = ShowDetailDialogSafeAsync(card);
+            OpenRegistrationPage(group.Registration);
         }
+    }
+
+    /// <summary>
+    /// 窗格上的常驻「查看照片」按钮。
+    /// 与卡片上的入口同理：不依赖 ItemClick 命中测试是否可靠，作为兜底入口。
+    /// </summary>
+    private void OnRegistrationOpenButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: RegistrationGroup group })
+        {
+            OpenRegistrationPage(group.Registration);
+        }
+    }
+
+    /// <summary>
+    /// 导航到「注册号」页，并让它在加载完分组列表后直接打开指定注册号。
+    /// 参数里的 <c>OpenGroupValue</c> 就是给这个用的。
+    /// </summary>
+    private void OpenRegistrationPage(string? registration)
+    {
+        Frame.Navigate(typeof(Views.GroupedPhotoPage), new Views.GroupedPhotoPageParameter
+        {
+            Column = "registration_number",
+            Label = "注册号",
+            EnableDayGrouping = true,
+            EnableUserGroups = true,
+            OpenGroupValue = registration,
+        });
     }
 
     /// <summary>
@@ -370,39 +402,22 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // ---------- 删除确认 ----------
+    // ---------- 删除 ----------
 
     /// <summary>
-    /// 删除确认对话框。确认后调用 <see cref="GarageViewModel.DeletePhotoCommand"/>。
-    /// 文件保留在磁盘，仅从数据库移除。
+    /// 删除照片。确认框与落库统一走 <see cref="Views.PhotoDeleteDialog"/>（与分组页共用），
+    /// 本页只负责刷新自己的视图集合。文件保留在磁盘，仅从数据库移除。
     /// </summary>
     private async Task ConfirmDeleteAsync(PhotoCardViewModel card)
     {
-        var photo = card.Photo;
-        var summary = new StringBuilder();
-        if (!string.IsNullOrWhiteSpace(photo.AircraftModel))
-            summary.AppendLine($"机型：{photo.AircraftModel}");
-        if (!string.IsNullOrWhiteSpace(photo.RegistrationNumber))
-            summary.AppendLine($"注册号：{photo.RegistrationNumber}");
-        if (photo.ShotAt.HasValue)
-            summary.AppendLine($"拍摄时间：{photo.ShotAt:yyyy-MM-dd HH:mm}");
-        if (summary.Length == 0) summary.AppendLine("(无元数据)");
-
-        var dialog = new ContentDialog
+        try
         {
-            XamlRoot = this.XamlRoot,
-            Title = $"确认删除照片 #{photo.Id}？",
-            Content = summary.ToString() + "\n（仅从数据库移除，磁盘文件保留）",
-            PrimaryButtonText = "删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close,
-        };
-        var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return;
-
-        if (ViewModel.DeletePhotoCommand.CanExecute(card))
+            if (!await Views.PhotoDeleteDialog.ConfirmAndDeleteAsync(XamlRoot, card.Photo)) return;
+            ViewModel.RemoveDeletedPhoto(card);
+        }
+        catch (Exception ex)
         {
-            ViewModel.DeletePhotoCommand.Execute(card);
+            App.LogError("MainPage.ConfirmDelete", ex);
         }
     }
 

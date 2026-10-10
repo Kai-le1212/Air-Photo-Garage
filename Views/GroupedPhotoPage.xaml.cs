@@ -47,7 +47,25 @@ public sealed partial class GroupedPhotoPage : Page
             param.EnableDayGrouping, param.EnableRegistrationSubLevel, param.EnableUserGroups,
             param.RowLabelColumns);
 
-        _ = ViewModel.LoadGroupsAsync();
+        _ = LoadAndMaybeOpenAsync(param.OpenGroupValue);
+    }
+
+    /// <summary>
+    /// 先加载分组列表；若导航参数带了对目标分组（照片墙点窗格跳进来），
+    /// 再自动打开它 —— 用户不必在列表里再找一遍。
+    /// </summary>
+    private async Task LoadAndMaybeOpenAsync(string? openGroupValue)
+    {
+        await ViewModel.LoadGroupsAsync();
+        if (string.IsNullOrWhiteSpace(openGroupValue)) return;
+
+        var target = ViewModel.Groups
+            .FirstOrDefault(g => !g.IsMissing
+                                 && string.Equals(g.Value, openGroupValue, StringComparison.OrdinalIgnoreCase));
+        if (target is not null)
+        {
+            await ViewModel.OpenGroupAsync(target);
+        }
     }
 
     /// <summary>点击中间层的注册号 → 进入该飞机（机型 + 注册号）的照片。</summary>
@@ -55,6 +73,22 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (e.ClickedItem is not GroupItemViewModel item) return;
         await ViewModel.OpenSubGroupAsync(item);
+    }
+
+    /// <summary>
+    /// 日期节点说明行里的「详细信息」：打开该节点<b>第一张</b>照片的详情。
+    ///
+    /// <para>
+    /// 一个节点只有一个入口，所以多照片节点取第一张 —— 想看别的照片，
+    /// 直接点（<c>ItemClick</c>）或右键「查看详情」都能打开，路径没有变少。
+    /// </para>
+    /// </summary>
+    private void OnNodeDetailClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TimelineNode node } && node.Photos.Count > 0)
+        {
+            _ = ShowPhotoDetailSafeAsync(node.Photos[0]);
+        }
     }
 
     /// <summary>点击分组列表中的某一项 → 进入该分组。</summary>
@@ -73,19 +107,6 @@ public sealed partial class GroupedPhotoPage : Page
     private void OnPhotoClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is PhotoCardViewModel card)
-        {
-            _ = ShowPhotoDetailSafeAsync(card);
-        }
-    }
-
-    /// <summary>
-    /// 卡片上的常驻「详细信息」按钮。
-    /// 这是三条详情路径中最不依赖命中测试的一条，作为最终兜底。
-    /// 按钮在卡片模板内部，其 DataContext 即 <see cref="PhotoCardViewModel"/>。
-    /// </summary>
-    private void OnCardDetailButtonClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: PhotoCardViewModel card })
         {
             _ = ShowPhotoDetailSafeAsync(card);
         }
@@ -111,11 +132,14 @@ public sealed partial class GroupedPhotoPage : Page
 
         var flyout = new MenuFlyout();
 
-        var detailItem = new MenuFlyoutItem { Text = "查看详细信息" };
+        // ↓ 前两项的文案与图标与照片墙右键菜单<b>逐字一致</b>，不要再各写一套
+        var detailItem = new MenuFlyoutItem { Text = "查看详情" };
+        detailItem.Icon = new FontIcon { Glyph = "\uE890" }; // Info
         detailItem.Click += (_, _) => _ = ShowPhotoDetailSafeAsync(card);
         flyout.Items.Add(detailItem);
 
         var editItem = new MenuFlyoutItem { Text = "编辑信息..." };
+        editItem.Icon = new FontIcon { Glyph = "\uE70F" }; // Edit
         editItem.Click += (_, _) => _ = ShowEditDialogSafeAsync(card);
         flyout.Items.Add(editItem);
 
@@ -151,6 +175,16 @@ public sealed partial class GroupedPhotoPage : Page
                 flyout.Items.Add(deleteItem);
             }
         }
+
+        // 删除放在最末并单独分隔 —— 破坏性操作不与常规操作混在一起。
+        // 此前分组页<b>没有</b>「删除」，只有照片墙能删；现在两边一致。
+        // 变量名加 Photo 前缀：上面分组块里已有一个 deleteItem（解散分组），避免重名。
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        var deletePhotoItem = new MenuFlyoutItem { Text = "删除" };
+        deletePhotoItem.Icon = new FontIcon { Glyph = "\uE74D" }; // Delete
+        deletePhotoItem.Click += (_, _) => _ = ConfirmDeleteAsync(card);
+        flyout.Items.Add(deletePhotoItem);
 
         flyout.ShowAt(element, new FlyoutShowOptions
         {
@@ -235,6 +269,31 @@ public sealed partial class GroupedPhotoPage : Page
         catch (Exception ex)
         {
             await ShowGroupErrorAsync("解散分组失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 删除照片。确认框与落库走与照片墙共用的 <see cref="PhotoDeleteDialog"/>；
+    /// 删除后重建当前视图 —— 时间轴节点、分组计数、空状态都要跟着变。
+    /// </summary>
+    private async Task ConfirmDeleteAsync(PhotoCardViewModel card)
+    {
+        try
+        {
+            if (!await PhotoDeleteDialog.ConfirmAndDeleteAsync(XamlRoot, card.Photo)) return;
+
+            if (ViewModel.IsViewingGroup)
+            {
+                await ViewModel.ReloadCurrentGroupAsync();
+            }
+            else
+            {
+                await ViewModel.LoadGroupsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowGroupErrorAsync("删除照片失败", ex);
         }
     }
 
@@ -324,15 +383,23 @@ public sealed partial class GroupedPhotoPage : Page
     }
 
     /// <summary>
-    /// 详情弹窗。与照片墙共用 <see cref="PhotoDetailBuilder"/>，
-    /// 因此同样展示全部字段 + 展开的原始 EXIF。
+    /// 详情弹窗。与照片墙共用 <see cref="PhotoDetailBuilder"/>，因此同样展示全部字段
+    /// 与展开的原始 EXIF；并且<b>同样带「编辑信息」主按钮</b> ——
+    /// 此前分组页漏传了 <c>primaryButtonText</c>，导致详情里没有编辑入口，
+    /// 只能靠右键绕。
     /// </summary>
     private async Task ShowPhotoDetailAsync(PhotoCardViewModel card)
     {
         var content = await PhotoDetailBuilder.BuildContentAsync(card.Photo);
 
-        var dialog = PhotoDetailBuilder.CreateDialog(XamlRoot, card.Photo.Id, content);
-        await dialog.ShowAsync();
+        var dialog = PhotoDetailBuilder.CreateDialog(
+            XamlRoot, card.Photo.Id, content, primaryButtonText: "编辑信息");
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            // 详情页点「编辑信息」→ 直接进编辑对话框（与照片墙行为一致）
+            await ShowEditDialogSafeAsync(card);
+        }
     }
 }
 
@@ -357,6 +424,12 @@ public sealed class GroupedPhotoPageParameter
     /// 分组键仍是 <see cref="Column"/>（ICAO），展示时才拼接附加字段。
     /// </summary>
     public IReadOnlyList<string> RowLabelColumns { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// 进页后自动打开的分组值。
+    /// 照片墙点注册号窗格跳过来时带上它，省得用户再在列表里找一遍。
+    /// </summary>
+    public string? OpenGroupValue { get; init; }
 
     /// <summary>
     /// 机型页：机型 → 注册号 → 照片。

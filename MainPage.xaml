@@ -35,8 +35,14 @@
                     <!-- 缩略图区域 + 覆盖文字 -->
                     <Grid Grid.Row="0"
                           Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                        <!--
+                            用 Uniform（完整显示、保持原比例）而不是 UniformToFill。
+                            UniformToFill 会为填满方框而裁掉画面边缘 —— 对航拍照片来说
+                            机头机尾经常正好被裁掉。代价是长宽比不匹配时会留边，
+                            这里用中性的面板底色承托，排面上仍然整齐。
+                        -->
                         <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
-                               Stretch="UniformToFill" />
+                               Stretch="Uniform" />
 
                         <!-- 未提供信息覆盖层 -->
                         <Border VerticalAlignment="Top"
@@ -64,13 +70,68 @@
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                    TextTrimming="CharacterEllipsis" />
-                        <!-- 常驻详情入口：与三个分组页保持一致，
-                             不依赖 ItemClick 命中测试是否可靠 -->
-                        <Button Content="详细信息"
-                                Padding="8,2"
-                                Margin="0,4,0,0"
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!--
+            注册号窗格：一个注册号 = 一个窗格。
+            封面取该注册号第一张照片的缩略图，右上角显示张数；
+            点窗格（或「查看照片」按钮）打开弹出面板看全部照片。
+
+            同样必须显式 Width/Height，否则 GridViewItem 容器坍缩到 0。
+        -->
+        <DataTemplate x:Key="RegistrationTileTpl" x:DataType="vm:RegistrationGroup">
+            <Border Width="240" Height="300"
+                    BorderThickness="1" CornerRadius="8"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 封面 + 角标 -->
+                    <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                        <Image Source="{x:Bind CoverThumbnail, Mode=OneWay}" Stretch="Uniform" />
+
+                        <!-- 张数角标 -->
+                        <Border VerticalAlignment="Top" HorizontalAlignment="Right"
+                                Margin="8" Padding="8,2" CornerRadius="10"
+                                Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                            <TextBlock Text="{x:Bind CountText}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+
+                        <!-- 「未填写注册号」兜底窗格 -->
+                        <Border VerticalAlignment="Top" HorizontalAlignment="Left"
+                                Padding="8,4" CornerRadius="0,0,8,0"
+                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                                Visibility="{x:Bind MissingBadgeVisibility}">
+                            <TextBlock Text="未填写注册号"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="White" />
+                        </Border>
+                    </Grid>
+
+                    <!-- 文字信息 -->
+                    <StackPanel Grid.Row="1" Padding="10,8" Spacing="2">
+                        <TextBlock Text="{x:Bind Title}"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <!-- 机型 / 时间范围 / 机场（单个派生属性，避免 DataTemplate 内 <Run> 的 WMC1111 问题） -->
+                        <TextBlock Text="{x:Bind SummaryText}" MaxLines="2"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <!-- 常驻入口：不依赖 ItemClick 命中测试是否可靠 -->
+                        <Button Content="查看照片"
+                                Padding="8,2" Margin="0,4,0,0"
                                 HorizontalAlignment="Left"
-                                Click="OnCardDetailButtonClick" />
+                                Click="OnRegistrationOpenButtonClick" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -194,64 +255,28 @@
                               HorizontalScrollBarVisibility="Disabled">
                     <Grid>
                     <!--
-                        分组视图：按注册号把照片聚成一组组。
-                        组序沿用该组首张照片在当前排序里的位置，因此会自动跟随左侧「排序方式」。
+                        注册号视图：每个注册号【只占一个窗格】（封面 + 张数 + 摘要），
+                        点窗格才在弹出面板里展开这架飞机的全部照片 ——
+                        照片多的时候，一屏能看完整机队，而不是被同型机的几十张照片淹没。
+
+                        窗格顺序沿用该组首张照片在当前排序里的位置，自动跟随左侧「排序方式」。
                     -->
-                    <ItemsControl ItemsSource="{x:Bind ViewModel.RegistrationGroups, Mode=OneWay}"
-                                  Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:RegistrationGroup">
-                                <StackPanel Margin="4,0,4,18" Spacing="8">
-                                    <!-- 组头：注册号 + 张数 -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{x:Bind Title}"
-                                                   Style="{StaticResource SubtitleTextBlockStyle}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <Border Visibility="{x:Bind MissingBadgeVisibility}"
-                                                VerticalAlignment="Center"
-                                                Padding="6,1"
-                                                CornerRadius="4"
-                                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}">
-                                            <TextBlock Text="补全后可归组"
-                                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                                       Foreground="White" />
-                                        </Border>
-                                        <TextBlock Text="{x:Bind CountText}"
-                                                   VerticalAlignment="Bottom"
-                                                   Margin="0,0,0,4"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-
-                                    <!--
-                                        组副标题：机型 / 时间范围 / 机场。
-                                        刻意用单个派生属性而不是 <Run> 拼接 ——
-                                        WinAppSDK 2.3 编译器对 DataTemplate 内 <Run> 上的 x:Bind
-                                        有 WMC1111 上下文丢失问题（项目里已踩过）。
-                                    -->
-                                    <TextBlock Text="{x:Bind SummaryText}"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                               TextTrimming="CharacterEllipsis" />
-
-                                    <GridView ItemsSource="{x:Bind Photos}"
-                                              SelectionMode="None"
-                                              IsItemClickEnabled="True"
-                                              ItemClick="OnPhotoItemClick"
-                                              ItemTemplate="{StaticResource WallCardTpl}">
-                                        <GridView.ItemContainerStyle>
-                                            <Style TargetType="GridViewItem">
-                                                <Setter Property="Margin" Value="6" />
-                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                                                <Setter Property="Background" Value="Transparent" />
-                                            </Style>
-                                        </GridView.ItemContainerStyle>
-                                    </GridView>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <GridView ItemsSource="{x:Bind ViewModel.RegistrationGroups, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnRegistrationTileClick"
+                              ItemTemplate="{StaticResource RegistrationTileTpl}"
+                              AutomationProperties.Name="注册号">
+                        <GridView.ItemContainerStyle>
+                            <Style TargetType="GridViewItem">
+                                <Setter Property="Margin" Value="6" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                        </GridView.ItemContainerStyle>
+                    </GridView>
 
                     <!--
                         按 winui3-full-skill/snippets/collections/gridview.md 推荐：

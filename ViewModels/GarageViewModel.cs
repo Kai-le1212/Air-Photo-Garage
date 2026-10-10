@@ -76,9 +76,8 @@ public sealed partial class GarageViewModel : ObservableObject
     private void BuildRegistrationGroups()
     {
         RegistrationGroups.Clear();
-        if (!GroupByRegistration) return;
 
-        if (Photos.Count == 0)
+        if (!GroupByRegistration || Photos.Count == 0)
         {
             RaisePhotoViewProperties();
             return;
@@ -98,6 +97,7 @@ public sealed partial class GarageViewModel : ObservableObject
         {
             RegistrationGroups.Add(new RegistrationGroup(g.Key, g.ToList()));
         }
+
         RaisePhotoViewProperties();
     }
 
@@ -214,21 +214,22 @@ public sealed partial class GarageViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task DeletePhotoAsync(PhotoCardViewModel? card)
+    /// <summary>
+    /// 把已从数据库删除的照片从视图集合里移除，并重建注册号分组。
+    ///
+    /// <para>
+    /// 删除的<b>确认与落库</b>统一由 <see cref="Views.PhotoDeleteDialog"/> 负责
+    /// （照片墙与三个分组页共用），这里只管刷新视图 ——
+    /// 职责分开之后，两边的删除入口才能走同一套逻辑，不会再出现
+    /// 「照片墙能删、分组页不能删」这种能力漂移。
+    /// </para>
+    /// </summary>
+    public void RemoveDeletedPhoto(PhotoCardViewModel card)
     {
         if (card is null) return;
-        try
-        {
-            await _db.DeletePhotoAsync(card.Id);
-            Photos.Remove(card);
-            BuildRegistrationGroups();   // 卡片同时存在于分组视图里，必须一起重建
-            StatusMessage = $"已删除照片 #{card.Id}";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"删除失败：{ex.Message}";
-        }
+        Photos.Remove(card);
+        BuildRegistrationGroups();   // 卡片同时存在于注册号分组视图里，必须一起重建
+        StatusMessage = $"已删除照片 #{card.Id}";
     }
 
     [RelayCommand]
@@ -296,14 +297,31 @@ public sealed partial class GarageViewModel : ObservableObject
 }
 
 /// <summary>
-/// 照片墙上的一个「按注册号」分组。注册号相同即视为同一架飞机。
+/// 照片墙上的一个「按注册号」分组 —— 在界面上表现为<b>一个窗格</b>（封面 + 张数），
+/// 点开后在弹出面板里看该注册号的全部照片。
 /// </summary>
-public sealed class RegistrationGroup
+public sealed class RegistrationGroup : ObservableObject
 {
+    private readonly PhotoCardViewModel? _cover;
+
     public RegistrationGroup(string? registration, IReadOnlyList<PhotoCardViewModel> photos)
     {
         Registration = registration;
         Photos = photos;
+        _cover = photos.Count > 0 ? photos[0] : null;
+
+        // 封面缩略图是构造后异步加载的。不转发这个通知，窗格上的封面会一直空着 ——
+        // x:Bind 无从得知 Thumbnail 已经就绪。
+        if (_cover is not null)
+        {
+            _cover.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(PhotoCardViewModel.Thumbnail))
+                {
+                    OnPropertyChanged(nameof(CoverThumbnail));
+                }
+            };
+        }
     }
 
     /// <summary>注册号；<c>null</c> 表示这是「未填写注册号」的兜底分组。</summary>
@@ -311,6 +329,9 @@ public sealed class RegistrationGroup
 
     /// <summary>组内照片，顺序沿用照片墙当前的排序。</summary>
     public IReadOnlyList<PhotoCardViewModel> Photos { get; }
+
+    /// <summary>窗格封面：取组内第一张的缩略图。</summary>
+    public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbnail => _cover?.Thumbnail;
 
     public string Title => Registration ?? "未填写注册号";
 

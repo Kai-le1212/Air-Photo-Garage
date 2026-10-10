@@ -13,11 +13,11 @@
         <!--
             照片卡片模板：分组页内多处复用（同一页面内 x:Key 引用是安全的）。
 
-            关于「详细信息」入口：为保证每个菜单都能打开详情，这里提供三条冗余路径：
+            关于「详细信息」入口：卡片上<b>不再</b>放常驻按钮（每张都挂一个太吵），
+            改为两条路径 + 日期节点说明行的一处入口：
             1) 左键点击卡片 → GridView.ItemClick → OnPhotoClick
-            2) 右键卡片 → MenuFlyout「查看详细信息」→ OnCardMenuDetail
-            3) 卡片右下角常驻「详细信息」按钮 → Click → OnCardDetailButtonClick
-            任一路径失效都还有另外两条兜底。
+            2) 右键卡片 → MenuFlyout「查看详情」→ 打开详情
+            3) 日期节点下的「详细信息」链接 → OnNodeDetailClick（打开该节点第一张）
         -->
         <DataTemplate x:Key="PhotoCardTpl" x:DataType="vm:PhotoCardViewModel">
             <!-- DataTemplate 根元素必须显式 Width/Height，否则容器坍缩到 0 -->
@@ -33,7 +33,8 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="UniformToFill" />
+                        <!-- Uniform：完整显示、保持原比例，不裁掉画面边缘 -->
+                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="Uniform" />
                         <Border VerticalAlignment="Top"
                                 HorizontalAlignment="Stretch"
                                 Padding="8,4"
@@ -58,12 +59,6 @@
                                    Style="{StaticResource CaptionTextBlockStyle}"
                                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                    TextTrimming="CharacterEllipsis" />
-                        <!-- 常驻详情入口：不依赖命中测试是否可靠 -->
-                        <Button Content="详细信息"
-                                Padding="8,2"
-                                Margin="0,4,0,0"
-                                HorizontalAlignment="Left"
-                                Click="OnCardDetailButtonClick" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -378,9 +373,22 @@
                                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                         </StackPanel>
 
-                                        <TextBlock Text="{x:Bind Subtitle}"
-                                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                        <!--
+                                            日期下的说明行，末尾挂「详细信息」入口。
+                                            入口从卡片上挪到了这里 —— 每张卡片都挂一个按钮太吵，
+                                            而一个日期节点通常只有一两张照片，放这儿更清爽。
+                                        -->
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="{x:Bind Subtitle}"
+                                                       VerticalAlignment="Center"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            <HyperlinkButton Content="详细信息"
+                                                             Padding="0"
+                                                             MinHeight="0"
+                                                             VerticalAlignment="Center"
+                                                             Click="OnNodeDetailClick" />
+                                        </StackPanel>
 
                                         <GridView ItemsSource="{x:Bind Photos}"
                                                   SelectionMode="None"
