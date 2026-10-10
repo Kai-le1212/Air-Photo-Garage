@@ -5,6 +5,20 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.8] - 2026-10-10
+
+### 修复
+
+- **照片墙注册号窗格补上右键菜单**：0.2.3.0 改成窗格后漏了 `RightTapped`，
+  右键没反应。窗格代表「一架飞机」，菜单里只放「查看照片」
+  （详情 / 编辑 / 删除都是照片级操作，得先进该注册号的页面）
+- **去掉窗格底部的「查看照片」按钮**：整个窗格可点，不必再挂一个按钮
+- **详情弹窗的预览图加一圈边界**：夜景这类边缘很暗的照片直接贴在深色弹窗背景上，
+  四周会糊在一起、看着像被裁过。加底色 + 描边后画面范围一目了然
+- **导入预览比例同步修正**：`ThumbnailAspect` 此前会在**任何**缩略图解码完成时更新，
+  预加载下一张会把当前预览高度改错；现在只在「正是当前显示的那张」时更新，
+  切换照片时也同步重算
+
 ## [0.2.3.7] - 2026-10-10
 
 ### 修复
@@ -210,6 +224,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.8]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.8
 [0.2.3.7]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.7
 [0.2.3.6]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.6
 [0.2.3.5]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.5

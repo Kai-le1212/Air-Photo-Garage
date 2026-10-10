@@ -67,6 +67,12 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             : PreviewWidth * 2.0 / 3.0;
 
     partial void OnThumbnailAspectChanged(double value) => OnPropertyChanged(nameof(PreviewHeight));
+
+    /// <summary>取位图的宽高比（宽 ÷ 高）；拿不到尺寸时返回 0（调用方会退回占位高度）。</summary>
+    private static double AspectOf(ImageSource? source) =>
+        source is BitmapImage bmp && bmp.PixelWidth > 0 && bmp.PixelHeight > 0
+            ? (double)bmp.PixelWidth / bmp.PixelHeight
+            : 0;
     [ObservableProperty] public partial string StepText { get; set; } = "";
     [ObservableProperty] public partial string NextButtonText { get; set; } = "下一张 >";
     [ObservableProperty] public partial string ShotAtText { get; set; } = "";
@@ -209,6 +215,8 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         AirportName = p.AirportName ?? "";
         Notes = p.Notes ?? "";
         CurrentThumbnail = _thumbnails[CurrentIndex];
+        // 切到另一张时同步它的宽高比，否则预览高度会沿用上一张的
+        ThumbnailAspect = AspectOf(_thumbnails[CurrentIndex]);
 
         StepText = $"第 {CurrentIndex + 1} / {_photos.Count} 张";
         NextButtonText = CurrentIndex == _photos.Count - 1 ? "完成导入" : "下一张 >";
@@ -373,18 +381,16 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             using var ms = new MemoryStream(bytes);
             await bmp.SetSourceAsync(ms.AsRandomAccessStream());
 
-            // 解码后 PixelWidth/PixelHeight 可用；转成宽高比给预览区算高度
-            if (bmp.PixelWidth > 0 && bmp.PixelHeight > 0)
-            {
-                ThumbnailAspect = (double)bmp.PixelWidth / bmp.PixelHeight;
-            }
-
             if (index < _thumbnails.Count)
             {
                 _thumbnails[index] = bmp;
             }
+
+            // 宽高比只在「这张正是当前显示的那张」时更新 ——
+            // 否则预加载别的照片会把当前预览的高度改错。
             if (index == CurrentIndex)
             {
+                ThumbnailAspect = AspectOf(bmp);
                 CurrentThumbnail = bmp;
             }
         }

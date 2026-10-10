@@ -243,15 +243,30 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// 窗格上的常驻「查看照片」按钮。
-    /// 与卡片上的入口同理：不依赖 ItemClick 命中测试是否可靠，作为兜底入口。
+    /// 右键注册号窗格 → 菜单。
+    ///
+    /// <para>
+    /// 窗格代表的是「一架飞机」而不是单张照片，所以菜单里只有「查看照片」这一项。
+    /// 查看详情 / 编辑信息 / 删除都是<b>照片级</b>操作，得先进到该注册号的页面
+    /// 再对具体照片做 —— 硬塞进窗格菜单只会让人误以为会作用于整组照片。
+    /// </para>
     /// </summary>
-    private void OnRegistrationOpenButtonClick(object sender, RoutedEventArgs e)
+    private void OnRegistrationTileRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: RegistrationGroup group })
+        if (sender is not FrameworkElement element
+            || element.DataContext is not RegistrationGroup group)
         {
-            OpenRegistrationPage(group.Registration);
+            return;
         }
+
+        var flyout = new MenuFlyout();
+
+        var openItem = new MenuFlyoutItem { Text = "查看照片" };
+        openItem.Click += (_, _) => OpenRegistrationPage(group.Registration);
+        flyout.Items.Add(openItem);
+
+        flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
+        e.Handled = true;
     }
 
     /// <summary>

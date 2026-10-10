@@ -205,7 +205,15 @@ internal static class PhotoDetailBuilder
         Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
     };
 
-    /// <summary>加载缩略图（缺失时回退原图）。失败时返回占位文字。</summary>
+    /// <summary>
+    /// 加载缩略图（缺失时回退原图）。失败时返回占位文字。
+    ///
+    /// <para>
+    /// 图片用 <c>Stretch.Uniform</c>，即整个画面完整显示、保持原比例，不裁切。
+    /// 外面套一层带底色与描边的容器：夜景这类**边缘本身就很暗**的照片，
+    /// 直接贴在深色弹窗背景上时四周会糊在一起，看着像被裁过。
+    /// </para>
+    /// </summary>
     private static async Task<FrameworkElement> CreatePreviewImageAsync(Photo photo)
     {
         var img = new Image
@@ -224,7 +232,7 @@ internal static class PhotoDetailBuilder
                 using var fs = File.OpenRead(path);
                 await bmp.SetSourceAsync(fs.AsRandomAccessStream());
                 img.Source = bmp;
-                return img;
+                return WrapPreview(img);
             }
         }
         catch
@@ -246,6 +254,17 @@ internal static class PhotoDetailBuilder
             },
         };
     }
+
+    /// <summary>给预览图加一圈边界，让画面的实际范围（含四周留边）一目了然。</summary>
+    private static FrameworkElement WrapPreview(Image img) => new Border
+    {
+        HorizontalAlignment = HorizontalAlignment.Center,
+        CornerRadius = new CornerRadius(6),
+        BorderThickness = new Thickness(1),
+        BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+        Background = (Brush)Application.Current.Resources["ControlAltFillColorTertiaryBrush"],
+        Child = img,
+    };
 
     /// <summary>
     /// 带标签的一行；空值也显示「—」，用于「展示全部参数」场景。
