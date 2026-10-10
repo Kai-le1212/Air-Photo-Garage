@@ -5,6 +5,13 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.3.5] - 2026-10-10
+
+### 修复（返回该回哪儿）
+
+- **从照片墙的注册号窗格跳进详情后，「← 返回」回到照片墙**
+  （此前会落到「注册号」页的分组列表 —— 用户的来路是照片墙，这样很莫名）
+
 ## [0.2.3.4] - 2026-10-10
 
 ### 变更（去掉重复的拍摄日期时间）
@@ -180,6 +187,7 @@
 - 编辑对话框机型列等宽
 - 替换全套应用图标
 
+[0.2.3.5]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.5
 [0.2.3.4]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.4
 [0.2.3.3]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.3
 [0.2.3.2]: https://github.com/Kai-le1212/Air-Photo-Garage/releases/tag/v0.2.3.2

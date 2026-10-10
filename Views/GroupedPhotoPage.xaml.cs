@@ -24,6 +24,12 @@ public sealed partial class GroupedPhotoPage : Page
     /// </summary>
     public GroupedPhotoViewModel ViewModel { get; }
 
+    /// <summary>
+    /// 本次导航是否由照片墙的注册号窗格<b>直接跳到某个分组</b>（参数带了 OpenGroupValue）。
+    /// 决定「← 返回」是回照片墙，还是在本页内逐级回退。
+    /// </summary>
+    private bool _openedDirectlyToGroup;
+
     public GroupedPhotoPage()
     {
         // 用「机型」这一最完整的配置作初值；真实维度在 OnNavigatedTo 里切换。
@@ -41,6 +47,10 @@ public sealed partial class GroupedPhotoPage : Page
 
         var param = e.Parameter as GroupedPhotoPageParameter
                     ?? GroupedPhotoPageParameter.Aircraft;
+
+        // 记录来路：带 OpenGroupValue 说明是从照片墙的注册号窗格直接跳进来的，
+        // 「← 返回」应当回照片墙而不是本页的分组列表。
+        _openedDirectlyToGroup = !string.IsNullOrWhiteSpace(param.OpenGroupValue);
 
         ViewModel.SwitchDimension(
             param.Column, param.Label,
@@ -82,9 +92,24 @@ public sealed partial class GroupedPhotoPage : Page
         await ViewModel.OpenGroupAsync(item);
     }
 
+    /// <summary>
+    /// 「← 返回」按钮。
+    ///
+    /// <para>
+    /// 默认是**页内逐级回退**：照片态 →（机型页则回注册号中间层）→ 列表态。
+    /// 但如果本页是<b>从照片墙的注册号窗格直接跳进来的</b>（参数带了目标分组），
+    /// 且当前正停在那架飞机的详情上，那么返回应该**回到照片墙** ——
+    /// 用户的来路是照片墙，把他丢到「注册号」列表会莫名其妙。
+    /// </para>
+    /// </summary>
     private void OnBackClick(object sender, RoutedEventArgs e)
     {
-        // 逐级回退：照片态 →（机型页则回注册号中间层）→ 列表态
+        if (_openedDirectlyToGroup && ViewModel.IsViewingGroup && Frame.CanGoBack)
+        {
+            Frame.GoBack();
+            return;
+        }
+
         _ = ViewModel.GoBackAsync();
     }
 
