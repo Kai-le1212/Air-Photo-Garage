@@ -69,6 +69,16 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// </summary>
     private string? _selectedGroupLabel;
 
+    /// <summary>
+    /// 当前选中分组行的「标题附件」文案（注册号页 = 机型，其它维度为空串）。
+    ///
+    /// <para>
+    /// 只拼进 <see cref="HeaderText"/>，<b>不</b>影响底部状态栏 ——
+    /// 状态栏那行已经够长，再重复一遍机型只是噪音。
+    /// </para>
+    /// </summary>
+    private string _selectedGroupExtra = string.Empty;
+
     /// <summary>照片 → 自定义分组 Id 的映射（仅当前注册号范围）。</summary>
     private readonly Dictionary<long, long> _photoGroupMap = new();
 
@@ -143,6 +153,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         SelectedGroup = null;
         SelectedSubGroup = null;
         _selectedGroupLabel = null;
+        _selectedGroupExtra = string.Empty;
         _selectedGroupIsMissing = false;
         _selectedSubGroupIsMissing = false;
         Groups.Clear();
@@ -206,6 +217,12 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// 标签本身已自带分隔符，再拼上维度名会变成
     /// 「机场 · 香港国际机场 · HKG」这种两个「·」的啰嗦写法。
     /// </para>
+    ///
+    /// <para>
+    /// 注册号页同理但形式不同：标题<b>不再带「注册号 · 」前缀</b>（左侧导航已经高亮
+    /// 当前维度，再写一遍是废话），改为拼上机型 —— 只写个「B-LID」看不出是哪种飞机。
+    /// 机场页 / 机型页走上面两个分支，不受影响。
+    /// </para>
     /// </summary>
     public string HeaderText => IsViewingSubGroups
         ? $"{_dimensionLabel} · {GroupLabel}"
@@ -214,8 +231,14 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 ? GroupLabel
                 : _enableRegistrationSubLevel
                     ? $"{GroupLabel} · {SelectedSubGroup}"
-                    : $"{_dimensionLabel} · {GroupLabel}")
+                    : WithExtra(GroupLabel))
             : _dimensionLabel;
+
+    /// <summary>
+    /// 把标题附件（注册号页 = 机型）拼到标题后面；没有附件时原样返回。
+    /// </summary>
+    private string WithExtra(string label) =>
+        _selectedGroupExtra.Length == 0 ? label : $"{label} · {_selectedGroupExtra}";
 
     /// <summary>分组行是否带复合展示标签（机场页 = [机场名, IATA]）。</summary>
     private bool HasCompositeLabel => _rowLabelColumns.Count > 0;
@@ -454,6 +477,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         if (group is null) return;
         SelectedGroup = group.Value;              // 查询用：原始分组键
         _selectedGroupLabel = group.DisplayText;  // 展示用：可能含附加字段
+        _selectedGroupExtra = group.AttachmentText;  // 标题附件：注册号页 = 机型
         SelectedSubGroup = null;
         _selectedGroupIsMissing = group.IsMissing;
         _selectedSubGroupIsMissing = false;
@@ -500,6 +524,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         SelectedSubGroup = null;
         SelectedGroup = null;
         _selectedGroupLabel = null;
+        _selectedGroupExtra = string.Empty;
         _selectedGroupIsMissing = false;
         _selectedSubGroupIsMissing = false;
         ClearPhotoState();
@@ -636,26 +661,38 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     public bool HasTimeline => EnableDayGrouping && Timeline.Count > 0;
 
     /// <summary>
-    /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一行一张</b>。
+    /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一个机场一行</b>。
     ///
     /// <para>
     /// 只在<b>「注册号」页</b>使用：该页把卡片上的文字挪到了这里，
     /// 而一个节点本来就是同一架飞机，所以<b>不重复印注册号</b>。
     /// 机型 / 机场页的卡片自带文字，说明区不显示这些内容。
     /// </para>
+    ///
     /// <para>
-    /// <b>不含拍摄日期时间</b>：节点标题已经是日期了，再逐行重复一遍纯属噪音。
+    /// 这里只放<b>页面上别处看不到的东西</b>：
+    /// <list type="bullet">
+    /// <item><b>不含拍摄日期时间</b>：节点标题已经是日期了，再逐行重复纯属噪音；</item>
+    /// <item><b>不含机型</b>：它已经在页面标题里（「B-LID · Boeing 747-400」）；</item>
+    /// <item>机场<b>同一机场只列一次</b> —— 原来「一行一张」，同一架飞机同一天在
+    /// 同一机场拍了 5 张就重复 5 行一模一样的内容。只有机场真的<b>变了</b>才多一行。</item>
+    /// </list>
     /// </para>
     /// </summary>
     private static string BuildPhotoInfoText(IReadOnlyList<PhotoCardViewModel> cards)
     {
-        return string.Join("\n", cards.Select(c =>
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var lines = new List<string>();
+        foreach (var c in cards)
         {
-            var airport = string.IsNullOrWhiteSpace(c.AirportDisplay)
-                ? string.Empty
-                : " · " + c.AirportDisplay;
-            return c.AircraftDisplay + airport;
-        }));
+            var airport = c.AirportDisplay;
+            // AirportDisplay 不会返回空串（兜底是「未填写机场」），这里只是防御
+            if (!string.IsNullOrWhiteSpace(airport) && seen.Add(airport))
+            {
+                lines.Add(airport);
+            }
+        }
+        return string.Join("\n", lines);
     }
 
     /// <summary>
@@ -925,12 +962,25 @@ public sealed class GroupItemViewModel
             : "无拍摄时间";
 
     /// <summary>
-    /// 分组行的小字摘要：<b>小字附件 + 拍摄时间范围</b>。
+    /// 附件文案（注册号页 = 机型）：去空、去重后用 " / " 连接；无附件返回空串。
+    ///
+    /// <para>
+    /// 两个地方都用它：行的小字摘要（<see cref="SummaryText"/>）与页面标题
+    /// （<c>GroupedPhotoViewModel.OpenGroupAsync</c> → <c>_selectedGroupExtra</c>）。
+    /// </para>
+    /// </summary>
+    public string AttachmentText => string.Join(" / ", _count.SummaryParts?
+        .Where(p => !string.IsNullOrWhiteSpace(p))
+        .Select(p => p!.Trim())
+        .Distinct(StringComparer.OrdinalIgnoreCase) ?? Enumerable.Empty<string>());
+
+    /// <summary>
+    /// 分组行的小字摘要：<b>附件（机型）+ 拍摄时间范围</b>。
     ///
     /// <para>
     /// 注册号页的行标题只有注册号，看不出是哪种飞机，所以把机型补在这里，
     /// 例如「Airbus A330-300 · 2021-05-01 ~ 2026-10-02」。
-    /// 附加字段由 <c>GetGroupCountsAsync</c> 的 <c>summaryColumns</c> 取回（每组取 MAX）。
+    /// 附件由 <c>GetGroupCountsAsync</c> 的 <c>summaryColumns</c> 取回（每组取 MAX）。
     /// </para>
     ///
     /// <para>
@@ -943,21 +993,8 @@ public sealed class GroupItemViewModel
     /// 否则会把该桶里任意一张照片的机型当成整行的机型展示。
     /// </para>
     /// </summary>
-    public string SummaryText
-    {
-        get
-        {
-            var parts = _count.SummaryParts?
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => p!.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            return parts is not { Count: > 0 }
-                ? RangeText
-                : $"{string.Join(" / ", parts)} · {RangeText}";
-        }
-    }
+    public string SummaryText =>
+        AttachmentText.Length == 0 ? RangeText : $"{AttachmentText} · {RangeText}";
 }
 
 /// <summary>
@@ -984,11 +1021,15 @@ public sealed class TimelineNode
     public string Subtitle { get; }
 
     /// <summary>
-    /// 节点内每张照片的元信息，<b>一行一张</b>，显示在日期下面的说明区。
+    /// 节点内出现过的<b>机场</b>，一个机场一行、已去重，显示在日期下面的说明区。
     ///
     /// <para>
     /// 这些文字原先印在每张照片卡片下方，让卡片又高又吵。现在卡片只留图片，
-    /// 信息统一挪到日期节点这里展示 —— 一眼就能看清这个节点里都是些什么飞机。
+    /// 信息统一挪到日期节点这里展示 —— 一眼就能看清这个节点在哪儿拍的。
+    /// </para>
+    ///
+    /// <para>
+    /// 机型与拍摄时间都不在这里：机型在<b>页面标题</b>上，时间就是节点标题本身。
     /// </para>
     /// </summary>
     public string PhotoInfoText { get; }
