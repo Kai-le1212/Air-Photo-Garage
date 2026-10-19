@@ -22,11 +22,16 @@ public sealed partial class GarageViewModel : ObservableObject
     private readonly IPhotoImportService _importer;
     private readonly IUiDispatcher _ui;
 
-    public GarageViewModel(IDatabaseService db, IPhotoImportService importer, IUiDispatcher uiDispatcher)
+    /// <summary>注册号窗格的头图（covers.json）。为 null 时只用组内第一张的缩略图。</summary>
+    private readonly ICoverService? _covers;
+
+    public GarageViewModel(IDatabaseService db, IPhotoImportService importer, IUiDispatcher uiDispatcher,
+        ICoverService? covers = null)
     {
         _db = db;
         _importer = importer;
         _ui = uiDispatcher;
+        _covers = covers;
         Photos = new ObservableCollection<PhotoCardViewModel>();
     }
 
@@ -95,10 +100,40 @@ public sealed partial class GarageViewModel : ObservableObject
 
         foreach (var g in grouped)
         {
-            RegistrationGroups.Add(new RegistrationGroup(g.Key, g.ToList()));
+            RegistrationGroups.Add(new RegistrationGroup(
+                g.Key, g.ToList(),
+                _covers?.GetCustomCoverPath(CoverDimension, g.Key)));
         }
 
         RaisePhotoViewProperties();
+    }
+
+    // ---------- 注册号窗格头图 ----------
+
+    /// <summary>注册号分组在 covers.json 里的维度键。</summary>
+    public const string CoverDimension = "registration_number";
+
+    public bool HasCustomRegistrationCover(RegistrationGroup group) =>
+        _covers?.HasCustomCover(CoverDimension, group.Registration) == true;
+
+    /// <summary>把外部图片设为该注册号窗格的头图；返回 false 表示图片无法读取。</summary>
+    public async Task<bool> SetRegistrationCoverAsync(RegistrationGroup group, string sourcePath)
+    {
+        if (_covers is null) return false;
+
+        var saved = await _covers.SetFromFileAsync(CoverDimension, group.Registration, sourcePath);
+        if (saved is null) return false;
+
+        await group.RefreshCoverAsync(saved);
+        return true;
+    }
+
+    /// <summary>取消自定义头图，回到「组内第一张」。 </summary>
+    public async Task ClearRegistrationCoverAsync(RegistrationGroup group)
+    {
+        if (_covers is null) return;
+        await _covers.ClearAsync(CoverDimension, group.Registration);
+        await group.RefreshCoverAsync(null);
     }
 
     // ---- 筛选条件（双向绑定） ----
@@ -304,7 +339,12 @@ public sealed class RegistrationGroup : ObservableObject
 {
     private readonly PhotoCardViewModel? _cover;
 
-    public RegistrationGroup(string? registration, IReadOnlyList<PhotoCardViewModel> photos)
+    /// <summary>用户自定义的头图；为 null 时回落到组内第一张照片的缩略图。</summary>
+    private Microsoft.UI.Xaml.Media.ImageSource? _customCover;
+    private double _customAspect;
+
+    public RegistrationGroup(string? registration, IReadOnlyList<PhotoCardViewModel> photos,
+        string? customCoverPath = null)
     {
         Registration = registration;
         Photos = photos;
@@ -326,6 +366,34 @@ public sealed class RegistrationGroup : ObservableObject
                 }
             };
         }
+
+        if (!string.IsNullOrEmpty(customCoverPath))
+        {
+            _ = RefreshCoverAsync(customCoverPath);
+        }
+    }
+
+    /// <summary>
+    /// 重新解析封面：<paramref name="customCoverPath"/> 为 null 表示回到自动封面。
+    /// 用户改过头图之后由 ViewModel 调用。
+    /// </summary>
+    public async Task RefreshCoverAsync(string? customCoverPath)
+    {
+        _customCover = null;
+        _customAspect = 0;
+
+        if (!string.IsNullOrEmpty(customCoverPath))
+        {
+            var bitmap = await CoverImageLoader.LoadAsync(customCoverPath);
+            if (bitmap is not null)
+            {
+                _customCover = bitmap;
+                _customAspect = CoverImageLoader.AspectOf(bitmap);
+            }
+        }
+
+        OnPropertyChanged(nameof(CoverThumbnail));
+        OnPropertyChanged(nameof(CoverHeight));
     }
 
     /// <summary>注册号；<c>null</c> 表示这是「未填写注册号」的兜底分组。</summary>
@@ -334,14 +402,25 @@ public sealed class RegistrationGroup : ObservableObject
     /// <summary>组内照片，顺序沿用照片墙当前的排序。</summary>
     public IReadOnlyList<PhotoCardViewModel> Photos { get; }
 
-    /// <summary>窗格封面：取组内第一张的缩略图。</summary>
-    public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbnail => _cover?.Thumbnail;
+    /// <summary>窗格封面：自定义头图优先，否则取组内第一张的缩略图。</summary>
+    public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbnail => _customCover ?? _cover?.Thumbnail;
 
     /// <summary>
-    /// 封面图片区的应有高度 —— 跟随封面照片的比例，上下不留空、也不裁切。
+    /// 封面图片区的应有高度 —— 跟随封面图片的比例，上下不留空、也不裁切。
     /// </summary>
-    public double CoverHeight =>
-        _cover?.CardImageHeight ?? PhotoCardViewModel.CardWidth * 2.0 / 3.0;
+    public double CoverHeight
+    {
+        get
+        {
+            if (_customCover is not null)
+            {
+                return _customAspect > 0.01
+                    ? PhotoCardViewModel.CardWidth / _customAspect
+                    : PhotoCardViewModel.CardWidth * 2.0 / 3.0;
+            }
+            return _cover?.CardImageHeight ?? PhotoCardViewModel.CardWidth * 2.0 / 3.0;
+        }
+    }
 
     public string Title => Registration ?? "未填写注册号";
 

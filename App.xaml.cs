@@ -72,6 +72,9 @@ public partial class App : Application
     public static IAirportCatalogService AirportCatalog { get; private set; } = null!;
     public static IAircraftCatalogService AircraftCatalog { get; private set; } = null!;
 
+    /// <summary>分组头图（covers.json + Covers/ 目录）。不读写数据库。</summary>
+    public static ICoverService Covers { get; private set; } = null!;
+
     public static GarageViewModel GarageViewModel { get; private set; } = null!;
     public static ImportWizardViewModel ImportWizardViewModel { get; private set; } = null!;
     public static SettingsViewModel SettingsViewModel { get; private set; } = null!;
@@ -155,9 +158,22 @@ public partial class App : Application
             Importer = new PhotoImportService(LibraryRoot, Exif, Recognizer);
             AirportCatalog = new AirportCatalogService();
             AircraftCatalog = new AircraftCatalogService();
+            Covers = new CoverService(LibraryRoot);
             Log("Services ready");
 
-            GarageViewModel = new GarageViewModel(Database, Importer, UiDispatcher);
+            // 历史照片的元数据回填：修好 XMP 读取之前导入的照片 exif_json 全是空的。
+            // 限量同步补一批（默认 50 张），大库下次启动继续，不拖慢启动。
+            try
+            {
+                var backfilled = await ExifBackfillService.RunAsync(Database, Exif);
+                Log($"ExifBackfill: {backfilled} 张");
+            }
+            catch (Exception ex)
+            {
+                LogError("ExifBackfill", ex);
+            }
+
+            GarageViewModel = new GarageViewModel(Database, Importer, UiDispatcher, Covers);
             ImportWizardViewModel = new ImportWizardViewModel(Importer, UiDispatcher, AirportCatalog, AircraftCatalog);
             SettingsViewModel = new SettingsViewModel();
             Log("ViewModels ready");

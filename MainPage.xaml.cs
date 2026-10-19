@@ -265,8 +265,54 @@ public sealed partial class MainPage : Page
         openItem.Click += (_, _) => OpenRegistrationPage(group.Registration);
         flyout.Items.Add(openItem);
 
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        var coverItem = new MenuFlyoutItem { Text = "设置头图…" };
+        coverItem.Icon = new FontIcon { Glyph = "\uEB9F" }; // Picture
+        coverItem.Click += (_, _) => _ = PickTileCoverAsync(group);
+        flyout.Items.Add(coverItem);
+
+        // 没设过自定义头图的分组不显示「恢复」，免得菜单里有一条永远点不出效果的项
+        if (ViewModel.HasCustomRegistrationCover(group))
+        {
+            var resetItem = new MenuFlyoutItem { Text = "恢复自动头图" };
+            resetItem.Icon = new FontIcon { Glyph = "\uE7A7" }; // Undo
+            resetItem.Click += (_, _) => _ = ViewModel.ClearRegistrationCoverAsync(group);
+            flyout.Items.Add(resetItem);
+        }
+
         flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 给注册号窗格选头图：默认列出该飞机的照片，也可以从文件导入。
+    /// 与三个分组页共用同一份 <see cref="Views.CoverSourcePicker"/> 与 <c>covers.json</c>，
+    /// 所以在这里改过的头图，注册号页上也是同一张。
+    /// </summary>
+    private async Task PickTileCoverAsync(RegistrationGroup group)
+    {
+        try
+        {
+            var candidates = group.Photos
+                .Select(c => c.Photo)
+                .Where(p => !string.IsNullOrEmpty(p.FilePath))
+                .Select(p => (PreviewPath: p.ThumbnailPath ?? p.FilePath!, SourcePath: p.FilePath!))
+                .ToList();
+
+            var picked = await Views.CoverSourcePicker.PickAsync(
+                XamlRoot, $"{group.Title} · 选择头图", candidates);
+            if (string.IsNullOrEmpty(picked)) return;
+
+            if (!await ViewModel.SetRegistrationCoverAsync(group, picked))
+            {
+                await Views.CoverSourcePicker.ShowFailedAsync(XamlRoot);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError("PickTileCover", ex);
+        }
     }
 
     /// <summary>

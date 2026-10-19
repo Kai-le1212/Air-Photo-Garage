@@ -158,13 +158,29 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:GroupItemViewModel">
-                            <Grid>
+                            <Grid RightTapped="OnGroupRowRightTapped" Background="Transparent">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Spacing="2">
+                                <!--
+                                    头图：96×64 的固定框 + Stretch=Uniform。
+                                    用 Uniform 而不是 UniformToFill —— 与「照片不裁切」的既有约定保持一致，
+                                    宁可两边留一点底色，也不切掉机头机尾。
+                                    没有图时框仍占位，各行左边缘才对得齐。
+                                -->
+                                <Border Grid.Column="0"
+                                        Width="96"
+                                        Height="64"
+                                        Margin="0,0,14,0"
+                                        CornerRadius="4"
+                                        Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                                    <Image Source="{x:Bind CoverSource, Mode=OneWay}"
+                                           Stretch="Uniform" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="2">
                                     <TextBlock Text="{x:Bind DisplayText}"
                                                Style="{StaticResource BodyStrongTextBlockStyle}"
                                                TextTrimming="CharacterEllipsis" />
@@ -184,13 +200,13 @@
                                         </Border>
                                     </StackPanel>
                                 </StackPanel>
-                                <TextBlock Grid.Column="1"
+                                <TextBlock Grid.Column="2"
                                            VerticalAlignment="Center"
                                            Margin="12,0,0,0"
                                            Style="{StaticResource BodyTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                            Text="{x:Bind CountText}" />
-                                <FontIcon Grid.Column="2"
+                                <FontIcon Grid.Column="3"
                                           VerticalAlignment="Center"
                                           Margin="8,0,0,0"
                                           FontFamily="{ThemeResource SymbolThemeFontFamily}"

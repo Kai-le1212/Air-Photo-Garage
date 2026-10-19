@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AirPhotoGarage.Models;
+using AirPhotoGarage.Services;
 using AirPhotoGarage.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -37,7 +39,8 @@ public sealed partial class GroupedPhotoPage : Page
         var seed = GroupedPhotoPageParameter.Aircraft;
         ViewModel = new GroupedPhotoViewModel(
             App.Database, seed.Column, seed.Label,
-            seed.EnableDayGrouping, seed.EnableRegistrationSubLevel, seed.EnableUserGroups);
+            seed.EnableDayGrouping, seed.EnableRegistrationSubLevel, seed.EnableUserGroups,
+            App.Covers);
         InitializeComponent();
     }
 
@@ -90,6 +93,77 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (e.ClickedItem is not GroupItemViewModel item) return;
         await ViewModel.OpenGroupAsync(item);
+    }
+
+    /// <summary>
+    /// 分组行的右键菜单：设置头图 / 恢复自动头图。
+    /// 只有设过自定义头图的分组才给出「恢复」，避免菜单里多一条永远无效的项。
+    /// </summary>
+    private void OnGroupRowRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element
+            || element.DataContext is not GroupItemViewModel group)
+        {
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+
+        var setItem = new MenuFlyoutItem { Text = "设置头图…" };
+        setItem.Icon = new FontIcon { Glyph = "\uEB9F" }; // Picture
+        setItem.Click += (_, _) => _ = PickCoverAsync(group);
+        flyout.Items.Add(setItem);
+
+        if (ViewModel.HasCustomCover(group))
+        {
+            var clearItem = new MenuFlyoutItem { Text = "恢复自动头图" };
+            clearItem.Icon = new FontIcon { Glyph = "\uE7A7" }; // Undo
+            clearItem.Click += (_, _) => _ = ViewModel.ClearCoverAsync(group);
+            flyout.Items.Add(clearItem);
+        }
+
+        flyout.ShowAt(element, new FlyoutShowOptions { Position = e.GetPosition(element) });
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// 选头图：默认列出该分组<b>已导入的照片</b>，也可以从文件导入。
+    /// </summary>
+    private async Task PickCoverAsync(GroupItemViewModel group)
+    {
+        try
+        {
+            IReadOnlyList<Photo> photos;
+            try
+            {
+                photos = await App.Database.GetPhotosByColumnValueAsync(
+                    ViewModel.GroupColumn,
+                    group.IsMissing ? ColumnValueMatch.Missing : ColumnValueMatch.Of(group.Value),
+                    PhotoSortOrder.ShotAtDescending);
+            }
+            catch
+            {
+                photos = Array.Empty<Photo>();
+            }
+
+            var candidates = photos
+                .Where(p => !string.IsNullOrEmpty(p.FilePath))
+                .Select(p => (PreviewPath: p.ThumbnailPath ?? p.FilePath!, SourcePath: p.FilePath!))
+                .ToList();
+
+            var picked = await CoverSourcePicker.PickAsync(
+                XamlRoot, $"{group.DisplayText} · 选择头图", candidates);
+            if (string.IsNullOrEmpty(picked)) return;
+
+            if (!await ViewModel.SetCoverAsync(group, picked))
+            {
+                await CoverSourcePicker.ShowFailedAsync(XamlRoot);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError("PickCover", ex);
+        }
     }
 
     /// <summary>

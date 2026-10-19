@@ -84,6 +84,9 @@ public sealed class PhotoImportService : IPhotoImportService
             Iso = exif.Iso,
             Latitude = exif.Latitude,
             Longitude = exif.Longitude,
+            // 全部元数据快照：详情页「原始 EXIF 数据」读的就是这一列。
+            // 此前这里漏了赋值，导致该区块对任何照片都是空的。
+            ExifJson = exif.RawDump,
             ImportedAt = DateTimeOffset.Now,
         };
 
@@ -116,13 +119,15 @@ public sealed class PhotoImportService : IPhotoImportService
         await s.CopyToAsync(d, ct);
     }
 
-    private static string? FormatAperture(double? f)
+    /// <summary>光圈显示文案（<c>f/6.3</c>）。回填历史照片时也复用这一份，避免两处格式不一致。</summary>
+    internal static string? FormatAperture(double? f)
     {
         if (!f.HasValue) return null;
         return $"f/{f.Value:0.#}";
     }
 
-    private static string? FormatShutter(double? seconds)
+    /// <summary>快门显示文案（<c>1/250s</c> / <c>2s</c>）。回填历史照片时也复用。</summary>
+    internal static string? FormatShutter(double? seconds)
     {
         if (!seconds.HasValue) return null;
         if (seconds.Value >= 1) return $"{seconds.Value:0.#}s";

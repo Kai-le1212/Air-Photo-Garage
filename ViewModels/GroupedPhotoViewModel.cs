@@ -29,6 +29,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 {
     private readonly IDatabaseService _db;
 
+    /// <summary>分组头图（covers.json）。为 null 时只显示数据库给的自动封面。</summary>
+    private readonly ICoverService? _covers;
+
     /// <summary>分组所依据的数据库列名（白名单内）。</summary>
     private string _groupColumn;
 
@@ -103,9 +106,10 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     public GroupedPhotoViewModel(IDatabaseService db, string groupColumn, string dimensionLabel,
         bool enableDayGrouping = false, bool enableRegistrationSubLevel = false,
-        bool enableUserGroups = false)
+        bool enableUserGroups = false, ICoverService? covers = null)
     {
         _db = db;
+        _covers = covers;
         _groupColumn = groupColumn;
         _dimensionLabel = dimensionLabel;
         _enableDayGrouping = enableDayGrouping;
@@ -449,6 +453,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             }
             ApplyGroupSort();
 
+            // 头图按「自定义优先、否则自动」解析；放在排序之后，行的顺序不影响贴图
+            await LoadGroupCoversAsync();
+
             var total = counts.Values.Sum(c => c.Count) + (counts.Missing?.Count ?? 0);
             StatusMessage = total == 0
                 ? $"暂无{_dimensionLabel}数据（先导入照片并填写{_dimensionLabel}）"
@@ -465,6 +472,48 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             IsBusy = false;
             RaiseStateProperties();      // 关键：让 EmptyHintVisibility 跟随 Groups.Count 刷新
         }
+    }
+
+    // ---------- 分组头图 ----------
+
+    /// <summary>
+    /// 给每个分组行贴头图：<b>自定义优先，否则用数据库给的自动封面</b>
+    /// （组内最新一张照片的缩略图）。
+    /// </summary>
+    public async Task LoadGroupCoversAsync()
+    {
+        foreach (var group in Groups)
+        {
+            var path = _covers?.GetCustomCoverPath(_groupColumn, group.Value) ?? group.AutoCoverPath;
+            group.SetCover(await CoverImageLoader.LoadAsync(path));
+        }
+    }
+
+    /// <summary>该行是否设置过自定义头图（决定右键菜单是否给出「恢复自动头图」）。</summary>
+    public bool HasCustomCover(GroupItemViewModel group) =>
+        _covers?.HasCustomCover(_groupColumn, group.Value) == true;
+
+    /// <summary>
+    /// 把外部图片设为该行的头图。返回 false 表示图片无法读取/编码（调用方提示用户）。
+    /// </summary>
+    public async Task<bool> SetCoverAsync(GroupItemViewModel group, string sourcePath)
+    {
+        if (_covers is null) return false;
+
+        var saved = await _covers.SetFromFileAsync(_groupColumn, group.Value, sourcePath);
+        if (saved is null) return false;
+
+        group.SetCover(await CoverImageLoader.LoadAsync(saved));
+        return true;
+    }
+
+    /// <summary>取消自定义头图，回到自动封面。</summary>
+    public async Task ClearCoverAsync(GroupItemViewModel group)
+    {
+        if (_covers is null) return;
+
+        await _covers.ClearAsync(_groupColumn, group.Value);
+        group.SetCover(await CoverImageLoader.LoadAsync(group.AutoCoverPath));
     }
 
     /// <summary>
@@ -879,7 +928,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 }
 
 /// <summary>分组列表中的一行。</summary>
-public sealed class GroupItemViewModel
+public sealed class GroupItemViewModel : ObservableObject
 {
     private readonly GroupCount _count;
     private readonly string? _displayOverride;
@@ -995,6 +1044,32 @@ public sealed class GroupItemViewModel
     /// </summary>
     public string SummaryText =>
         AttachmentText.Length == 0 ? RangeText : $"{AttachmentText} · {RangeText}";
+
+    private Microsoft.UI.Xaml.Media.ImageSource? _coverSource;
+
+    /// <summary>
+    /// 行首头图。由 <see cref="GroupedPhotoViewModel"/> 在分组加载完（或用户改过头图）后填进来：
+    /// 自定义优先，没有就用 <see cref="AutoCoverPath"/>。
+    /// </summary>
+    public Microsoft.UI.Xaml.Media.ImageSource? CoverSource
+    {
+        get => _coverSource;
+        private set
+        {
+            if (ReferenceEquals(_coverSource, value)) return;
+            _coverSource = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasCover));
+        }
+    }
+
+    /// <summary>是否已经有头图。没图时行首仍保留占位框，各行左边缘才对得齐。</summary>
+    public bool HasCover => _coverSource is not null;
+
+    /// <summary>自动封面：组内最新一张照片的缩略图，由数据库聚合查询给出。</summary>
+    public string? AutoCoverPath => _count.CoverPath;
+
+    public void SetCover(Microsoft.UI.Xaml.Media.ImageSource? source) => CoverSource = source;
 }
 
 /// <summary>

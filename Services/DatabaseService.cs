@@ -19,6 +19,12 @@ public interface IDatabaseService
     Task DeletePhotoAsync(long id);
     Task<Photo?> GetPhotoAsync(long id);
 
+    /// <summary>
+    /// 取 <c>exif_json</c> 仍为空的历史照片（最多 <paramref name="limit"/> 张），
+    /// 供启动时回填元数据。修好 XMP 读取之前导入的照片都属于这一类。
+    /// </summary>
+    Task<IReadOnlyList<Photo>> GetPhotosMissingExifAsync(int limit);
+
     /// <summary>按筛选条件分页查询照片。</summary>
     Task<IReadOnlyList<Photo>> QueryPhotosAsync(PhotoFilter filter, int skip, int take);
 
@@ -107,10 +113,15 @@ public interface IDatabaseService
 /// 「小字附件」字段（如注册号维度的 [机型]），补在行的小字摘要里，<b>不进标题</b>。
 /// 为 null 表示该维度不需要。
 /// </param>
+/// <param name="CoverPath">
+/// 该组的<b>自动封面</b>：组内最新一张照片的缩略图路径（没有可用的则为 null）。
+/// 用户自定义过头图时由 <c>CoverService</c> 覆盖，数据库这里只提供默认值。
+/// </param>
 public sealed record GroupCount(
     string Value, int Count, DateTimeOffset? FirstShotAt, DateTimeOffset? LastShotAt,
     IReadOnlyList<string?>? DisplayParts = null,
-    IReadOnlyList<string?>? SummaryParts = null);
+    IReadOnlyList<string?>? SummaryParts = null,
+    string? CoverPath = null);
 
 /// <summary>
 /// 分组/筛选时对某一列取值的匹配方式：要么「等于某个真实值」，要么「未填写桶」。
@@ -313,8 +324,23 @@ public sealed class DatabaseService : IDatabaseService
         await cmd.ExecuteNonQueryAsync();
     }
 
-    public async Task<Photo?> GetPhotoAsync(long id)
+    public async Task<IReadOnlyList<Photo>> GetPhotosMissingExifAsync(int limit)
     {
+        var list = new List<Photo>();
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM photos WHERE exif_json IS NULL ORDER BY id LIMIT $n";
+        cmd.Parameters.AddWithValue("$n", limit);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            list.Add(ReadPhoto(reader));
+        }
+        return list;
+    }
+
+    public async Task<Photo?> GetPhotoAsync(long id)    {
         await using var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
@@ -430,6 +456,17 @@ public sealed class DatabaseService : IDatabaseService
         var summarySelect = BuildMaxSelect(summaryColumns, summaryCount, "summary");
 
         var order = byCountDescending ? "cnt DESC, value ASC" : "value ASC";
+
+        // 自动封面：组内「最新一张」照片的缩略图。
+        // 这里只能用关联子查询——SQLite 没有 argmax，MAX(thumbnail_path) 会按字典序
+        // 取到别的照片上去。(shot_at IS NULL) 放在最前面，保证有拍摄时间的优先。
+        var coverSelect = $"""
+            , (SELECT p2.thumbnail_path FROM photos p2
+                 WHERE p2.{column} = photos.{column}
+                 ORDER BY (p2.shot_at IS NULL), p2.shot_at DESC, p2.id DESC
+                 LIMIT 1) AS cover
+            """;
+
         await using var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync();
 
@@ -438,13 +475,13 @@ public sealed class DatabaseService : IDatabaseService
             SELECT {column} AS value,
                    COUNT(*) AS cnt,
                    MIN(shot_at) AS first_shot,
-                   MAX(shot_at) AS last_shot{labelSelect}{summarySelect}
+                   MAX(shot_at) AS last_shot{labelSelect}{summarySelect}{coverSelect}
             FROM photos
             WHERE {column} IS NOT NULL AND TRIM({column}) <> ''
             GROUP BY {column}
             ORDER BY {order}
             """;
-        var values = await ReadGroupCountsAsync(cmd, labelCount, summaryCount);
+        var values = await ReadGroupCountsAsync(cmd, labelCount, summaryCount, coverIndex: 4 + labelCount + summaryCount);
         var missing = await ReadMissingCountAsync(conn, MissingCondition(column));
         return new ColumnGroupCounts(values, missing);
     }
@@ -581,15 +618,16 @@ public sealed class DatabaseService : IDatabaseService
     /// </summary>
     /// <param name="labelCount">结果集尾部的附加展示列数量（0 表示没有）。</param>
     private static async Task<List<GroupCount>> ReadGroupCountsAsync(
-        SqliteCommand cmd, int labelCount = 0, int summaryCount = 0)
+        SqliteCommand cmd, int labelCount = 0, int summaryCount = 0, int coverIndex = -1)
     {
         var list = new List<GroupCount>();
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            // 列序：0=value 1=cnt 2=first_shot 3=last_shot，随后是 label0.. 与 summary0..
+            // 列序：0=value 1=cnt 2=first_shot 3=last_shot，随后是 label0.. 与 summary0..，最后（可选）cover
             var parts = ReadParts(reader, 4, labelCount);
             var summary = ReadParts(reader, 4 + labelCount, summaryCount);
+            var cover = coverIndex >= 0 && !reader.IsDBNull(coverIndex) ? reader.GetString(coverIndex) : null;
 
             list.Add(new GroupCount(
                 reader.GetString(0),
@@ -597,7 +635,8 @@ public sealed class DatabaseService : IDatabaseService
                 reader.IsDBNull(2) ? null : DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture),
                 reader.IsDBNull(3) ? null : DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
                 parts,
-                summary));
+                summary,
+                cover));
         }
         return list;
     }
