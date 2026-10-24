@@ -52,45 +52,16 @@ public sealed class AircraftCatalogService : IAircraftCatalogService
 
         return _models
             .Where(m => m.Contains(k, System.StringComparison.OrdinalIgnoreCase))
-            .OrderBy(m => Rank(m, k))
+            .OrderBy(m => AircraftModelRanking.Rank(m, k))
             .Take(20)
             .ToList();
     }
 
     /// <summary>
-    /// 排序层级（越小越靠前）。第一个词算品牌，其余词算型号段 ——
-    /// 这样 "McDonnell Douglas MD-80" 里的 "MD-80" 也能被当作型号匹配到。
+    /// 排序层级（越小越靠前）。规则集中在 <see cref="AircraftModelRanking"/>，
+    /// 与照片墙筛选面板共用同一份，避免两处排序不一致。
     /// </summary>
-    private static int Rank(string model, string keyword)
-    {
-        var words = model.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
-        var codeWords = words.Length > 1 ? words.Skip(1) : words;
-
-        // 型号段按「整段」比较（"737 MAX 10" 的型号段是 "737 MAX 10"）。
-        // 不能按单个词比：否则输入 737 时 "737 MAX 10" 会被当成「完全符合」而插到 737-800 前面。
-        var code = words.Length > 1 ? string.Join(' ', codeWords) : model;
-
-        // 0) 完全符合
-        if (string.Equals(model, keyword, System.StringComparison.OrdinalIgnoreCase)
-            || string.Equals(code, keyword, System.StringComparison.OrdinalIgnoreCase))
-        {
-            return 0;
-        }
-
-        // 1) 品牌名开头（输入字母时的主排序）
-        if (model.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)) return 1;
-
-        // 2) 型号段开头（输入数字时的主排序）；
-        //    再退一步看型号段里的任一单词，多词品牌也能匹配到（"McDonnell Douglas MD-80" → MD）
-        if (code.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)
-            || codeWords.Any(w => w.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)))
-        {
-            return 2;
-        }
-
-        // 3) 其余中间包含
-        return 3;
-    }
+    private static int Rank(string model, string keyword) => AircraftModelRanking.Rank(model, keyword);
 
     private static readonly string[] SeedModels =
     {

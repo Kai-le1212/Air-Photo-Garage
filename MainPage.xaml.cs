@@ -137,6 +137,14 @@ public sealed partial class MainPage : Page
             }
         }
 
+        // 机型候选：按与「编辑信息」同一套规则重排（含按输入过滤）。
+        // TokenizingTextBox 自身**不按输入过滤**，只会原样列出 SuggestedItemsSource ——
+        // 不重算的话下拉永远是字母序、Airbus 全挡在 Boeing 前面。
+        if (ReferenceEquals(ttb, TtbAircraft))
+        {
+            ViewModel.RefreshAircraftSuggestions(sender.Text);
+        }
+
         SyncTokenToViewModel(ttb);
         ViewModel.InvalidateFilter();
     }
@@ -180,6 +188,12 @@ public sealed partial class MainPage : Page
         if (sender is TokenizingTextBox ttb)
         {
             SyncTokenToViewModel(ttb);
+
+            // 选定/清除 token 后输入框会被清空 —— 机型候选恢复成完整列表
+            if (ReferenceEquals(ttb, TtbAircraft))
+            {
+                ViewModel.RefreshAircraftSuggestions(null);
+            }
         }
 
         ViewModel.InvalidateFilter();

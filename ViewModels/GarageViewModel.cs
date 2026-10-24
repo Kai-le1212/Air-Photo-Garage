@@ -196,6 +196,9 @@ public sealed partial class GarageViewModel : ObservableObject
     public ObservableCollection<string> RegistrationSuggestions { get; } = new();
     public ObservableCollection<string> AirportSuggestions { get; } = new();
 
+    /// <summary>库内出现过的全部机型（未过滤、字母序）。筛选框每次输入都基于它重算候选。</summary>
+    private readonly List<string> _allAircraftModels = new();
+
     partial void OnSortIndexChanged(int value) => _ = RefreshAsync();
 
     partial void OnKeywordChanged(string? value) { /* 由 ApplyFilter 统一触发 */ }
@@ -352,8 +355,10 @@ public sealed partial class GarageViewModel : ObservableObject
             var airports = await _db.GetDistinctValuesAsync("airport_code");
             _ui.TryEnqueue(() =>
             {
-                AircraftSuggestions.Clear();
-                foreach (var a in aircraft) AircraftSuggestions.Add(a);
+                _allAircraftModels.Clear();
+                _allAircraftModels.AddRange(aircraft);
+                RefreshAircraftSuggestions(null);
+
                 RegistrationSuggestions.Clear();
                 foreach (var r in regs) RegistrationSuggestions.Add(r);
                 AirportSuggestions.Clear();
@@ -364,6 +369,30 @@ public sealed partial class GarageViewModel : ObservableObject
         {
             // ignore
         }
+    }
+
+    /// <summary>
+    /// 按输入重算筛选面板的机型候选，规则与「编辑信息」里的机型框<b>同一套</b>
+    /// （<see cref="AircraftModelRanking"/>）：完全符合 → 品牌开头 → 型号段开头 → 包含。
+    ///
+    /// <para>
+    /// 这里只能用<b>库里出现过的机型</b>：筛选一个没有照片的机型毫无意义，
+    /// 而且内置机型库有 126 项，全塞进下拉反而难选。
+    /// </para>
+    /// </summary>
+    public void RefreshAircraftSuggestions(string? keyword)
+    {
+        var k = keyword?.Trim();
+
+        var items = string.IsNullOrEmpty(k)
+            ? _allAircraftModels
+            : _allAircraftModels
+                .Where(m => m.Contains(k, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(m => AircraftModelRanking.Rank(m, k))
+                .ToList();
+
+        AircraftSuggestions.Clear();
+        foreach (var m in items) AircraftSuggestions.Add(m);
     }
 }
 
