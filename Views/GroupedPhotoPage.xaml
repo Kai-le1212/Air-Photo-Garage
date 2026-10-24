@@ -219,6 +219,21 @@
                         <TextBlock Text="方块视图" FontSize="13" />
                     </StackPanel>
                 </ToggleButton>
+
+                <!-- 注册号页专用：勾选多架飞机，一次写好航司（并补齐缺失的机型） -->
+                <Button VerticalAlignment="Bottom"
+                        Height="32"
+                        Padding="12,0"
+                        Click="OnBatchAirlineClick"
+                        Visibility="{x:Bind ViewModel.BatchAirlineVisibility, Mode=OneWay}"
+                        ToolTipService.ToolTip="勾选多架飞机，一次设置航空公司">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xE716;"
+                                  FontSize="14" />
+                        <TextBlock Text="批量设置航司" FontSize="13" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 

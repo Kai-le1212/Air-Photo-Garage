@@ -41,6 +41,14 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
 
+            <NavigationViewItem Content="航司"
+                                Tag="airline"
+                                AutomationProperties.Name="航司">
+                <NavigationViewItem.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE7EC;" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
             <NavigationViewItem Content="注册号"
                                 Tag="registration"
                                 AutomationProperties.Name="注册号">

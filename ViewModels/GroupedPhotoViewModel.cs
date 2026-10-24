@@ -284,6 +284,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         OnPropertyChanged(nameof(GroupListSortVisibility));
         OnPropertyChanged(nameof(PhotoSortVisibility));
         OnPropertyChanged(nameof(GroupViewToggleVisibility));
+        OnPropertyChanged(nameof(BatchAirlineVisibility));
         // 视图形态也要跟着刷新：切换维度后本页的偏好键变了（机型/机场/注册号各存各的）
         OnPropertyChanged(nameof(IsGroupGridView));
         OnPropertyChanged(nameof(GroupRowsVisibility));
@@ -313,6 +314,16 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// </summary>
     public Microsoft.UI.Xaml.Visibility GroupViewToggleVisibility =>
         IsViewingGroupList || IsViewingSubGroups
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>
+    /// 「批量设置航司」按钮：只在<b>注册号页的列表态</b>出现 ——
+    /// 那一屏列出的就是一架架飞机，勾选多架一次写好航司最自然。
+    /// （机型 / 机场 / 航司页的行是「类别」不是「哪一架飞机」，没有意义。）
+    /// </summary>
+    public Microsoft.UI.Xaml.Visibility BatchAirlineVisibility =>
+        _enableUserGroups && IsViewingGroupList
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
@@ -760,7 +771,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 {
                     ShowCardText = !_enableUserGroups,
                     // 机场页里第三行改印航空公司 —— 在机场页显示机场名是废话
-                    ShowAirlineInThirdLine = CollapseRegistrationsInNodes,
+                    ShowAirlineInThirdLine = ShowAirlineOnCards,
                 })
                 .ToList();
 
@@ -826,6 +837,14 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// </para>
     /// </summary>
     private bool CollapseRegistrationsInNodes =>
+        string.Equals(_groupColumn, "airport_icao", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(_groupColumn, "airline_name", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 卡片第三行是否改印航空公司 —— <b>只有机场页</b>。
+    /// 航司页里每张卡的航司都一样，第三行该印机场（正好是互补的那一侧）。
+    /// </summary>
+    private bool ShowAirlineOnCards =>
         string.Equals(_groupColumn, "airport_icao", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>

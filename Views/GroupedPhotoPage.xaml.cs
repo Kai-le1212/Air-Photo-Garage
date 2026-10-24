@@ -197,8 +197,47 @@ public sealed partial class GroupedPhotoPage : Page
         _ = ViewModel.GoBackAsync();
     }
 
-    private void OnPhotoClick(object sender, ItemClickEventArgs e)
+    /// <summary>
+    /// 「批量设置航司」：勾选多架飞机 → 一次写入航空公司。
+    ///
+    /// <para>
+    /// 落库由 <c>DatabaseService.AssignAirlineAsync</c> 完成，它会连带把
+    /// 缺失的机型按同注册号的已知机型补齐（一架飞机只有一种机型）。
+    /// 完成后重新拉一次分组列表，行上的航司名/小字立刻更新。
+    /// </para>
+    /// </summary>
+    private async void OnBatchAirlineClick(object sender, RoutedEventArgs e)
     {
+        if (XamlRoot is null) return;
+
+        // 列表态里每一行就是一架飞机；「未填写」兜底行没有注册号，排除
+        var registrations = ViewModel.Groups
+            .Where(g => !g.IsMissing && !string.IsNullOrWhiteSpace(g.Value))
+            .Select(g => g.Value!)
+            .ToList();
+
+        if (registrations.Count == 0) return;
+
+        var result = await AirlineAssignDialog.ShowAsync(XamlRoot, registrations);
+        if (result is null) return;
+
+        try
+        {
+            var affected = await App.Database.AssignAirlineAsync(
+                result.Registrations, result.AirlineName, result.AirlineIata);
+
+            await ViewModel.LoadGroupsAsync();
+
+            var airline = result.AirlineName ?? result.AirlineIata ?? "(空)";
+            ViewModel.StatusMessage = $"已给 {result.Registrations.Count} 架飞机设置航司「{airline}」，更新 {affected} 张照片";
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"批量设置航司失败：{ex.Message}";
+        }
+    }
+
+    private void OnPhotoClick(object sender, ItemClickEventArgs e)    {
         if (e.ClickedItem is not PhotoCardViewModel card) return;
 
         // 机场页里一架飞机只露一张卡（右上角标着总张数）：
@@ -583,6 +622,24 @@ public sealed class GroupedPhotoPageParameter
         Label = "机场",
         EnableDayGrouping = true,
         RowLabelColumns = new[] { "airport_name", "airport_iata" },
+        CountAircraft = true,
+    };
+
+    /// <summary>
+    /// 航司页：航空公司 → 该航司的飞机照片，按天分。行标题显示「航司名 · 二字码」。
+    ///
+    /// <para>
+    /// 计数显示<b>飞机架数</b>：一个航司下往往有多架飞机、每架都拍了好几张。
+    /// 照片态按注册号收拢（一架飞机一张卡 + 张数角标），与机场页一致 ——
+    /// 一天里同一个航司可能来好几架，全铺开看不出「今天拍到几架」。
+    /// </para>
+    /// </summary>
+    public static GroupedPhotoPageParameter Airline => new()
+    {
+        Column = "airline_name",
+        Label = "航司",
+        EnableDayGrouping = true,
+        RowLabelColumns = new[] { "airline_iata" },
         CountAircraft = true,
     };
 

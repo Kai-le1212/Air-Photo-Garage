@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
         { "gallery",      typeof(MainPage) },
         { "aircraft",     typeof(Views.GroupedPhotoPage) },
         { "airport",      typeof(Views.GroupedPhotoPage) },
+        { "airline",      typeof(Views.GroupedPhotoPage) },
         { "registration", typeof(Views.GroupedPhotoPage) },
         { "settings",     typeof(Views.SettingsPage) },
     };
@@ -31,6 +32,7 @@ public sealed partial class MainWindow : Window
     {
         "aircraft" => Views.GroupedPhotoPageParameter.Aircraft,
         "airport" => Views.GroupedPhotoPageParameter.Airport,
+        "airline" => Views.GroupedPhotoPageParameter.Airline,
         "registration" => Views.GroupedPhotoPageParameter.Registration,
         _ => null,
     };
@@ -148,6 +150,7 @@ public sealed partial class MainWindow : Window
             {
                 Views.GroupedPhotoPageParameter p when p.Column == "aircraft_model" => "aircraft",
                 Views.GroupedPhotoPageParameter p when p.Column == "airport_icao" => "airport",
+                Views.GroupedPhotoPageParameter p when p.Column == "airline_name" => "airline",
                 Views.GroupedPhotoPageParameter p when p.Column == "registration_number" => "registration",
                 _ => "aircraft",
             };

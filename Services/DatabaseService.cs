@@ -35,6 +35,19 @@ public interface IDatabaseService
     Task<IReadOnlyList<string>> GetDistinctValuesAsync(string column);
 
     /// <summary>
+    /// 给一批飞机（按注册号）批量设置航空公司，并<b>顺手补齐缺失的机型</b>。
+    ///
+    /// <para>
+    /// 机型从同一注册号下已有的机型取（出现次数最多的那个）——
+    /// 「一架飞机 = 一种机型」在注册号维度成立，所以这样补是安全的。
+    /// 该注册号一张照片都没有机型时无从推断，保持空白。
+    /// </para>
+    /// </summary>
+    /// <returns>实际被更新的照片行数。</returns>
+    Task<int> AssignAirlineAsync(
+        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata);
+
+    /// <summary>
     /// 按分组维度聚合。返回<b>真实值分布</b> + <b>「未填写」桶</b>
     /// （无未填写记录时 <c>Missing</c> 为 null）。
     /// <paramref name="column"/> 只能是白名单列（aircraft_model / registration_number /
@@ -410,7 +423,8 @@ public sealed class DatabaseService : IDatabaseService
         // 仅允许白名单列名以防 SQL 注入
         var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "aircraft_model", "registration_number", "airport_code", "airport_name", "camera_model"
+            "aircraft_model", "registration_number", "airport_code", "airport_name", "camera_model",
+            "airline_name", "airline_iata", "flight_number"
         };
         if (!allowed.Contains(column))
         {
@@ -438,6 +452,7 @@ public sealed class DatabaseService : IDatabaseService
     {
         "aircraft_model", "registration_number",
         "airport_iata", "airport_icao", "airport_name", "airport_code",
+        "airline_name", "airline_iata",
     };
 
     private static void EnsureGroupableColumn(string column)
@@ -446,6 +461,63 @@ public sealed class DatabaseService : IDatabaseService
         {
             throw new ArgumentException($"Column not allowed for grouping: {column}");
         }
+    }
+
+    public async Task<int> AssignAirlineAsync(
+        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata)
+    {
+        if (registrations.Count == 0) return 0;
+
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var tx = (SqliteTransaction)await conn.BeginTransactionAsync();
+
+        var affected = 0;
+        foreach (var registration in registrations)
+        {
+            var reg = registration?.Trim();
+            if (string.IsNullOrEmpty(reg)) continue;
+
+            // 1) 写航司
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.Transaction = tx;
+                cmd.CommandText = """
+                    UPDATE photos
+                    SET airline_name = $name, airline_iata = $iata
+                    WHERE registration_number = $reg COLLATE NOCASE
+                    """;
+                cmd.Parameters.AddWithValue("$name", (object?)airlineName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("$iata", (object?)airlineIata ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("$reg", reg);
+                affected += await cmd.ExecuteNonQueryAsync();
+            }
+
+            // 2) 顺手补齐缺失的机型：取同一注册号下出现次数最多的机型
+            //    （一架飞机只有一种机型，所以同注册号的已知机型可以直接套用）
+            await using (var fill = conn.CreateCommand())
+            {
+                fill.Transaction = tx;
+                fill.CommandText = """
+                    UPDATE photos
+                    SET aircraft_model = (
+                        SELECT aircraft_model FROM photos
+                        WHERE registration_number = $reg COLLATE NOCASE
+                          AND aircraft_model IS NOT NULL AND TRIM(aircraft_model) <> ''
+                        GROUP BY aircraft_model
+                        ORDER BY COUNT(*) DESC
+                        LIMIT 1
+                    )
+                    WHERE registration_number = $reg COLLATE NOCASE
+                      AND (aircraft_model IS NULL OR TRIM(aircraft_model) = '')
+                    """;
+                fill.Parameters.AddWithValue("$reg", reg);
+                await fill.ExecuteNonQueryAsync();
+            }
+        }
+
+        await tx.CommitAsync();
+        return affected;
     }
 
     public async Task<ColumnGroupCounts> GetGroupCountsAsync(
