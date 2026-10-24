@@ -199,10 +199,28 @@ public sealed partial class GroupedPhotoPage : Page
 
     private void OnPhotoClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is PhotoCardViewModel card)
+        if (e.ClickedItem is not PhotoCardViewModel card) return;
+
+        // 机场页里一架飞机只露一张卡（右上角标着总张数）：
+        // 点它不打开这一张的详情，而是跳去「注册号」页看这架飞机的全部照片。
+        // 返回时本页还在后退栈里（OpenGroupValue 那条路径），能直接退回来。
+        var registration = card.Photo.RegistrationNumber?.Trim();
+        if (card.GroupPhotoCount > 1
+            && !string.IsNullOrEmpty(registration)
+            && Frame is not null)
         {
-            _ = ShowPhotoDetailSafeAsync(card);
+            Frame.Navigate(typeof(GroupedPhotoPage), new GroupedPhotoPageParameter
+            {
+                Column = "registration_number",
+                Label = "注册号",
+                EnableDayGrouping = true,
+                EnableUserGroups = true,
+                OpenGroupValue = registration,
+            });
+            return;
         }
+
+        _ = ShowPhotoDetailSafeAsync(card);
     }
 
     /// <summary>

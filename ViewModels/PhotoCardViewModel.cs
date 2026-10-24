@@ -60,6 +60,32 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         : Microsoft.UI.Xaml.Visibility.Collapsed;
 
     /// <summary>
+    /// 这张卡<b>代表</b>同组照片的张数（默认 1 = 只代表自己）。
+    ///
+    /// <para>
+    /// 机场页里一架飞机在一个日期节点下可能有好几张照片，界面只露一张卡、
+    /// 右上角标出总张数，点开再去「注册号」页看全部 —— 这样一屏能看清当天来过几架飞机，
+    /// 而不是被同一架飞机的多张照片铺满。
+    /// </para>
+    /// </summary>
+    [ObservableProperty]
+    public partial int GroupPhotoCount { get; set; } = 1;
+
+    /// <summary>张数角标的可见性（只有代表多张时才显示）。</summary>
+    public Microsoft.UI.Xaml.Visibility GroupBadgeVisibility => GroupPhotoCount > 1
+        ? Microsoft.UI.Xaml.Visibility.Visible
+        : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>张数角标文案，形如「3 张」。</summary>
+    public string GroupBadgeText => $"{GroupPhotoCount} 张";
+
+    partial void OnGroupPhotoCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(GroupBadgeVisibility));
+        OnPropertyChanged(nameof(GroupBadgeText));
+    }
+
+    /// <summary>
     /// 卡片图片区应有的高度。
     ///
     /// <para>

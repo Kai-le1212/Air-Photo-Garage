@@ -57,6 +57,19 @@
                                        Foreground="White"
                                        Style="{StaticResource CaptionTextBlockStyle}" />
                         </Border>
+
+                        <!-- 张数角标：机场页里一架飞机只露一张卡，点开看全部 -->
+                        <Border VerticalAlignment="Top"
+                                HorizontalAlignment="Right"
+                                Margin="8"
+                                Padding="8,2"
+                                CornerRadius="10"
+                                Background="{ThemeResource AccentFillColorSecondaryBrush}"
+                                Visibility="{x:Bind GroupBadgeVisibility, Mode=OneWay}">
+                            <TextBlock Text="{x:Bind GroupBadgeText, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
                     </Grid>
 
                     <StackPanel Grid.Row="1" Padding="10,8" Spacing="2"

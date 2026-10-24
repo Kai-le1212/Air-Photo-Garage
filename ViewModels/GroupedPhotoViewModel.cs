@@ -815,6 +815,49 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         cards.OrderBy(c => c.RegistrationDisplay, StringComparer.CurrentCultureIgnoreCase).ToList();
 
     /// <summary>
+    /// 是否在日期节点里把<b>同一注册号</b>的多张照片收成一张 —— 只有机场页需要。
+    ///
+    /// <para>
+    /// 机场页一天可能来十几架飞机、每架拍好几张，全铺开会把「今天来过几架飞机」淹没。
+    /// 收成「一架一张卡 + 张数角标」后一屏能看全，点卡片再去「注册号」页看这架的全部照片。
+    /// 机型页 / 注册号页的照片态本来就是单架飞机，不需要收。
+    /// </para>
+    /// </summary>
+    private bool CollapseRegistrationsInNodes =>
+        string.Equals(_groupColumn, "airport_icao", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 把同一注册号的多张照片收成一张代表卡（其它几张的张数写进角标）。
+    /// 代表卡取该组排序后的第一张（即当前排序下最靠前的）。
+    /// </summary>
+    /// <returns>
+    /// <c>Cards</c>：要显示的卡片；<c>CountText</c>：节点标题该用的计数文案，
+    /// 没发生收拢时为 null（沿用「N 张」）。
+    /// </returns>
+    private (List<PhotoCardViewModel> Cards, string? CountText) CollapseByRegistration(
+        List<PhotoCardViewModel> members)
+    {
+        // 每张先复位：重新加载/换排序时，上一轮的角标不能残留
+        foreach (var c in members) c.GroupPhotoCount = 1;
+
+        if (!CollapseRegistrationsInNodes) return (members, null);
+
+        var reps = new List<PhotoCardViewModel>();
+        foreach (var group in members.GroupBy(
+                     c => c.RegistrationDisplay ?? string.Empty,
+                     StringComparer.CurrentCultureIgnoreCase))
+        {
+            var rep = group.First();
+            rep.GroupPhotoCount = group.Count();
+            reps.Add(rep);
+        }
+
+        // 每架飞机本来就只有一张 —— 没必要显示「3 架 · 3 张」这种废话
+        var countText = reps.Count == members.Count ? null : $"{reps.Count} 架 · {members.Count} 张";
+        return (reps, countText);
+    }
+
+    /// <summary>
     /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一个机场一行</b>。
     ///
     /// <para>
@@ -912,6 +955,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 .DefaultIfEmpty(g.CreatedAt.DateTime)
                 .Max();
 
+            var collapsed = CollapseByRegistration(members);
+
             nodes.Add(new TimelineNode(
                 title: g.Name,
                 subtitle: FormatRange(members),
@@ -919,7 +964,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 sortKey: sortKey,
                 isUserGroup: true,
                 groupId: g.Id,
-                photos: members));
+                photos: collapsed.Cards,
+                countText: collapsed.CountText));
         }
 
         // 2) 未归属任何自定义分组的照片 → 按拍摄日期成组
@@ -936,6 +982,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         foreach (var day in byDay)
         {
             var members = OrderByRegistration(day);
+            var collapsed = CollapseByRegistration(members);
+
             nodes.Add(new TimelineNode(
                 title: day.Key.ToString("yyyy-MM-dd"),
                 subtitle: WeekdayText(day.Key) + " · 自动按天",
@@ -943,13 +991,16 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 sortKey: day.Key,
                 isUserGroup: false,
                 groupId: null,
-                photos: members));
+                photos: collapsed.Cards,
+                countText: collapsed.CountText));
         }
 
         // 3) 无拍摄时间的照片统一兜底成一个节点
         var noTime = OrderByRegistration(unassigned.Where(c => !c.Photo.ShotAt.HasValue));
         if (noTime.Count > 0)
         {
+            var collapsed = CollapseByRegistration(noTime);
+
             nodes.Add(new TimelineNode(
                 title: "未知拍摄时间",
                 subtitle: "自动按天",
@@ -957,7 +1008,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 sortKey: DateTime.MinValue,
                 isUserGroup: false,
                 groupId: null,
-                photos: noTime));
+                photos: collapsed.Cards,
+                countText: collapsed.CountText));
         }
 
         // 排序方式跟随「照片排序」：只有"旧→新"时升序，其余一律新→旧
@@ -1209,7 +1261,8 @@ public sealed class GroupItemViewModel : ObservableObject
 public sealed class TimelineNode
 {
     public TimelineNode(string title, string subtitle, string photoInfo, DateTime sortKey,
-        bool isUserGroup, long? groupId, IReadOnlyList<PhotoCardViewModel> photos)
+        bool isUserGroup, long? groupId, IReadOnlyList<PhotoCardViewModel> photos,
+        string? countText = null)
     {
         Title = title;
         Subtitle = subtitle;
@@ -1218,6 +1271,10 @@ public sealed class TimelineNode
         IsUserGroup = isUserGroup;
         GroupId = groupId;
         Photos = photos;
+
+        // 机场页会把同一架飞机的多张照片收成一张卡，此时「5 张卡」≠「7 张照片」，
+        // 由调用方给出准确的文案（如「6 架 · 7 张」）；其它页面沿用卡片数即可。
+        CountText = countText ?? $"{photos.Count} 张";
     }
 
     /// <summary>节点标题：自定义分组显示组名，按天显示日期。</summary>
@@ -1251,7 +1308,7 @@ public sealed class TimelineNode
 
     public IReadOnlyList<PhotoCardViewModel> Photos { get; }
 
-    public string CountText => $"{Photos.Count} 张";
+    public string CountText { get; }
 
     /// <summary>自定义分组徽标可见性。</summary>
     public Microsoft.UI.Xaml.Visibility BadgeVisibility =>
