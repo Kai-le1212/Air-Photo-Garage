@@ -66,6 +66,12 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     private IReadOnlyList<string> _summaryColumns = Array.Empty<string>();
 
     /// <summary>
+    /// 分组行右侧的计数是否显示「飞机架数」而不是「照片张数」。
+    /// 机型页 / 机场页为 true；注册号页为 false（一个组就是一架飞机）。
+    /// </summary>
+    private bool _countAircraft;
+
+    /// <summary>
     /// 当前选中分组行的<b>展示标题</b>（如「香港国际机场 · HKG」）。
     /// 与 <see cref="SelectedGroup"/> 分开存：后者是查询用的原始分组键（"VHHH"），
     /// 拿展示标题去查库一定查不到。
@@ -131,7 +137,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     public void SwitchDimension(string groupColumn, string dimensionLabel, bool enableDayGrouping,
         bool enableRegistrationSubLevel, bool enableUserGroups,
         IReadOnlyList<string>? rowLabelColumns = null,
-        IReadOnlyList<string>? summaryColumns = null)
+        IReadOnlyList<string>? summaryColumns = null,
+        bool countAircraft = false)
     {
         var labels = rowLabelColumns ?? Array.Empty<string>();
         var summaries = summaryColumns ?? Array.Empty<string>();
@@ -140,7 +147,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             && _enableRegistrationSubLevel == enableRegistrationSubLevel
             && _enableUserGroups == enableUserGroups
             && _rowLabelColumns.SequenceEqual(labels)
-            && _summaryColumns.SequenceEqual(summaries))
+            && _summaryColumns.SequenceEqual(summaries)
+            && _countAircraft == countAircraft)
         {
             return;
         }
@@ -152,6 +160,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         _enableUserGroups = enableUserGroups;
         _rowLabelColumns = labels;
         _summaryColumns = summaries;
+        _countAircraft = countAircraft;
 
         // 清空上一维度的数据与状态，再刷新所有派生属性
         SelectedGroup = null;
@@ -441,7 +450,10 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             Groups.Clear();
             foreach (var c in counts.Values)
             {
-                Groups.Add(new GroupItemViewModel(c, _dimensionLabel));
+                Groups.Add(new GroupItemViewModel(c, _dimensionLabel)
+                {
+                    CountAircraft = _countAircraft,
+                });
             }
             // 未填写该维度的照片也必须有一行入口 —— 否则它们在对应页面彻底看不到
             //（GetGroupCountsAsync 的值分布会把该列为空的记录整个过滤掉）
@@ -449,7 +461,10 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             {
                 Groups.Add(new GroupItemViewModel(
                     counts.Missing, _dimensionLabel,
-                    isMissing: true, displayOverride: $"未填写{_dimensionLabel}"));
+                    isMissing: true, displayOverride: $"未填写{_dimensionLabel}")
+                {
+                    CountAircraft = _countAircraft,
+                });
             }
             ApplyGroupSort();
 
@@ -953,6 +968,13 @@ public sealed class GroupItemViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 右侧计数是否按「飞机架数」而不是「照片张数」。
+    /// 机型页 / 机场页为 true —— 同一架飞机在那里可能有多张照片；
+    /// 注册号页为 false —— 一个「组」本身就是一架飞机，张数才是有意义的信息。
+    /// </summary>
+    public bool CountAircraft { get; init; }
+
+    /// <summary>
     /// 分组键的<b>原始值</b>，用于查库（如 "VHHH"）。
     /// 界面上要显示的是 <see cref="DisplayText"/>，<b>不要</b>把两者混用 ——
     /// 拿展示标题去查库一定查不到。
@@ -995,8 +1017,12 @@ public sealed class GroupItemViewModel : ObservableObject
     /// <summary>该分组内最晚的拍摄时间。</summary>
     public DateTimeOffset? LastShotAt => _count.LastShotAt;
 
-    /// <summary>照片张数，形如 "12 张"。</summary>
-    public string CountText => $"{_count.Count} 张";
+    /// <summary>
+    /// 右侧计数。机型页 / 机场页显示<b>飞机架数</b>（去重注册号）——
+    /// 同一个机型、同一个机场都可能有多张同一架飞机的照片，
+    /// 写「4 张」会让人以为有 4 架。注册号页的组本身就是一架飞机，所以仍显示照片张数。
+    /// </summary>
+    public string CountText => CountAircraft ? $"{_count.AircraftCount} 架" : $"{_count.Count} 张";
 
     /// <summary>
     /// 拍摄时间范围摘要，例如 "2024-03-01 ~ 2025-01-20"。

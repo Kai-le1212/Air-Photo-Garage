@@ -117,11 +117,17 @@ public interface IDatabaseService
 /// 该组的<b>自动封面</b>：组内最新一张照片的缩略图路径（没有可用的则为 null）。
 /// 用户自定义过头图时由 <c>CoverService</c> 覆盖，数据库这里只提供默认值。
 /// </param>
+/// <param name="AircraftCount">
+/// 该组有几<b>架</b>飞机：去重后的注册号个数。
+/// 机型页 / 机场页要显示「N 架」而不是「N 张」—— 同一架飞机在那里可能有多张照片。
+/// 注册号为空的不计入（归不到具体哪一架）。
+/// </param>
 public sealed record GroupCount(
     string Value, int Count, DateTimeOffset? FirstShotAt, DateTimeOffset? LastShotAt,
     IReadOnlyList<string?>? DisplayParts = null,
     IReadOnlyList<string?>? SummaryParts = null,
-    string? CoverPath = null);
+    string? CoverPath = null,
+    int AircraftCount = 0);
 
 /// <summary>
 /// 分组/筛选时对某一列取值的匹配方式：要么「等于某个真实值」，要么「未填写桶」。
@@ -475,16 +481,26 @@ public sealed class DatabaseService : IDatabaseService
             SELECT {column} AS value,
                    COUNT(*) AS cnt,
                    MIN(shot_at) AS first_shot,
-                   MAX(shot_at) AS last_shot{labelSelect}{summarySelect}{coverSelect}
+                   MAX(shot_at) AS last_shot{labelSelect}{summarySelect}{coverSelect},
+                   {AircraftCountSql} AS aircraft
             FROM photos
             WHERE {column} IS NOT NULL AND TRIM({column}) <> ''
             GROUP BY {column}
             ORDER BY {order}
             """;
-        var values = await ReadGroupCountsAsync(cmd, labelCount, summaryCount, coverIndex: 4 + labelCount + summaryCount);
+        var values = await ReadGroupCountsAsync(cmd, labelCount, summaryCount,
+            coverIndex: 4 + labelCount + summaryCount,
+            aircraftIndex: 5 + labelCount + summaryCount);
         var missing = await ReadMissingCountAsync(conn, MissingCondition(column));
         return new ColumnGroupCounts(values, missing);
     }
+
+    /// <summary>
+    /// 「该组有几架飞机」：<b>去重注册号</b>。注册号为空的不计入 —— 归不到具体哪一架。
+    /// 机型页 / 机场页显示「N 架」用这个，而不是照片张数（同一架飞机可能拍了很多张）。
+    /// </summary>
+    private const string AircraftCountSql =
+        "COUNT(DISTINCT CASE WHEN TRIM(IFNULL(registration_number, '')) <> '' THEN registration_number END)";
 
     /// <summary>
     /// 把「每组取一列 MAX 值」拼成 SELECT 片段（别名 <c>{prefix}0, {prefix}1 …</c>）。
@@ -618,16 +634,18 @@ public sealed class DatabaseService : IDatabaseService
     /// </summary>
     /// <param name="labelCount">结果集尾部的附加展示列数量（0 表示没有）。</param>
     private static async Task<List<GroupCount>> ReadGroupCountsAsync(
-        SqliteCommand cmd, int labelCount = 0, int summaryCount = 0, int coverIndex = -1)
+        SqliteCommand cmd, int labelCount = 0, int summaryCount = 0,
+        int coverIndex = -1, int aircraftIndex = -1)
     {
         var list = new List<GroupCount>();
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            // 列序：0=value 1=cnt 2=first_shot 3=last_shot，随后是 label0.. 与 summary0..，最后（可选）cover
+            // 列序：0=value 1=cnt 2=first_shot 3=last_shot，随后 label0..、summary0..、（可选）cover、aircraft
             var parts = ReadParts(reader, 4, labelCount);
             var summary = ReadParts(reader, 4 + labelCount, summaryCount);
             var cover = coverIndex >= 0 && !reader.IsDBNull(coverIndex) ? reader.GetString(coverIndex) : null;
+            var aircraft = aircraftIndex >= 0 && !reader.IsDBNull(aircraftIndex) ? reader.GetInt32(aircraftIndex) : 0;
 
             list.Add(new GroupCount(
                 reader.GetString(0),
@@ -636,7 +654,8 @@ public sealed class DatabaseService : IDatabaseService
                 reader.IsDBNull(3) ? null : DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
                 parts,
                 summary,
-                cover));
+                cover,
+                aircraft));
         }
         return list;
     }
@@ -664,7 +683,10 @@ public sealed class DatabaseService : IDatabaseService
         SqliteConnection conn, string condition, SqliteCommand? reuse = null)
     {
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT COUNT(*), MIN(shot_at), MAX(shot_at) FROM photos WHERE {condition}";
+        cmd.CommandText = $"""
+            SELECT COUNT(*), MIN(shot_at), MAX(shot_at), {AircraftCountSql}
+            FROM photos WHERE {condition}
+            """;
         if (reuse is not null)
         {
             foreach (SqliteParameter p in reuse.Parameters)
@@ -684,7 +706,8 @@ public sealed class DatabaseService : IDatabaseService
             string.Empty,
             count,
             reader.IsDBNull(1) ? null : DateTimeOffset.Parse(reader.GetString(1), CultureInfo.InvariantCulture),
-            reader.IsDBNull(2) ? null : DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture));
+            reader.IsDBNull(2) ? null : DateTimeOffset.Parse(reader.GetString(2), CultureInfo.InvariantCulture),
+            AircraftCount: reader.IsDBNull(3) ? 0 : reader.GetInt32(3));
     }
 
     // ---------- 用户自定义分组 ----------

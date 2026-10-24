@@ -58,7 +58,7 @@ public sealed partial class GroupedPhotoPage : Page
         ViewModel.SwitchDimension(
             param.Column, param.Label,
             param.EnableDayGrouping, param.EnableRegistrationSubLevel, param.EnableUserGroups,
-            param.RowLabelColumns, param.SummaryColumns);
+            param.RowLabelColumns, param.SummaryColumns, param.CountAircraft);
 
         _ = LoadAndMaybeOpenAsync(param.OpenGroupValue);
     }
@@ -517,6 +517,17 @@ public sealed class GroupedPhotoPageParameter
     public IReadOnlyList<string> SummaryColumns { get; init; } = Array.Empty<string>();
 
     /// <summary>
+    /// 分组行右侧的计数是否显示<b>飞机架数</b>而不是照片张数。
+    ///
+    /// <para>
+    /// 机型页 / 机场页为 true：一个机型下可能有好几架飞机、每架都拍了好几张，
+    /// 显示「4 张」会被读成「4 架」。注册号页为 false —— 那里的一个组本身就是一架飞机，
+    /// 张数才是有用的信息。
+    /// </para>
+    /// </summary>
+    public bool CountAircraft { get; init; }
+
+    /// <summary>
     /// 进页后自动打开的分组值。
     /// 照片墙点注册号窗格跳过来时带上它，省得用户再在列表里找一遍。
     /// </summary>
@@ -534,6 +545,7 @@ public sealed class GroupedPhotoPageParameter
         Label = "机型",
         EnableDayGrouping = true,
         EnableRegistrationSubLevel = true,
+        CountAircraft = true,
     };
 
     /// <summary>机场页：机场 → 该机场的照片，按天分。行标题显示「机场名 · IATA」。</summary>
@@ -543,6 +555,7 @@ public sealed class GroupedPhotoPageParameter
         Label = "机场",
         EnableDayGrouping = true,
         RowLabelColumns = new[] { "airport_name", "airport_iata" },
+        CountAircraft = true,
     };
 
     /// <summary>
