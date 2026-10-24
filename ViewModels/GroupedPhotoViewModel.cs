@@ -284,6 +284,12 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         OnPropertyChanged(nameof(GroupListSortVisibility));
         OnPropertyChanged(nameof(PhotoSortVisibility));
         OnPropertyChanged(nameof(GroupViewToggleVisibility));
+        // 视图形态也要跟着刷新：切换维度后本页的偏好键变了（机型/机场/注册号各存各的）
+        OnPropertyChanged(nameof(IsGroupGridView));
+        OnPropertyChanged(nameof(GroupRowsVisibility));
+        OnPropertyChanged(nameof(GroupTilesVisibility));
+        OnPropertyChanged(nameof(SubGroupRowsVisibility));
+        OnPropertyChanged(nameof(SubGroupTilesVisibility));
         OnPropertyChanged(nameof(TimelineVisibility));
         OnPropertyChanged(nameof(FlatPhotosVisibility));
         OnPropertyChanged(nameof(EmptyHintVisibility));
@@ -542,8 +548,14 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     // ---------- 视图形态：条状 / 方块 ----------
 
-    /// <summary>分组列表当前是否为方块视图（全局偏好，机型 / 机场 / 注册号三页共用）。</summary>
-    public bool IsGroupGridView => ViewModeStore.GroupList == ViewKind.Grid;
+    /// <summary>
+    /// 本页在偏好文件里的键 —— 由分组列名决定，
+    /// 所以机型 / 机场 / 注册号<b>各记各的</b>，互不影响。
+    /// </summary>
+    private string ViewPageKey => ViewModeStore.PageKeyOf(_groupColumn);
+
+    /// <summary>本页当前是否为方块视图。</summary>
+    public bool IsGroupGridView => ViewModeStore.Get(ViewPageKey) == ViewKind.Grid;
 
     public Microsoft.UI.Xaml.Visibility GroupRowsVisibility =>
         IsGroupGridView ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
@@ -556,19 +568,12 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     public Microsoft.UI.Xaml.Visibility SubGroupTilesVisibility => GroupTilesVisibility;
 
-    /// <summary>切换条状 / 方块。写进全局偏好，其它分组页下次进入即生效。</summary>
+    /// <summary>切换本页的条状 / 方块，写进偏好文件（每页独立记忆）。</summary>
     [RelayCommand]
     public void ToggleGroupView() =>
-        ViewModeStore.SetGroupList(IsGroupGridView ? ViewKind.List : ViewKind.Grid);
+        ViewModeStore.Set(ViewPageKey, IsGroupGridView ? ViewKind.List : ViewKind.Grid);
 
-    private void OnViewModeChanged()
-    {
-        OnPropertyChanged(nameof(IsGroupGridView));
-        OnPropertyChanged(nameof(GroupRowsVisibility));
-        OnPropertyChanged(nameof(GroupTilesVisibility));
-        OnPropertyChanged(nameof(SubGroupRowsVisibility));
-        OnPropertyChanged(nameof(SubGroupTilesVisibility));
-    }
+    private void OnViewModeChanged() => RaiseStateProperties();
 
     /// <summary>
     /// 解除对全局偏好的订阅。页面离开时必须调用 ——

@@ -64,8 +64,8 @@ public sealed partial class GarageViewModel : ObservableObject
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
-    /// <summary>照片墙分组当前是否为方块视图（全局偏好，与分组列表分开存）。</summary>
-    public bool IsWallGrid => ViewModeStore.Wall == ViewKind.Grid;
+    /// <summary>照片墙分组当前是否为方块视图（本页独立记忆）。</summary>
+    public bool IsWallGrid => ViewModeStore.Get(ViewModeStore.WallPage) == ViewKind.Grid;
 
     /// <summary>分组视图 · 方块（窗格）。</summary>
     public Microsoft.UI.Xaml.Visibility GroupedWallTilesVisibility =>
@@ -79,11 +79,11 @@ public sealed partial class GarageViewModel : ObservableObject
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
-    /// <summary>切换照片墙分组的条状 / 方块。写进全局偏好，下次启动仍生效。</summary>
+    /// <summary>切换照片墙分组的条状 / 方块。写进偏好文件，下次启动仍生效。</summary>
     [RelayCommand]
     public void ToggleWallView()
     {
-        ViewModeStore.SetWall(IsWallGrid ? ViewKind.List : ViewKind.Grid);
+        ViewModeStore.Set(ViewModeStore.WallPage, IsWallGrid ? ViewKind.List : ViewKind.Grid);
     }
 
     private void OnViewModeChanged()
