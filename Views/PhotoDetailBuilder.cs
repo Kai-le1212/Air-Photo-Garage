@@ -47,6 +47,9 @@ internal static class PhotoDetailBuilder
         AddRowAlways(basicInfo, "ID", photo.Id.ToString());
         AddRowAlways(basicInfo, "机型", photo.AircraftModel);
         AddRowAlways(basicInfo, "注册号", photo.RegistrationNumber);
+        AddRowAlways(basicInfo, "航空公司", photo.AirlineName);
+        AddRowAlways(basicInfo, "航空公司二字码", photo.AirlineIata);
+        AddRowAlways(basicInfo, "航班号", photo.FlightNumber);
         AddRowAlways(basicInfo, "拍摄时间", photo.ShotAt?.ToString("yyyy-MM-dd HH:mm:ss"));
         AddRowAlways(basicInfo, "机场 IATA", photo.AirportIata);
         AddRowAlways(basicInfo, "机场 ICAO", photo.AirportIcao);

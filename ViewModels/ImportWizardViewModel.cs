@@ -42,6 +42,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     [ObservableProperty] public partial string AirportIata { get; set; } = "";
     [ObservableProperty] public partial string AirportIcao { get; set; } = "";
     [ObservableProperty] public partial string AirportName { get; set; } = "";
+    [ObservableProperty] public partial string AirlineName { get; set; } = "";
+    [ObservableProperty] public partial string AirlineIata { get; set; } = "";
+    [ObservableProperty] public partial string FlightNumber { get; set; } = "";
     [ObservableProperty] public partial string Notes { get; set; } = "";
 
     // 派生显示
@@ -210,6 +213,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
 
         AircraftModel = p.AircraftModel ?? "";
         RegistrationNumber = p.RegistrationNumber ?? "";
+        AirlineName = p.AirlineName ?? "";
+        AirlineIata = p.AirlineIata ?? "";
+        FlightNumber = p.FlightNumber ?? "";
         AirportIata = p.AirportIata ?? "";
         AirportIcao = p.AirportIcao ?? "";
         AirportName = p.AirportName ?? "";
@@ -247,6 +253,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         var p = _photos[CurrentIndex];
         p.AircraftModel = EmptyToNull(AircraftModel);
         p.RegistrationNumber = EmptyToNull(RegistrationNumber?.ToUpperInvariant());
+        p.AirlineName = EmptyToNull(AirlineName);
+        p.AirlineIata = EmptyToNull(AirlineIata?.ToUpperInvariant());
+        p.FlightNumber = EmptyToNull(FlightNumber?.ToUpperInvariant());
         p.AirportIata = EmptyToNull(AirportIata?.ToUpperInvariant());
         p.AirportIcao = EmptyToNull(AirportIcao?.ToUpperInvariant());
         p.AirportCode = p.AirportIata ?? p.AirportIcao; // 兼容旧字段
@@ -326,6 +335,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         var prev = _photos[CurrentIndex - 1];
         AircraftModel = prev.AircraftModel ?? "";
         RegistrationNumber = prev.RegistrationNumber ?? "";
+        AirlineName = prev.AirlineName ?? "";
+        AirlineIata = prev.AirlineIata ?? "";
+        FlightNumber = prev.FlightNumber ?? "";
         AirportIata = prev.AirportIata ?? "";
         AirportIcao = prev.AirportIcao ?? "";
         AirportName = prev.AirportName ?? "";

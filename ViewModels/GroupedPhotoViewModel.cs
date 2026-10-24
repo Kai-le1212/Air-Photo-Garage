@@ -759,6 +759,8 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                 .Select(p => new PhotoCardViewModel(p, App.UiDispatcher)
                 {
                     ShowCardText = !_enableUserGroups,
+                    // 机场页里第三行改印航空公司 —— 在机场页显示机场名是废话
+                    ShowAirlineInThirdLine = CollapseRegistrationsInNodes,
                 })
                 .ToList();
 
@@ -1191,12 +1193,11 @@ public sealed class GroupItemViewModel : ObservableObject
         .Distinct(StringComparer.OrdinalIgnoreCase) ?? Enumerable.Empty<string>());
 
     /// <summary>
-    /// 分组行的小字摘要：<b>附件（机型）+ 拍摄时间范围</b>。
+    /// 分组行的小字摘要：<b>附件（机型）+ 拍摄时间范围，各占一行</b>。
     ///
     /// <para>
-    /// 注册号页的行标题只有注册号，看不出是哪种飞机，所以把机型补在这里，
-    /// 例如「Airbus A330-300 · 2021-05-01 ~ 2026-10-02」。
-    /// 附件由 <c>GetGroupCountsAsync</c> 的 <c>summaryColumns</c> 取回（每组取 MAX）。
+    /// 以前挤成一行「机型 · 日期范围」，注册号一多就看不清哪段是机型、哪段是日期。
+    /// 现在机型一行、日期范围另起一行（模板开了 <c>TextWrapping</c> + <c>MaxLines=2</c>）。
     /// </para>
     ///
     /// <para>
@@ -1210,7 +1211,7 @@ public sealed class GroupItemViewModel : ObservableObject
     /// </para>
     /// </summary>
     public string SummaryText =>
-        AttachmentText.Length == 0 ? RangeText : $"{AttachmentText} · {RangeText}";
+        AttachmentText.Length == 0 ? RangeText : $"{AttachmentText}\n{RangeText}";
 
     private Microsoft.UI.Xaml.Media.ImageSource? _coverSource;
     private double _coverAspect;

@@ -126,6 +126,29 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     public string? AircraftDisplay =>
         string.IsNullOrWhiteSpace(Photo.AircraftModel) ? "未填写机型" : Photo.AircraftModel;
 
+    /// <summary>
+    /// 卡片第三行改显示<b>航空公司</b>而不是机场 —— 只有机场页需要
+    /// （那一页里每张卡的机场都一样，印出来是废话）。
+    /// 由页面加载时一次性设定，因此不做变更通知。
+    /// </summary>
+    public bool ShowAirlineInThirdLine { get; set; }
+
+    /// <summary>航空公司显示行，形如「国泰航空 · CX」；没填时给提示文案。</summary>
+    public string AirlineDisplay
+    {
+        get
+        {
+            var name = Photo.AirlineName;
+            if (string.IsNullOrWhiteSpace(name)) return "未填写航空公司";
+
+            var code = Photo.AirlineIata;
+            return string.IsNullOrWhiteSpace(code) ? name : $"{name} · {code}";
+        }
+    }
+
+    /// <summary>卡片第三行的文字：机场页给航空公司，其它页给机场。</summary>
+    public string ThirdLineDisplay => ShowAirlineInThirdLine ? AirlineDisplay : AirportDisplay ?? string.Empty;
+
     public string? RegistrationDisplay =>
         string.IsNullOrWhiteSpace(Photo.RegistrationNumber) ? "—" : Photo.RegistrationNumber;
 
@@ -173,6 +196,8 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         OnPropertyChanged(nameof(AircraftDisplay));
         OnPropertyChanged(nameof(RegistrationDisplay));
         OnPropertyChanged(nameof(AirportDisplay));
+        OnPropertyChanged(nameof(AirlineDisplay));
+        OnPropertyChanged(nameof(ThirdLineDisplay));
         OnPropertyChanged(nameof(ShotAtDisplay));
         OnPropertyChanged(nameof(HasNoInfo));
     }

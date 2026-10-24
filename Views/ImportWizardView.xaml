@@ -103,6 +103,26 @@
                                      TextChanged="OnRegistrationTextChanged"
                                      PlaceholderText="必填" />
 
+                            <!-- 航空公司：名称 ↔ 二字码 互相补齐（填一个，另一个自动带出） -->
+                            <AutoSuggestBox x:Name="AsbAirline"
+                                            Header="航空公司"
+                                            Text="{x:Bind ViewModel.AirlineName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="输入名称或二字码，另一边自动补齐"
+                                            TextChanged="OnAirlineNameChanged"
+                                            SuggestionChosen="OnAirlineNameChosen"
+                                            AutomationProperties.Name="航空公司" />
+
+                            <TextBox Header="航空公司二字码（如 CX）"
+                                     MaxLength="2"
+                                     Text="{x:Bind ViewModel.AirlineIata, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     TextChanged="OnAirlineCodeChanged"
+                                     PlaceholderText="选填" />
+
+                            <TextBox Header="航班号（如 CX390）"
+                                     Text="{x:Bind ViewModel.FlightNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     TextChanged="OnFlightNumberChanged"
+                                     PlaceholderText="选填" />
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />

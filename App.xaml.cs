@@ -72,6 +72,9 @@ public partial class App : Application
     public static IAirportCatalogService AirportCatalog { get; private set; } = null!;
     public static IAircraftCatalogService AircraftCatalog { get; private set; } = null!;
 
+    /// <summary>航空公司目录（名称 ↔ 二字码 双向补齐）。</summary>
+    public static IAirlineCatalogService Airlines { get; private set; } = null!;
+
     /// <summary>分组头图（covers.json + Covers/ 目录）。不读写数据库。</summary>
     public static ICoverService Covers { get; private set; } = null!;
 
@@ -161,6 +164,7 @@ public partial class App : Application
             Importer = new PhotoImportService(LibraryRoot, Exif, Recognizer);
             AirportCatalog = new AirportCatalogService();
             AircraftCatalog = new AircraftCatalogService();
+            Airlines = new AirlineCatalogService();
             Covers = new CoverService(LibraryRoot);
             Log("Services ready");
 

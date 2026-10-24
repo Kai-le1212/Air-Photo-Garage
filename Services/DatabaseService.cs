@@ -223,6 +223,9 @@ public sealed class DatabaseService : IDatabaseService
             airport_icao TEXT,
             airport_name TEXT,
             notes TEXT,
+            airline_name TEXT,
+            airline_iata TEXT,
+            flight_number TEXT,
             camera_make TEXT,
             camera_model TEXT,
             lens_model TEXT,
@@ -285,6 +288,10 @@ public sealed class DatabaseService : IDatabaseService
         "ALTER TABLE photos ADD COLUMN airport_icao TEXT",
         "CREATE INDEX IF NOT EXISTS idx_photos_airport_iata ON photos(airport_iata)",
         "CREATE INDEX IF NOT EXISTS idx_photos_airport_icao ON photos(airport_icao)",
+        // v0.3：航空公司（名称 + 二字码，互为补齐）与航班号
+        "ALTER TABLE photos ADD COLUMN airline_name TEXT",
+        "ALTER TABLE photos ADD COLUMN airline_iata TEXT",
+        "ALTER TABLE photos ADD COLUMN flight_number TEXT",
     };
 
     public async Task<long> InsertPhotoAsync(Photo photo)
@@ -902,6 +909,7 @@ public sealed class DatabaseService : IDatabaseService
         INSERT INTO photos (
             file_path, thumbnail_path, file_size, shot_at,
             aircraft_model, registration_number, airport_code, airport_iata, airport_icao, airport_name, notes,
+            airline_name, airline_iata, flight_number,
             camera_make, camera_model, lens_model, focal_length, aperture, shutter_speed, iso,
             latitude, longitude, exif_json,
             recognition_status, recognized_aircraft_model, recognition_confidence,
@@ -909,6 +917,7 @@ public sealed class DatabaseService : IDatabaseService
         ) VALUES (
             $file_path, $thumbnail_path, $file_size, $shot_at,
             $aircraft_model, $registration_number, $airport_code, $airport_iata, $airport_icao, $airport_name, $notes,
+            $airline_name, $airline_iata, $flight_number,
             $camera_make, $camera_model, $lens_model, $focal_length, $aperture, $shutter_speed, $iso,
             $latitude, $longitude, $exif_json,
             $recognition_status, $recognized_aircraft_model, $recognition_confidence,
@@ -924,6 +933,7 @@ public sealed class DatabaseService : IDatabaseService
             aircraft_model=$aircraft_model, registration_number=$registration_number,
             airport_code=$airport_code, airport_iata=$airport_iata, airport_icao=$airport_icao,
             airport_name=$airport_name, notes=$notes,
+            airline_name=$airline_name, airline_iata=$airline_iata, flight_number=$flight_number,
             camera_make=$camera_make, camera_model=$camera_model, lens_model=$lens_model,
             focal_length=$focal_length, aperture=$aperture, shutter_speed=$shutter_speed, iso=$iso,
             latitude=$latitude, longitude=$longitude, exif_json=$exif_json,
@@ -947,6 +957,9 @@ public sealed class DatabaseService : IDatabaseService
         cmd.Parameters.AddWithValue("$airport_icao", (object?)photo.AirportIcao ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$airport_name", (object?)photo.AirportName ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$notes", (object?)photo.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$airline_name", (object?)photo.AirlineName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$airline_iata", (object?)photo.AirlineIata ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$flight_number", (object?)photo.FlightNumber ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$camera_make", (object?)photo.CameraMake ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$camera_model", (object?)photo.CameraModel ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$lens_model", (object?)photo.LensModel ?? DBNull.Value);
@@ -993,6 +1006,9 @@ public sealed class DatabaseService : IDatabaseService
         AirportIcao = SafeGetString(r, "airport_icao"),
         AirportName = r.IsDBNull(r.GetOrdinal("airport_name")) ? null : r.GetString(r.GetOrdinal("airport_name")),
         Notes = r.IsDBNull(r.GetOrdinal("notes")) ? null : r.GetString(r.GetOrdinal("notes")),
+        AirlineName = SafeGetString(r, "airline_name"),
+        AirlineIata = SafeGetString(r, "airline_iata"),
+        FlightNumber = SafeGetString(r, "flight_number"),
         CameraMake = r.IsDBNull(r.GetOrdinal("camera_make")) ? null : r.GetString(r.GetOrdinal("camera_make")),
         CameraModel = r.IsDBNull(r.GetOrdinal("camera_model")) ? null : r.GetString(r.GetOrdinal("camera_model")),
         LensModel = r.IsDBNull(r.GetOrdinal("lens_model")) ? null : r.GetString(r.GetOrdinal("lens_model")),

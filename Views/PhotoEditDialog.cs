@@ -95,6 +95,34 @@ public static class PhotoEditDialog
         };
         tbReg.TextChanged += (_, _) => TextInput.ForceUpperCase(tbReg);
 
+        // ---------- 航空公司 / 航班号 ----------
+        var asbAirline = new AutoSuggestBox
+        {
+            Header = "航空公司",
+            PlaceholderText = "输入名称或二字码，另一边自动补齐",
+            Text = photo.AirlineName ?? "",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        AutomationProperties.SetName(asbAirline, "航空公司");
+
+        var tbAirlineCode = new TextBox
+        {
+            Header = "航空公司二字码（如 CX）",
+            Text = photo.AirlineIata ?? "",
+            MaxLength = 2,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        AirlineLinker.Attach(asbAirline, tbAirlineCode);
+
+        var tbFlight = new TextBox
+        {
+            Header = "航班号（如 CX390）",
+            Text = photo.FlightNumber ?? "",
+            CharacterCasing = CharacterCasing.Upper,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        tbFlight.TextChanged += (_, _) => TextInput.ForceUpperCase(tbFlight);
+
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox
         {
@@ -266,6 +294,9 @@ public static class PhotoEditDialog
 
         stack.Children.Add(asbModel);
         stack.Children.Add(tbReg);
+        stack.Children.Add(asbAirline);
+        stack.Children.Add(tbAirlineCode);
+        stack.Children.Add(tbFlight);
         stack.Children.Add(tbIata);
         stack.Children.Add(tbIcao);
         stack.Children.Add(tbAirportName);
@@ -298,6 +329,9 @@ public static class PhotoEditDialog
 
         photo.AircraftModel = NullIfEmpty(asbModel.Text);
         photo.RegistrationNumber = NullIfEmpty(tbReg.Text?.ToUpperInvariant());
+        photo.AirlineName = NullIfEmpty(asbAirline.Text);
+        photo.AirlineIata = NullIfEmpty(tbAirlineCode.Text?.ToUpperInvariant());
+        photo.FlightNumber = NullIfEmpty(tbFlight.Text?.ToUpperInvariant());
         photo.AirportIata = NullIfEmpty(tbIata.Text?.ToUpperInvariant());
         photo.AirportIcao = NullIfEmpty(tbIcao.Text?.ToUpperInvariant());
         photo.AirportName = NullIfEmpty(tbAirportName.Text);

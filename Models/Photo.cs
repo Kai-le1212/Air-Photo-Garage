@@ -46,6 +46,19 @@ public sealed class Photo
     /// <summary>拍摄者备注。</summary>
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// 航空公司名称（如「国泰航空」）。
+    /// 与 <see cref="AirlineIata"/> 是<b>一对互相补齐</b>的字段：
+    /// 在机型/航班输入框里填了名称就自动带出二字码，反之亦然。
+    /// </summary>
+    public string? AirlineName { get; set; }
+
+    /// <summary>航空公司二字码（IATA，如 <c>CX</c>）。与 <see cref="AirlineName"/> 互相补齐。</summary>
+    public string? AirlineIata { get; set; }
+
+    /// <summary>航班号（如 <c>CX390</c>），按用户输入原样保存（已转大写）。</summary>
+    public string? FlightNumber { get; set; }
+
     /// <summary>相机厂商。</summary>
     public string? CameraMake { get; set; }
 

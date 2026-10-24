@@ -35,6 +35,41 @@ public sealed partial class ImportWizardView : UserControl
         if (sender is TextBox box) TextInput.ForceUpperCase(box);
     }
 
+    /// <summary>航空公司名称：给候选 + 选中后自动带出二字码（与编辑对话框同一套目录）。</summary>
+    private void OnAirlineNameChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+        sender.ItemsSource = App.Airlines.SearchNames(sender.Text);
+    }
+
+    private void OnAirlineNameChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+    {
+        if (args.SelectedItem is not string name) return;
+        if (App.Airlines.CodeOf(name) is { } code) ViewModel.AirlineIata = code;
+    }
+
+    /// <summary>二字码：强制大写；能在目录里查到就回填名称。</summary>
+    private void OnAirlineCodeChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+
+        var upper = (box.Text ?? string.Empty).Trim().ToUpperInvariant();
+        if (!string.Equals(box.Text, upper, StringComparison.Ordinal))
+        {
+            var caret = box.SelectionStart;
+            box.Text = upper;
+            box.SelectionStart = Math.Clamp(caret, 0, upper.Length);
+        }
+
+        if (App.Airlines.NameOf(upper) is { } name) ViewModel.AirlineName = name;
+    }
+
+    /// <summary>航班号一律大写（同注册号的做法）。</summary>
+    private void OnFlightNumberChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox box) TextInput.ForceUpperCase(box);
+    }
+
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {
         ViewModel.CancelCommand.Execute(null);
