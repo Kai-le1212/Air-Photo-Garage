@@ -31,21 +31,65 @@ public sealed class AircraftCatalogService : IAircraftCatalogService
 
     public IReadOnlyList<string> All => _models;
 
+    /// <summary>
+    /// 按关键字搜索（不区分大小写）。<b>排序规则</b>（用户指定的口径）：
+    ///
+    /// <list type="number">
+    /// <item><b>完全符合</b>：型号段与输入一模一样（输入 <c>A320</c> / <c>737-800</c>）排最前；</item>
+    /// <item><b>品牌名开头</b>：输入字母时，品牌第一个字母对上的排在前
+    ///   （<c>B</c> → Boeing / Bombardier，<c>A</c> → Airbus / ATR …）；</item>
+    /// <item><b>型号段开头</b>：输入数字时（<c>737</c>）型号段以它开头的排在前；</item>
+    /// <item>其余「中间包含」的排最后。</item>
+    /// </list>
+    ///
+    /// 同一层内保持字母序（<see cref="_models"/> 已按字母排好，<c>OrderBy</c> 是稳定排序），
+    /// 所以同一品牌会自然聚在一起。
+    /// </summary>
     public IReadOnlyList<string> Search(string keyword)
     {
         if (string.IsNullOrWhiteSpace(keyword)) return All;
         var k = keyword.Trim();
 
-        // 前缀命中优先，其次才是「中间包含」。
-        //
-        // 原先只有 Contains + 字母序：输入「B」时，"Airbus A320" 这类中间含 b 的结果
-        // 按字母序全排在 "Boeing ..." 前面，再被 Take(20) 一截，波音的型号直接看不到。
-        // OrderBy 是稳定排序，所以两段内部仍保持字母序。
         return _models
             .Where(m => m.Contains(k, System.StringComparison.OrdinalIgnoreCase))
-            .OrderBy(m => m.StartsWith(k, System.StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .OrderBy(m => Rank(m, k))
             .Take(20)
             .ToList();
+    }
+
+    /// <summary>
+    /// 排序层级（越小越靠前）。第一个词算品牌，其余词算型号段 ——
+    /// 这样 "McDonnell Douglas MD-80" 里的 "MD-80" 也能被当作型号匹配到。
+    /// </summary>
+    private static int Rank(string model, string keyword)
+    {
+        var words = model.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+        var codeWords = words.Length > 1 ? words.Skip(1) : words;
+
+        // 型号段按「整段」比较（"737 MAX 10" 的型号段是 "737 MAX 10"）。
+        // 不能按单个词比：否则输入 737 时 "737 MAX 10" 会被当成「完全符合」而插到 737-800 前面。
+        var code = words.Length > 1 ? string.Join(' ', codeWords) : model;
+
+        // 0) 完全符合
+        if (string.Equals(model, keyword, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(code, keyword, System.StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        // 1) 品牌名开头（输入字母时的主排序）
+        if (model.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)) return 1;
+
+        // 2) 型号段开头（输入数字时的主排序）；
+        //    再退一步看型号段里的任一单词，多词品牌也能匹配到（"McDonnell Douglas MD-80" → MD）
+        if (code.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)
+            || codeWords.Any(w => w.StartsWith(keyword, System.StringComparison.OrdinalIgnoreCase)))
+        {
+            return 2;
+        }
+
+        // 3) 其余中间包含
+        return 3;
     }
 
     private static readonly string[] SeedModels =
