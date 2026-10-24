@@ -87,6 +87,9 @@ public static class PhotoEditDialog
         {
             Header = "注册号",
             Text = photo.RegistrationNumber ?? "",
+            // 注册号统一大写：B-1234 与小写 b-1234 会被当成两架不同的飞机，
+            // 分组时直接裂成两组。控件的 CharacterCasing 连粘贴/输入法一起管住。
+            CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
@@ -292,7 +295,7 @@ public static class PhotoEditDialog
         if (result != ContentDialogResult.Primary) return false;
 
         photo.AircraftModel = NullIfEmpty(asbModel.Text);
-        photo.RegistrationNumber = NullIfEmpty(tbReg.Text);
+        photo.RegistrationNumber = NullIfEmpty(tbReg.Text?.ToUpperInvariant());
         photo.AirportIata = NullIfEmpty(tbIata.Text?.ToUpperInvariant());
         photo.AirportIcao = NullIfEmpty(tbIcao.Text?.ToUpperInvariant());
         photo.AirportName = NullIfEmpty(tbAirportName.Text);

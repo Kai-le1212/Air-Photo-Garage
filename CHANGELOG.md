@@ -5,6 +5,21 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.2.5.2] - 2026-10-25
+
+### 修复
+
+- **所有填注册号的地方都自动转大写**
+  注册号是大小写敏感的分组键：`b-1234` 和 `B-1234` 会被当成**两架不同的飞机**，
+  在机型 / 机场 / 注册号页各裂出一组；筛选是精确 `=` 匹配，小写也查不到。
+  三处入口都做了处理：
+  - **照片详情 →「编辑信息…」**：`TextBox.CharacterCasing = Upper`（连粘贴、
+    输入法一起管住），保存时再 `ToUpperInvariant()` 兜底
+  - **导入向导的注册号输入框**：同样的 `CharacterCasing="Upper"` + 保存兜底
+  - **照片墙筛选面板的注册号框**：`TokenizingTextBox` 继承的是 `ItemsControl`
+    而不是 `TextBox`，**没有 `CharacterCasing`**，改为在 `TextChanged` 里回写大写；
+    同步给筛选条件时再 `ToUpperInvariant()` 一次，保证查询用的值一定是大写
+
 ## [0.2.5.1] - 2026-10-25
 
 ### 修复

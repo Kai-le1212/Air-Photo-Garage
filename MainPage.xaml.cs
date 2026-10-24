@@ -125,6 +125,18 @@ public sealed partial class MainPage : Page
         var ttb = FindOwningTokenizingTextBox(sender);
         if (ttb is null) return;
 
+        // 注册号一律大写。TokenizingTextBox 没有 CharacterCasing 属性
+        // （它继承 ItemsControl 而不是 TextBox），只能在这里回写文本。
+        // 回写触发的重入是 ProgrammaticChange，会被上面的 Reason 判断挡掉。
+        if (ReferenceEquals(ttb, TtbRegistration))
+        {
+            var upper = sender.Text?.ToUpperInvariant() ?? string.Empty;
+            if (!string.Equals(sender.Text, upper, StringComparison.Ordinal))
+            {
+                sender.Text = upper;
+            }
+        }
+
         SyncTokenToViewModel(ttb);
         ViewModel.InvalidateFilter();
     }
@@ -180,7 +192,9 @@ public sealed partial class MainPage : Page
         if (ReferenceEquals(ttb, TtbAircraft))
             ViewModel.AircraftModelFilter = value;
         else if (ReferenceEquals(ttb, TtbRegistration))
-            ViewModel.RegistrationFilter = value;
+            // 兜底再转一次大写：筛选 SQL 是精确 `=` 匹配，大小写不一致就查不到。
+            // 控件文本可能还没来得及回写（或值是点选 token 得到的），这里必须保证。
+            ViewModel.RegistrationFilter = value?.ToUpperInvariant();
         else if (ReferenceEquals(ttb, TtbAirport))
             ViewModel.AirportCodeFilter = value;
     }

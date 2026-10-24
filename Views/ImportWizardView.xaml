@@ -99,6 +99,7 @@
 
                             <TextBox Header="注册号（如 B-1234）"
                                      Text="{x:Bind ViewModel.RegistrationNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     CharacterCasing="Upper"
                                      PlaceholderText="必填" />
 
                             <Grid>

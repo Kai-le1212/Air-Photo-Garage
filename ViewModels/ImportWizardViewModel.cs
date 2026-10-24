@@ -246,7 +246,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         if (_photos.Count == 0) return;
         var p = _photos[CurrentIndex];
         p.AircraftModel = EmptyToNull(AircraftModel);
-        p.RegistrationNumber = EmptyToNull(RegistrationNumber);
+        p.RegistrationNumber = EmptyToNull(RegistrationNumber?.ToUpperInvariant());
         p.AirportIata = EmptyToNull(AirportIata?.ToUpperInvariant());
         p.AirportIcao = EmptyToNull(AirportIcao?.ToUpperInvariant());
         p.AirportCode = p.AirportIata ?? p.AirportIcao; // 兼容旧字段
