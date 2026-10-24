@@ -639,7 +639,9 @@ public sealed class GroupedPhotoPageParameter
         Column = "airline_name",
         Label = "航司",
         EnableDayGrouping = true,
-        RowLabelColumns = new[] { "airline_iata" },
+        // 附加展示列要带上名称本身：有 DisplayParts 时行标题完全由它拼
+        // （只传二字码会变成标题「CX」，把「国泰航空」丢掉）
+        RowLabelColumns = new[] { "airline_name", "airline_iata" },
         CountAircraft = true,
     };
 
