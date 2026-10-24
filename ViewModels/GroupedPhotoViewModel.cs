@@ -801,18 +801,18 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     public bool HasTimeline => EnableDayGrouping && Timeline.Count > 0;
 
     /// <summary>
-    /// 把节点内的照片按<b>机型</b>聚在一起（同机型相邻），机型内部保持用户选的排序。
+    /// 把节点内的照片按<b>注册号</b>聚在一起（同一架飞机相邻），组内保持用户选的排序。
     ///
     /// <para>
-    /// 机场页最需要这一步：同一天在同一个机场常常拍到好几种机型，
-    /// 纯按拍摄时间排会让<b>同一机型的照片被别的机型隔开</b>，看着像散落各处。
-    /// 注册号页 / 机型页的一个分组本身就是同一机型，这一步对它们是无操作。
+    /// 机场页最需要这一步：同一天在同一个机场通常拍到好几架飞机，
+    /// 纯按拍摄时间排会让<b>同一架飞机的照片被别的飞机隔开</b>，看着像散落各处。
+    /// 注册号页 / 机型页的照片态本身就是单架飞机，这一步对它们是无操作。
     /// </para>
     ///
-    /// <para><c>OrderBy</c> 是稳定排序，所以机型内部仍是原来的顺序（时间 / 导入时间）。</para>
+    /// <para><c>OrderBy</c> 是稳定排序，所以同一架飞机内部仍是原来的顺序（时间 / 导入时间）。</para>
     /// </summary>
-    private static List<PhotoCardViewModel> OrderByModel(IEnumerable<PhotoCardViewModel> cards) =>
-        cards.OrderBy(c => c.AircraftDisplay, StringComparer.CurrentCultureIgnoreCase).ToList();
+    private static List<PhotoCardViewModel> OrderByRegistration(IEnumerable<PhotoCardViewModel> cards) =>
+        cards.OrderBy(c => c.RegistrationDisplay, StringComparer.CurrentCultureIgnoreCase).ToList();
 
     /// <summary>
     /// 把一组照片的元信息拼成日期节点说明区要显示的文本，<b>一个机场一行</b>。
@@ -901,7 +901,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         // 1) 自定义分组节点（空分组不进时间轴，避免占位噪音）
         foreach (var g in groups)
         {
-            var members = OrderByModel(photos
+            var members = OrderByRegistration(photos
                 .Where(p => map.TryGetValue(p.Id, out var gid) && gid == g.Id)
                 .Select(p => cardById[p.Id]));
             if (members.Count == 0) continue;
@@ -935,7 +935,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
         foreach (var day in byDay)
         {
-            var members = OrderByModel(day);
+            var members = OrderByRegistration(day);
             nodes.Add(new TimelineNode(
                 title: day.Key.ToString("yyyy-MM-dd"),
                 subtitle: WeekdayText(day.Key) + " · 自动按天",
@@ -947,7 +947,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         }
 
         // 3) 无拍摄时间的照片统一兜底成一个节点
-        var noTime = OrderByModel(unassigned.Where(c => !c.Photo.ShotAt.HasValue));
+        var noTime = OrderByRegistration(unassigned.Where(c => !c.Photo.ShotAt.HasValue));
         if (noTime.Count > 0)
         {
             nodes.Add(new TimelineNode(
