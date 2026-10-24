@@ -135,6 +135,56 @@
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <!--
+            注册号分组 · 条状视图（与窗格视图互斥，绑同一份 RegistrationGroups）。
+            一行一个注册号：缩略图在左，注册号 + 摘要 + 张数在右。
+            右键菜单与窗格视图共用同一个处理函数。
+        -->
+        <DataTemplate x:Key="RegistrationRowTpl" x:DataType="vm:RegistrationGroup">
+            <Grid RightTapped="OnRegistrationTileRightTapped" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Width="96"
+                        Height="64"
+                        Margin="0,0,14,0"
+                        CornerRadius="4"
+                        Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                    <Image Source="{x:Bind CoverThumbnail, Mode=OneWay}" Stretch="Uniform" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="{x:Bind Title}"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{x:Bind SummaryText}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="2"
+                           VerticalAlignment="Center"
+                           Margin="12,0,0,0"
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="{x:Bind CountText}" />
+
+                <FontIcon Grid.Column="3"
+                          VerticalAlignment="Center"
+                          Margin="8,0,0,0"
+                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                          Glyph="&#xE76C;"
+                          FontSize="12"
+                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            </Grid>
+        </DataTemplate>
     </Page.Resources>
 
     <Grid>
@@ -154,6 +204,16 @@
                                 AutomationProperties.Name="按注册号分组">
                 <AppBarToggleButton.Icon>
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
+                </AppBarToggleButton.Icon>
+            </AppBarToggleButton>
+            <!-- 分组视图的条状 / 方块切换；未按注册号分组时无意义，隐藏 -->
+            <AppBarToggleButton Label="方块视图"
+                                IsChecked="{x:Bind ViewModel.IsWallGrid, Mode=OneWay}"
+                                Command="{x:Bind ViewModel.ToggleWallViewCommand}"
+                                Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}"
+                                AutomationProperties.Name="方块视图">
+                <AppBarToggleButton.Icon>
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xECA5;" />
                 </AppBarToggleButton.Icon>
             </AppBarToggleButton>
             <AppBarSeparator />
@@ -261,7 +321,7 @@
                         窗格顺序沿用该组首张照片在当前排序里的位置，自动跟随左侧「排序方式」。
                     -->
                     <GridView ItemsSource="{x:Bind ViewModel.RegistrationGroups, Mode=OneWay}"
-                              Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.GroupedWallTilesVisibility, Mode=OneWay}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="OnRegistrationTileClick"
@@ -276,6 +336,27 @@
                             </Style>
                         </GridView.ItemContainerStyle>
                     </GridView>
+
+                    <!-- 同一个集合的条状视图：与窗格视图互斥 -->
+                    <ListView ItemsSource="{x:Bind ViewModel.RegistrationGroups, Mode=OneWay}"
+                              Visibility="{x:Bind ViewModel.GroupedWallRowsVisibility, Mode=OneWay}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnRegistrationTileClick"
+                              ItemTemplate="{StaticResource RegistrationRowTpl}"
+                              AutomationProperties.Name="注册号（条状）">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="16,14" />
+                                <Setter Property="Margin" Value="0,0,0,10" />
+                                <Setter Property="CornerRadius" Value="6" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
 
                     <!--
                         按 winui3-full-skill/snippets/collections/gridview.md 推荐：

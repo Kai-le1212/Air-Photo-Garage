@@ -550,18 +550,25 @@ public sealed class DatabaseService : IDatabaseService
 
         await using var cmd = conn.CreateCommand();
         var parentCond = BuildMatchCondition(cmd, parentColumn, parentMatch, "$parent");
+        // 中间层（机型 → 注册号）也要缩略图：同样取该注册号最新一张照片的缩略图。
+        // 子查询里再带上父条件，避免跨机型取到别的照片。
         cmd.CommandText = $"""
             SELECT {childColumn} AS value,
                    COUNT(*) AS cnt,
                    MIN(shot_at) AS first_shot,
-                   MAX(shot_at) AS last_shot
+                   MAX(shot_at) AS last_shot,
+                   (SELECT p2.thumbnail_path FROM photos p2
+                      WHERE p2.{childColumn} = photos.{childColumn}
+                        AND p2.{parentColumn} = photos.{parentColumn}
+                      ORDER BY (p2.shot_at IS NULL), p2.shot_at DESC, p2.id DESC
+                      LIMIT 1) AS cover
             FROM photos
             WHERE {parentCond}
               AND {childColumn} IS NOT NULL AND TRIM({childColumn}) <> ''
             GROUP BY {childColumn}
             ORDER BY cnt DESC, value ASC
             """;
-        var values = await ReadGroupCountsAsync(cmd);
+        var values = await ReadGroupCountsAsync(cmd, coverIndex: 4);
 
         var missing = await ReadMissingCountAsync(
             conn, $"{parentCond} AND {MissingCondition(childColumn)}", cmd);

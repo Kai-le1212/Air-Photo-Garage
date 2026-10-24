@@ -64,6 +64,16 @@ public sealed partial class GroupedPhotoPage : Page
     }
 
     /// <summary>
+    /// 离开页面时解除对全局视图偏好的订阅 ——
+    /// 静态事件持有页面级 ViewModel 会让整页（含照片集合）无法回收。
+    /// </summary>
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.DetachViewMode();
+    }
+
+    /// <summary>
     /// 先加载分组列表；若导航参数带了对目标分组（照片墙点窗格跳进来），
     /// 再自动打开它 —— 用户不必在列表里再找一遍。
     /// </summary>

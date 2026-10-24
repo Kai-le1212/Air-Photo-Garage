@@ -116,6 +116,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     {
         _db = db;
         _covers = covers;
+        ViewModeStore.Changed += OnViewModeChanged;
         _groupColumn = groupColumn;
         _dimensionLabel = dimensionLabel;
         _enableDayGrouping = enableDayGrouping;
@@ -282,6 +283,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         OnPropertyChanged(nameof(BackButtonVisibility));
         OnPropertyChanged(nameof(GroupListSortVisibility));
         OnPropertyChanged(nameof(PhotoSortVisibility));
+        OnPropertyChanged(nameof(GroupViewToggleVisibility));
         OnPropertyChanged(nameof(TimelineVisibility));
         OnPropertyChanged(nameof(FlatPhotosVisibility));
         OnPropertyChanged(nameof(EmptyHintVisibility));
@@ -298,6 +300,15 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// <summary>中间层子分组列表（机型页的注册号列表）。</summary>
     public Microsoft.UI.Xaml.Visibility SubGroupListVisibility =>
         IsViewingSubGroups ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>
+    /// 条状 / 方块切换按钮只在这两个列表态出现 ——
+    /// 照片态的照片区固定是网格，显示它反而让人以为能切。
+    /// </summary>
+    public Microsoft.UI.Xaml.Visibility GroupViewToggleVisibility =>
+        IsViewingGroupList || IsViewingSubGroups
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
 
     /// <summary>「分组排序」下拉：最外层列表与中间层子分组列表共用，两态都显示。</summary>
     public Microsoft.UI.Xaml.Visibility GroupListSortVisibility =>
@@ -509,6 +520,63 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         _covers?.HasCustomCover(_groupColumn, group.Value) == true;
 
     /// <summary>
+    /// 中间层（机型页里的注册号行）贴头图。
+    ///
+    /// <para>
+    /// 维度固定用 <c>registration_number</c>：这一层列的是注册号，
+    /// 所以在这里看到的封面和在「注册号」页看到的是<b>同一张</b> ——
+    /// 用户在注册号页设过的头图，这里也是它。
+    /// </para>
+    /// </summary>
+    public async Task LoadSubGroupCoversAsync()
+    {
+        foreach (var sub in SubGroups)
+        {
+            var path = _covers?.GetCustomCoverPath(RegistrationCoverDimension, sub.Value) ?? sub.AutoCoverPath;
+            sub.SetCover(await CoverImageLoader.LoadAsync(path));
+        }
+    }
+
+    /// <summary>注册号维度的键（与 <c>CoverService</c> / 照片墙窗格共用）。</summary>
+    private const string RegistrationCoverDimension = "registration_number";
+
+    // ---------- 视图形态：条状 / 方块 ----------
+
+    /// <summary>分组列表当前是否为方块视图（全局偏好，机型 / 机场 / 注册号三页共用）。</summary>
+    public bool IsGroupGridView => ViewModeStore.GroupList == ViewKind.Grid;
+
+    public Microsoft.UI.Xaml.Visibility GroupRowsVisibility =>
+        IsGroupGridView ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+
+    public Microsoft.UI.Xaml.Visibility GroupTilesVisibility =>
+        IsGroupGridView ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>中间层（机型页里的注册号行）跟随同一个开关。</summary>
+    public Microsoft.UI.Xaml.Visibility SubGroupRowsVisibility => GroupRowsVisibility;
+
+    public Microsoft.UI.Xaml.Visibility SubGroupTilesVisibility => GroupTilesVisibility;
+
+    /// <summary>切换条状 / 方块。写进全局偏好，其它分组页下次进入即生效。</summary>
+    [RelayCommand]
+    public void ToggleGroupView() =>
+        ViewModeStore.SetGroupList(IsGroupGridView ? ViewKind.List : ViewKind.Grid);
+
+    private void OnViewModeChanged()
+    {
+        OnPropertyChanged(nameof(IsGroupGridView));
+        OnPropertyChanged(nameof(GroupRowsVisibility));
+        OnPropertyChanged(nameof(GroupTilesVisibility));
+        OnPropertyChanged(nameof(SubGroupRowsVisibility));
+        OnPropertyChanged(nameof(SubGroupTilesVisibility));
+    }
+
+    /// <summary>
+    /// 解除对全局偏好的订阅。页面离开时必须调用 ——
+    /// 静态事件持有页面级 ViewModel 会让整页（含照片集合）留在内存里。
+    /// </summary>
+    public void DetachViewMode() => ViewModeStore.Changed -= OnViewModeChanged;
+
+    /// <summary>
     /// 把外部图片设为该行的头图。返回 false 表示图片无法读取/编码（调用方提示用户）。
     /// </summary>
     public async Task<bool> SetCoverAsync(GroupItemViewModel group, string sourcePath)
@@ -630,6 +698,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
                     counts.Missing, "注册号", isMissing: true, displayOverride: "未填写注册号"));
             }
             ApplySubGroupSort();
+
+            // 中间层的注册号行也要有缩略图（机型页「点进去」之后那层）
+            await LoadSubGroupCoversAsync();
 
             var photoTotal = counts.Values.Sum(c => c.Count) + (counts.Missing?.Count ?? 0);
             StatusMessage = (counts.Values.Count, counts.Missing) switch
@@ -1072,6 +1143,10 @@ public sealed class GroupItemViewModel : ObservableObject
         AttachmentText.Length == 0 ? RangeText : $"{AttachmentText} · {RangeText}";
 
     private Microsoft.UI.Xaml.Media.ImageSource? _coverSource;
+    private double _coverAspect;
+
+    /// <summary>方块视图里卡片的宽度（与照片墙窗格保持一致）。</summary>
+    public const double TileWidth = 240;
 
     /// <summary>
     /// 行首头图。由 <see cref="GroupedPhotoViewModel"/> 在分组加载完（或用户改过头图）后填进来：
@@ -1089,13 +1164,25 @@ public sealed class GroupItemViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 方块视图里图片区的高度 —— 跟随头图比例，上下不留空、也不裁切。
+    /// 拿不到比例时退回 3:2。
+    /// </summary>
+    public double CoverHeight => _coverAspect > 0.01 ? TileWidth / _coverAspect : TileWidth * 2.0 / 3.0;
+
     /// <summary>是否已经有头图。没图时行首仍保留占位框，各行左边缘才对得齐。</summary>
     public bool HasCover => _coverSource is not null;
 
     /// <summary>自动封面：组内最新一张照片的缩略图，由数据库聚合查询给出。</summary>
     public string? AutoCoverPath => _count.CoverPath;
 
-    public void SetCover(Microsoft.UI.Xaml.Media.ImageSource? source) => CoverSource = source;
+    /// <summary>贴头图。顺便记下宽高比，方块视图靠它算图片区高度。</summary>
+    public void SetCover(Microsoft.UI.Xaml.Media.Imaging.BitmapImage? bitmap)
+    {
+        CoverSource = bitmap;
+        _coverAspect = CoverImageLoader.AspectOf(bitmap);
+        OnPropertyChanged(nameof(CoverHeight));
+    }
 }
 
 /// <summary>

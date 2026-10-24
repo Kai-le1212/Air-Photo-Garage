@@ -76,6 +76,61 @@
                 </Grid>
             </Border>
         </DataTemplate>
+        <!--
+            分组卡片模板（方块视图）。机型 / 机场 / 注册号 三页共用，
+            机型页里的注册号中间层也用它。排布对齐照片墙的注册号窗格：
+            封面在上、文字在下；图片高度跟随原图比例（CoverHeight），不裁切也不留空。
+        -->
+        <DataTemplate x:Key="GroupTileTpl" x:DataType="vm:GroupItemViewModel">
+            <Border Width="240"
+                    Margin="0,0,12,12"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                        <Image Source="{x:Bind CoverSource, Mode=OneWay}"
+                               Height="{x:Bind CoverHeight, Mode=OneWay}"
+                               Stretch="Uniform" />
+
+                        <!-- 张数 / 架数角标 -->
+                        <Border VerticalAlignment="Top" HorizontalAlignment="Right"
+                                Margin="8" Padding="8,2" CornerRadius="10"
+                                Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                            <TextBlock Text="{x:Bind CountText}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+
+                        <!-- 「未填写」兜底标记 -->
+                        <Border VerticalAlignment="Top" HorizontalAlignment="Left"
+                                Padding="8,4" CornerRadius="0,0,8,0"
+                                Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                Visibility="{x:Bind MissingBadgeVisibility}">
+                            <TextBlock Text="待补全"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Padding="12,10,12,12" Spacing="2">
+                        <TextBlock Text="{x:Bind DisplayText}"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind SummaryText}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Page.Resources>
 
     <Grid>
@@ -129,6 +184,26 @@
                           ItemsSource="{x:Bind ViewModel.SortOptions}"
                           SelectedIndex="{x:Bind ViewModel.SortIndex, Mode=TwoWay}"
                           Visibility="{x:Bind ViewModel.PhotoSortVisibility, Mode=OneWay}" />
+
+                <!--
+                    条状 / 方块切换。只影响「分组列表」这类集合（含机型页里的注册号层），
+                    照片区仍是网格。IsChecked 用 OneWay 绑回权威状态：
+                    点击后 Command 改全局偏好 → 属性变更通知再把 IsChecked 拉正。
+                -->
+                <ToggleButton VerticalAlignment="Bottom"
+                              Height="32"
+                              Padding="10,0"
+                              IsChecked="{x:Bind ViewModel.IsGroupGridView, Mode=OneWay}"
+                              Command="{x:Bind ViewModel.ToggleGroupViewCommand}"
+                              Visibility="{x:Bind ViewModel.GroupViewToggleVisibility, Mode=OneWay}"
+                              ToolTipService.ToolTip="在条状 / 方块之间切换">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  Glyph="&#xECA5;"
+                                  FontSize="14" />
+                        <TextBlock Text="方块视图" FontSize="13" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
         </Grid>
 
@@ -138,8 +213,10 @@
             <ScrollViewer Visibility="{x:Bind ViewModel.GroupListVisibility, Mode=OneWay}"
                           Padding="20,0,20,20"
                           VerticalScrollBarVisibility="Auto">
+              <Grid>
                 <!-- 分组列表：用 ListView + IsItemClickEnabled，命中测试比 ItemsControl+Button 可靠 -->
-                <ListView ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                <ListView Visibility="{x:Bind ViewModel.GroupRowsVisibility, Mode=OneWay}"
+                          ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
                           SelectionMode="None"
                           IsItemClickEnabled="True"
                           ItemClick="OnGroupClick"
@@ -217,6 +294,26 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+
+                <!-- 同一个集合的方块视图：与上面的条状列表互斥，绑同一份 Groups -->
+                <GridView Visibility="{x:Bind ViewModel.GroupTilesVisibility, Mode=OneWay}"
+                          ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                          SelectionMode="None"
+                          IsItemClickEnabled="True"
+                          ItemClick="OnGroupClick"
+                          ItemTemplate="{StaticResource GroupTileTpl}"
+                          Padding="0"
+                          Background="Transparent">
+                    <GridView.ItemContainerStyle>
+                        <Style TargetType="GridViewItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Left" />
+                            <Setter Property="VerticalContentAlignment" Value="Top" />
+                        </Style>
+                    </GridView.ItemContainerStyle>
+                </GridView>
+              </Grid>
             </ScrollViewer>
 
             <!--
@@ -228,7 +325,8 @@
                           Padding="20,0,20,20"
                           VerticalScrollBarVisibility="Auto">
                 <Grid>
-                    <ListView ItemsSource="{x:Bind ViewModel.SubGroups, Mode=OneWay}"
+                    <ListView Visibility="{x:Bind ViewModel.SubGroupRowsVisibility, Mode=OneWay}"
+                              ItemsSource="{x:Bind ViewModel.SubGroups, Mode=OneWay}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="OnSubGroupClick"
@@ -254,13 +352,20 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <FontIcon Grid.Column="0"
-                                              VerticalAlignment="Center"
-                                              Margin="0,0,12,0"
-                                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                              Glyph="&#xE709;"
-                                              FontSize="16"
-                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <!--
+                                        缩略图：这一层列的是注册号，头图与「注册号」页是同一张
+                                        （用户在那边设过的自定义头图这里也生效）。
+                                        之前这里是个通用文件夹图标，架架一样，看不出是哪架飞机。
+                                    -->
+                                    <Border Grid.Column="0"
+                                            Width="96"
+                                            Height="64"
+                                            Margin="0,0,14,0"
+                                            CornerRadius="4"
+                                            Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                                        <Image Source="{x:Bind CoverSource, Mode=OneWay}"
+                                               Stretch="Uniform" />
+                                    </Border>
                                     <StackPanel Grid.Column="1" Spacing="2">
                                         <TextBlock Text="{x:Bind DisplayText}"
                                                    Style="{StaticResource BodyStrongTextBlockStyle}"
@@ -298,6 +403,25 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
+
+                    <!-- 中间层的方块视图：与上面的条状列表互斥，绑同一份 SubGroups -->
+                    <GridView Visibility="{x:Bind ViewModel.SubGroupTilesVisibility, Mode=OneWay}"
+                              ItemsSource="{x:Bind ViewModel.SubGroups, Mode=OneWay}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnSubGroupClick"
+                              ItemTemplate="{StaticResource GroupTileTpl}"
+                              Padding="0"
+                              Background="Transparent">
+                        <GridView.ItemContainerStyle>
+                            <Style TargetType="GridViewItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                <Setter Property="VerticalContentAlignment" Value="Top" />
+                            </Style>
+                        </GridView.ItemContainerStyle>
+                    </GridView>
 
                     <TextBlock Margin="24"
                                VerticalAlignment="Center"

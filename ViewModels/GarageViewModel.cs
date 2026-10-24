@@ -33,6 +33,9 @@ public sealed partial class GarageViewModel : ObservableObject
         _ui = uiDispatcher;
         _covers = covers;
         Photos = new ObservableCollection<PhotoCardViewModel>();
+
+        // 视图偏好是全局的：在分组页切了条状/方块，回到照片墙也要跟着变
+        ViewModeStore.Changed += OnViewModeChanged;
     }
 
     public ObservableCollection<PhotoCardViewModel> Photos { get; }
@@ -52,11 +55,41 @@ public sealed partial class GarageViewModel : ObservableObject
         RaisePhotoViewProperties();
     }
 
-    /// <summary>分组视图可见性：开关打开且确实分出了组。</summary>
+    /// <summary>
+    /// 分组视图可见性：开关打开且确实分出了组。
+    /// （整体开/关，具体是方块还是条状看下面两个细分属性）
+    /// </summary>
     public Microsoft.UI.Xaml.Visibility GroupedWallVisibility =>
         (GroupByRegistration && RegistrationGroups.Count > 0)
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>照片墙分组当前是否为方块视图（全局偏好，与分组列表分开存）。</summary>
+    public bool IsWallGrid => ViewModeStore.Wall == ViewKind.Grid;
+
+    /// <summary>分组视图 · 方块（窗格）。</summary>
+    public Microsoft.UI.Xaml.Visibility GroupedWallTilesVisibility =>
+        GroupedWallVisibility == Microsoft.UI.Xaml.Visibility.Visible && IsWallGrid
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>分组视图 · 条状（一行一个注册号）。</summary>
+    public Microsoft.UI.Xaml.Visibility GroupedWallRowsVisibility =>
+        GroupedWallVisibility == Microsoft.UI.Xaml.Visibility.Visible && !IsWallGrid
+            ? Microsoft.UI.Xaml.Visibility.Visible
+            : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    /// <summary>切换照片墙分组的条状 / 方块。写进全局偏好，下次启动仍生效。</summary>
+    [RelayCommand]
+    public void ToggleWallView()
+    {
+        ViewModeStore.SetWall(IsWallGrid ? ViewKind.List : ViewKind.Grid);
+    }
+
+    private void OnViewModeChanged()
+    {
+        RaisePhotoViewProperties();
+    }
 
     /// <summary>平铺视图可见性（与分组视图互斥）。</summary>
     public Microsoft.UI.Xaml.Visibility FlatWallVisibility =>
@@ -68,6 +101,9 @@ public sealed partial class GarageViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(GroupedWallVisibility));
         OnPropertyChanged(nameof(FlatWallVisibility));
+        OnPropertyChanged(nameof(IsWallGrid));
+        OnPropertyChanged(nameof(GroupedWallTilesVisibility));
+        OnPropertyChanged(nameof(GroupedWallRowsVisibility));
     }
 
     /// <summary>

@@ -149,6 +149,9 @@ public partial class App : Application
             LoadLibraryRoot();
             Log($"LibraryRoot = {LibraryRoot}");
 
+            // 视图偏好（条状 / 方块）要在任何 ViewModel 构造之前读好
+            ViewModeStore.Load();
+
             Database = new DatabaseService(DatabasePath);
             Database.InitializeAsync().GetAwaiter().GetResult();
             Log("Database ready");
