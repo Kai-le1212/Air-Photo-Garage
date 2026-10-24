@@ -8,7 +8,11 @@ public interface IAircraftCatalogService
     /// <summary>所有机型（按 manufacturer → model 排序）。</summary>
     IReadOnlyList<string> All { get; }
 
-    /// <summary>按关键字搜索（不区分大小写，匹配 manufacturer 或 model）。</summary>
+    /// <summary>
+    /// 按关键字搜索（不区分大小写，匹配 manufacturer 或 model）。
+    /// <b>前缀命中的排在前面</b>，其余「中间包含」的排在后面 ——
+    /// 这样输入「B」先出 Boeing，而不是被 "Airbus ..." 挤掉。
+    /// </summary>
     IReadOnlyList<string> Search(string keyword);
 }
 
@@ -31,8 +35,15 @@ public sealed class AircraftCatalogService : IAircraftCatalogService
     {
         if (string.IsNullOrWhiteSpace(keyword)) return All;
         var k = keyword.Trim();
+
+        // 前缀命中优先，其次才是「中间包含」。
+        //
+        // 原先只有 Contains + 字母序：输入「B」时，"Airbus A320" 这类中间含 b 的结果
+        // 按字母序全排在 "Boeing ..." 前面，再被 Take(20) 一截，波音的型号直接看不到。
+        // OrderBy 是稳定排序，所以两段内部仍保持字母序。
         return _models
             .Where(m => m.Contains(k, System.StringComparison.OrdinalIgnoreCase))
+            .OrderBy(m => m.StartsWith(k, System.StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .Take(20)
             .ToList();
     }
