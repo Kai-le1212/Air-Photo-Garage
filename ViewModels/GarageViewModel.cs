@@ -372,24 +372,38 @@ public sealed partial class GarageViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 按输入重算筛选面板的机型候选，规则与「编辑信息」里的机型框<b>同一套</b>
-    /// （<see cref="AircraftModelRanking"/>）：完全符合 → 品牌开头 → 型号段开头 → 包含。
+    /// 按输入算出筛选面板的机型候选（过滤 + 按 <see cref="AircraftModelRanking"/> 排序）。
     ///
     /// <para>
-    /// 这里只能用<b>库里出现过的机型</b>：筛选一个没有照片的机型毫无意义，
+    /// <b>为什么要返回新列表、而不是改 <see cref="AircraftSuggestions"/> 的内容</b>：
+    /// <c>TokenizingTextBox</c> 的弹出层是打开时的快照，对绑定集合做 Clear/Add
+    /// 它<b>不会</b>重算 —— 必须整体替换 <c>SuggestedItemsSource</c> 这个依赖属性。
+    /// </para>
+    ///
+    /// <para>
+    /// 这里只用<b>库里出现过的机型</b>：筛选一个没有照片的机型毫无意义，
     /// 而且内置机型库有 126 项，全塞进下拉反而难选。
     /// </para>
     /// </summary>
-    public void RefreshAircraftSuggestions(string? keyword)
+    public IReadOnlyList<string> AircraftSuggestionsFor(string? keyword)
     {
         var k = keyword?.Trim();
+        if (string.IsNullOrEmpty(k)) return _allAircraftModels;
 
-        var items = string.IsNullOrEmpty(k)
-            ? _allAircraftModels
-            : _allAircraftModels
-                .Where(m => m.Contains(k, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(m => AircraftModelRanking.Rank(m, k))
-                .ToList();
+        return _allAircraftModels
+            .Where(m => m.Contains(k, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(m => AircraftModelRanking.Rank(m, k))
+            .ToList();
+    }
+
+    /// <summary>
+    /// 按输入重算筛选面板的机型候选，规则与「编辑信息」里的机型框<b>同一套</b>
+    /// （<see cref="AircraftModelRanking"/>）：完全符合 → 品牌开头 → 型号段开头 → 包含。
+    /// 供初次填充与「清空后恢复完整列表」使用。
+    /// </summary>
+    public void RefreshAircraftSuggestions(string? keyword)
+    {
+        var items = AircraftSuggestionsFor(keyword);
 
         AircraftSuggestions.Clear();
         foreach (var m in items) AircraftSuggestions.Add(m);
