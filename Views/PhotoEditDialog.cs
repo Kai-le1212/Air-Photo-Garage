@@ -87,11 +87,13 @@ public static class PhotoEditDialog
         {
             Header = "注册号",
             Text = photo.RegistrationNumber ?? "",
-            // 注册号统一大写：B-1234 与小写 b-1234 会被当成两架不同的飞机，
-            // 分组时直接裂成两组。控件的 CharacterCasing 连粘贴/输入法一起管住。
+            // 注册号统一大写：B-1234 与小写 b-1234 会被当成两架不同的飞机。
+            // CharacterCasing 在本环境实测不生效（键入小写仍是小写），
+            // 所以真正兜住的是下面这个 TextChanged 回写；保存时还会再转一次。
             CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
+        tbReg.TextChanged += (_, _) => TextInput.ForceUpperCase(tbReg);
 
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox

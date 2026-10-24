@@ -25,6 +25,16 @@ public sealed partial class ImportWizardView : UserControl
         HookModelSuggestions();
     }
 
+    /// <summary>
+    /// 注册号输入一律大写。
+    /// XAML 上的 <c>CharacterCasing</c> 在本环境实测不生效，真正兜住的是这里
+    /// （与照片编辑对话框、照片墙筛选面板同一套做法）。
+    /// </summary>
+    private void OnRegistrationTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox box) TextInput.ForceUpperCase(box);
+    }
+
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {
         ViewModel.CancelCommand.Execute(null);
