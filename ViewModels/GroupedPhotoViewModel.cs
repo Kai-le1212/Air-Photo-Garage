@@ -206,13 +206,25 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     /// <summary>是否处于「查看某分组下的照片」（叶子态）。</summary>
     public bool IsViewingGroup =>
-        !string.IsNullOrEmpty(SelectedGroup) && !IsViewingSubGroups;
+        HasOuterGroupSelected && !IsViewingSubGroups;
 
     /// <summary>是否处于「查看子分组（注册号）列表」态。</summary>
     public bool IsViewingSubGroups =>
         _enableRegistrationSubLevel
-        && !string.IsNullOrEmpty(SelectedGroup)
-        && string.IsNullOrEmpty(SelectedSubGroup);
+        && HasOuterGroupSelected
+        && !HasSubGroupSelected;
+
+    /// <summary>
+    /// 外层是否已选中分组。<b>「未填写」桶的 Value 是空串</b>，
+    /// 只看 <c>SelectedGroup</c> 会把这一类分组判成「没选中」——
+    /// 表现就是点「未填写 xx」毫无反应（曾经所有维度都这样）。
+    /// </summary>
+    private bool HasOuterGroupSelected =>
+        _selectedGroupIsMissing || !string.IsNullOrEmpty(SelectedGroup);
+
+    /// <summary>中间层（注册号）是否已选中。同样要考虑「未填写注册号」桶。</summary>
+    private bool HasSubGroupSelected =>
+        _selectedSubGroupIsMissing || !string.IsNullOrEmpty(SelectedSubGroup);
 
     /// <summary>是否处于分组列表态（最外层）。</summary>
     public bool IsViewingGroupList => !IsViewingGroup && !IsViewingSubGroups;
@@ -660,7 +672,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     [RelayCommand]
     public async Task GoBackAsync()
     {
-        if (IsViewingGroup && _enableRegistrationSubLevel && !string.IsNullOrEmpty(SelectedSubGroup))
+        if (IsViewingGroup && _enableRegistrationSubLevel && HasSubGroupSelected)
         {
             SelectedSubGroup = null;
             _selectedSubGroupIsMissing = false;
@@ -694,7 +706,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// <summary>中间层：加载当前分组（机型）下各注册号的统计。</summary>
     private async Task LoadSubGroupsAsync()
     {
-        if (string.IsNullOrEmpty(SelectedGroup)) return;
+        if (!HasOuterGroupSelected) return;
         if (IsBusy) return;
         IsBusy = true;
         try
@@ -741,7 +753,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     private async Task LoadGroupPhotosAsync()
     {
-        if (string.IsNullOrEmpty(SelectedGroup)) return;
+        if (!HasOuterGroupSelected) return;
         if (IsBusy) return;
         IsBusy = true;
         try
@@ -757,7 +769,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
             // 机型页已下钻到注册号 → 双列匹配（含两侧的「未填写」桶）；
             // 其余维度只按单一分组列
-            var items = (_enableRegistrationSubLevel && !string.IsNullOrEmpty(SelectedSubGroup))
+            var items = (_enableRegistrationSubLevel && HasSubGroupSelected)
                 ? await _db.GetPhotosByTwoColumnValuesAsync(
                     _groupColumn, GroupMatch, "registration_number", SubGroupMatch, order)
                 : await _db.GetPhotosByColumnValueAsync(_groupColumn, GroupMatch, order);
@@ -781,7 +793,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
             // 自定义分组只在注册号维度生效；其他维度传 null（只按天）
             await BuildTimelineAsync(items, cards, _enableUserGroups ? SelectedGroup : null);
 
-            var scopeLabel = _enableRegistrationSubLevel && !string.IsNullOrEmpty(SelectedSubGroup)
+            var scopeLabel = _enableRegistrationSubLevel && HasSubGroupSelected
                 ? $"{GroupLabel} · {SelectedSubGroup}"
                 : GroupLabel;
 

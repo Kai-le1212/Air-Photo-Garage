@@ -5,6 +5,24 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.3.1.2] - 2026-10-25
+
+### 修复
+
+- **点「未填写 xx」那一行没反应**（所有维度都有，航司页最明显）
+  「未填写」桶的 `Value` 是**空串**，而判断「是否已进入某个分组」用的是
+  `!string.IsNullOrEmpty(SelectedGroup)` ⇒ 空桶被当成「什么都没选中」，
+  页面就停在列表不动。现在抽出 `HasOuterGroupSelected` / `HasSubGroupSelected`
+  把「未填写桶」也算作已选中，`IsViewingGroup` / `IsViewingSubGroups`、
+  两处加载前的提前返回、中间层空桶的查询分支、返回上一级全部改用它。
+  机型页的「未填写机型 → 未填写注册号」这条链路同样修好了。
+
+### 变更
+
+- **换应用图标**：机库里的客机（`airplane_hangar.ico`）。由它重新生成了全套资源
+  （商店图标 / 方形磁贴 / 宽磁贴 / 锁屏 / 启动图 / 任务栏的多尺寸版本），
+  `Assets/AppIcon.ico` 一并替换 —— 窗口与 exe 图标也换了。
+
 ## [0.3.1.1] - 2026-10-25
 
 ### 修复
