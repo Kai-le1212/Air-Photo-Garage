@@ -28,6 +28,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     private readonly IAirportCatalogService _airportCatalog;
     private readonly IAircraftCatalogService _aircraftCatalog;
 
+    /// <summary>是否正在预处理 —— 防重入用（见 <see cref="StartAsync"/>）。</summary>
+    private bool _isStarting;
+
     private readonly List<Photo> _photos = new();
     private readonly List<ImageSource?> _thumbnails = new();
 
@@ -130,9 +133,25 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     /// 用户填写完毕后需由调用方 await <see cref="WaitForCompletionAsync"/> 取得确认结果。
     /// </para>
     /// </summary>
-    public async Task<bool> StartAsync(IReadOnlyList<string> sourceFiles)
+    /// <param name="progress">
+    /// 逐张预处理时的进度回调（已完成数 / 总数）。大图中预处理要几十秒，
+    /// 这期间向导还没打开，必须把进度显示在照片墙状态栏上，
+    /// 否则用户会以为「点了导入什么也没发生」而重复点击。
+    /// </param>
+    public async Task<bool> StartAsync(
+        IReadOnlyList<string> sourceFiles, Action<int, int>? progress = null)
     {
         if (sourceFiles is null || sourceFiles.Count == 0) return false;
+
+        // 防重入：上一轮还在预处理 / 向导还开着时，再来一次会把 _photos
+        // 清空重建，导致 CurrentIndex 与集合长度错位（曾抛 ArgumentOutOfRangeException，
+        // 表现为「向导弹不出来、点了没反应」）。这里直接拒绝并发启动。
+        if (_isStarting || IsOpen)
+        {
+            App.Log($"StartAsync 被忽略：_isStarting={_isStarting} IsOpen={IsOpen}");
+            return false;
+        }
+        _isStarting = true;
 
         IsConfirmed = false;   // 新一轮导入，重置确认标志
         _completionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -159,6 +178,8 @@ public sealed partial class ImportWizardViewModel : ObservableObject
                     System.Diagnostics.Debug.WriteLine($"PrepareImport failed {src}: {ex}");
                     failed++;
                 }
+
+                progress?.Invoke(succeeded + failed, sourceFiles.Count);
             }
 
             if (_photos.Count == 0)
@@ -187,6 +208,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            _isStarting = false;
         }
     }
 
@@ -209,6 +231,15 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     private void LoadCurrentToFields()
     {
         if (_photos.Count == 0) return;
+
+        // 双保险：索引越界曾抛未捕获的 ArgumentOutOfRangeException，
+        // 整个向导就卡死（用户看到的是「弹窗不出来 / 点下一张没反应」）。
+        if (CurrentIndex < 0 || CurrentIndex >= _photos.Count)
+        {
+            App.Log($"LoadCurrentToFields 索引越界：{CurrentIndex} / {_photos.Count}，已夹紧");
+            CurrentIndex = Math.Clamp(CurrentIndex, 0, _photos.Count - 1);
+        }
+
         var p = _photos[CurrentIndex];
 
         AircraftModel = p.AircraftModel ?? "";
@@ -220,9 +251,10 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         AirportIcao = p.AirportIcao ?? "";
         AirportName = p.AirportName ?? "";
         Notes = p.Notes ?? "";
-        CurrentThumbnail = _thumbnails[CurrentIndex];
+        var thumb = CurrentIndex < _thumbnails.Count ? _thumbnails[CurrentIndex] : null;
+        CurrentThumbnail = thumb;
         // 切到另一张时同步它的宽高比，否则预览高度会沿用上一张的
-        ThumbnailAspect = AspectOf(_thumbnails[CurrentIndex]);
+        ThumbnailAspect = AspectOf(thumb);
 
         StepText = $"第 {CurrentIndex + 1} / {_photos.Count} 张";
         NextButtonText = CurrentIndex == _photos.Count - 1 ? "完成导入" : "下一张 >";

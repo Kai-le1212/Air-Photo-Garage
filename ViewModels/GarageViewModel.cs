@@ -248,23 +248,42 @@ public sealed partial class GarageViewModel : ObservableObject
     private async Task ImportPhotosAsync(IReadOnlyList<string> filePaths)
     {
         if (filePaths is null || filePaths.Count == 0) return;
+
+        // 整个导入流程（预处理 → 向导 → 入库）都算忙。
+        // 以前只在「入库」阶段置 IsBusy，预处理那几十秒里连点「导入」会并发启动两轮，
+        // 把向导的 _photos 清空重建 → CurrentIndex 与集合长度错位 →
+        // ArgumentOutOfRangeException，表现为「向导弹不出来 / 点下一张没反应」。
         if (IsBusy) return;
-
-        // 1. 打开导入向导（预处理照片），并等待用户在界面上完成或取消
-        var wizard = App.ImportWizardViewModel;
-        var started = await wizard.StartAsync(filePaths);
-        if (!started) return;
-
-        var confirmed = await wizard.WaitForCompletionAsync();
-        if (!confirmed || wizard.CompletedPhotos.Count == 0) return;
-
-        // 2. 用户确认后，把填好元数据的照片写入数据库
         IsBusy = true;
-        var imported = 0;
-        var failed = 0;
-        StatusMessage = $"正在写入数据库...";
+
+        var wizard = App.ImportWizardViewModel;
         try
         {
+            // 1. 预处理（复制 + 缩略图 + EXIF）。这一步不弹任何界面，
+            //    所以必须把进度写进状态栏，否则用户以为没反应会重复点击。
+            StatusMessage = $"正在处理 {filePaths.Count} 张照片…";
+            var started = await wizard.StartAsync(
+                filePaths,
+                (done, total) => StatusMessage = $"正在处理照片 {done}/{total}…");
+
+            if (!started)
+            {
+                StatusMessage = wizard.IsOpen ? "导入向导已打开" : "导入已取消（或正在处理上一批）";
+                return;
+            }
+
+            // 2. 等用户在向导弹层里逐张确认或取消
+            var confirmed = await wizard.WaitForCompletionAsync();
+            if (!confirmed || wizard.CompletedPhotos.Count == 0)
+            {
+                StatusMessage = "已取消导入";
+                return;
+            }
+
+            // 3. 落库
+            var imported = 0;
+            var failed = 0;
+            StatusMessage = "正在写入数据库…";
             foreach (var photo in wizard.CompletedPhotos)
             {
                 try
@@ -279,8 +298,25 @@ public sealed partial class GarageViewModel : ObservableObject
                     System.Diagnostics.Debug.WriteLine($"DB insert failed: {ex}");
                 }
             }
-            StatusMessage = $"导入完成：成功 {imported} 张，失败 {failed} 张";
+
+            StatusMessage = failed == 0
+                ? $"导入完成：成功 {imported} 张"
+                : $"导入完成：成功 {imported} 张，失败 {failed} 张";
+
             await RefreshAsync();
+
+            // 有筛选条件时新照片很可能被筛掉，不提示的话就是「导入成功但看不到」
+            var filter = BuildFilter();
+            var filtered = !string.IsNullOrWhiteSpace(filter.Keyword)
+                || !string.IsNullOrWhiteSpace(filter.AircraftModel)
+                || !string.IsNullOrWhiteSpace(filter.RegistrationNumber)
+                || !string.IsNullOrWhiteSpace(filter.AirportCode)
+                || filter.ShotFrom.HasValue
+                || filter.ShotTo.HasValue;
+            if (filtered)
+            {
+                StatusMessage += "　（当前有筛选条件，新照片可能被隐藏，点「清空筛选」查看全部）";
+            }
         }
         finally
         {

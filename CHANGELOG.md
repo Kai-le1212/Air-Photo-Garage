@@ -5,6 +5,31 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.3.1.3] - 2026-11-10
+
+### 修复
+
+- **大量照片导入时向导不出来 / 点下一张没反应 / 完成后看不到新照片**（三个问题叠加）
+  1. **预处理阶段没有任何反馈**：向导要等全部照片复制 + 生成缩略图 + 读 EXIF 之后才打开，
+     大图几十秒里界面毫无变化 ⇒ 用户以为没反应、又点一次「导入」。
+     现在状态栏实时显示「正在处理照片 12/50…」。
+  2. **并发启动把向导状态搞坏**：`ImportPhotosAsync` 只在「入库」阶段置 `IsBusy`，
+     预处理期间连点会并发跑两轮 `StartAsync`，把 `_photos` 清空重建，
+     `CurrentIndex` 与集合长度错位 ⇒ `ArgumentOutOfRangeException`（日志里 00:00:42~44 连抛 5 次），
+     表现为「向导弹不出来 / 点下一张没反应」。现在整条流程都算忙（`IsBusy` 全程持有），
+     向导自身也加了 `_isStarting` + `IsOpen` 双保险拒并发。
+  3. **向导索引越界没有兜底**：`LoadCurrentToFields` 直接 `_photos[CurrentIndex]` /
+     `_thumbnails[CurrentIndex]`。现在越界会夹紧并记日志，未捕获异常不再把向导卡死。
+  - 另外：导入完成时若**有筛选条件**，状态栏会提示「新照片可能被隐藏，点清空筛选查看全部」——
+    这是「导入成功但看不见」的另一个常见原因。
+
+### 变更
+
+- **包引用版本钉死**：`Microsoft.WindowsAppSDK` / `Microsoft.Windows.SDK.BuildTools` /
+  `CommunityToolkit.Mvvm` / `...BuildTools.WinApp` 原是浮动 `Version="*"`，
+  会在任意时刻解析到新版本把构建搞坏（这次就踩到了）。现固定为
+  2.5.1 / 10.0.28000.2705 / 8.4.2 / 0.7.1（即 v0.3.1.2 构建时实际使用的版本）。
+
 ## [0.3.1.2] - 2026-10-25
 
 ### 修复
