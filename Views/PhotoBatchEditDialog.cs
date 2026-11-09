@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
 using AirPhotoGarage.Services;
@@ -13,14 +14,20 @@ namespace AirPhotoGarage.Views;
 /// 「批量填写」对话框：给多选的照片一次性写同一组信息。
 ///
 /// <para>
-/// 规则：<b>留空的字段不修改</b>（不是清空）。想清空某个字段请用单张编辑。
-/// 机型框带候选，航空公司名称 ↔ 二字码 与其它入口共用 <see cref="AirlineLinker"/>。
+/// 规则：<b>留空的字段不修改</b>（不是清空）。
+/// </para>
+///
+/// <para>
+/// 打开时会先看这批照片在各字段上是否<b>已经全部相同</b>：相同就直接预填到输入框，
+/// 用户不用再抄一遍；提交时值没变的字段也不会重复写库。
 /// </para>
 /// </summary>
 internal static class PhotoBatchEditDialog
 {
-    public static async Task<PhotoBatchFields?> ShowAsync(XamlRoot root, int photoCount)
+    public static async Task<PhotoBatchFields?> ShowAsync(XamlRoot root, IReadOnlyList<Photo> photos)
     {
+        var count = photos.Count;
+
         var asbModel = new AutoSuggestBox
         {
             Header = "机型（留空则不改）",
@@ -69,7 +76,7 @@ internal static class PhotoBatchEditDialog
 
         var tbIata = new TextBox
         {
-            Header = "机场 IATA（如 PEK）",
+            Header = "机场 IATA 三字码（如 PEK）",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -77,7 +84,7 @@ internal static class PhotoBatchEditDialog
 
         var tbIcao = new TextBox
         {
-            Header = "机场 ICAO（如 ZBAA）",
+            Header = "机场 ICAO 四字码（如 ZBAA）",
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -89,6 +96,9 @@ internal static class PhotoBatchEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
+        // 三字码 / 四字码 / 全称 互相补齐（与照片编辑同一份逻辑）
+        AirportLinker.Attach(tbIata, tbIcao, tbAirportName);
+
         var tbFlight = new TextBox
         {
             Header = "航班号（如 CX390）",
@@ -98,16 +108,49 @@ internal static class PhotoBatchEditDialog
 
         var tbNotes = new TextBox
         {
-            Header = "备注",
+            Header = "备注（留空则不改）",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
-        var panel = new StackPanel { Spacing = 10, MinWidth = 420 };
-        panel.Children.Add(new TextBlock
+        // 已经全部相同的字段直接预填 —— 用户不必再抄一遍
+        int prefilled = 0;
+
+        void Prefill(TextBox box, Func<Photo, string?> pick)
         {
-            Text = $"将给选中的 {photoCount} 张照片写入下面的信息；留空的项保持原样。",
+            var common = CommonValue(photos, pick);
+            if (common is null) return;
+            box.Text = common;
+            prefilled++;
+        }
+
+        Prefill(tbReg, p => p.RegistrationNumber);
+        Prefill(tbIata, p => p.AirportIata);
+        Prefill(tbIcao, p => p.AirportIcao);
+        Prefill(tbAirportName, p => p.AirportName);
+        Prefill(tbFlight, p => p.FlightNumber);
+        Prefill(tbNotes, p => p.Notes);
+
+        var commonModel = CommonValue(photos, p => p.AircraftModel);
+        if (commonModel is not null) { asbModel.Text = commonModel; prefilled++; }
+
+        var commonAirline = CommonValue(photos, p => p.AirlineName);
+        if (commonAirline is not null) { asbAirline.Text = commonAirline; prefilled++; }
+
+        var commonCode = CommonValue(photos, p => p.AirlineIata);
+        if (commonCode is not null) { tbAirlineCode.Text = commonCode; prefilled++; }
+
+        var panel = new StackPanel { Spacing = 10, MinWidth = 440 };
+
+        var hint = new TextBlock
+        {
+            Text = prefilled > 0
+                ? $"将给选中的 {count} 张照片写入下面的信息。"
+                  + $"其中 {prefilled} 项这批照片已经全部相同，已自动带出；保持原样就不会重复写入。"
+                : $"将给选中的 {count} 张照片写入下面的信息；留空的项保持原样。",
             TextWrapping = TextWrapping.Wrap,
-        });
+        };
+        panel.Children.Add(hint);
+
         panel.Children.Add(asbModel);
         panel.Children.Add(tbReg);
         panel.Children.Add(asbAirline);
@@ -145,5 +188,26 @@ internal static class PhotoBatchEditDialog
             AirportName: tbAirportName.Text,
             FlightNumber: tbFlight.Text,
             Notes: tbNotes.Text);
+    }
+
+    /// <summary>
+    /// 这批照片在该字段上是否<b>全部相同且非空</b>；是则返回该值，否则 null。
+    /// </summary>
+    private static string? CommonValue(IReadOnlyList<Photo> photos, Func<Photo, string?> pick)
+    {
+        if (photos.Count == 0) return null;
+
+        string? first = null;
+        foreach (var photo in photos)
+        {
+            var value = pick(photo);
+            if (string.IsNullOrWhiteSpace(value)) return null;
+
+            var trimmed = value.Trim();
+            if (first is null) first = trimmed;
+            else if (!string.Equals(first, trimmed, StringComparison.OrdinalIgnoreCase)) return null;
+        }
+
+        return first;
     }
 }

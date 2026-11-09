@@ -145,12 +145,8 @@ public static class PhotoEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
-        // IATA 变化 → 查目录回填 ICAO + Name
-        tbIata.TextChanged += (s, args) => FillAirportFromIata(tbIata, tbIcao, tbAirportName);
-        // ICAO 变化 → 查目录回填 IATA + Name
-        tbIcao.TextChanged += (s, args) => FillAirportFromIcao(tbIcao, tbIata, tbAirportName);
-        // 名称变化 → 反查 IATA + ICAO
-        tbAirportName.TextChanged += (s, args) => FillAirportFromName(tbAirportName, tbIata, tbIcao);
+        // 三字码 / 四字码 / 全称 互相补齐（与批量填写共用同一份逻辑）
+        AirportLinker.Attach(tbIata, tbIcao, tbAirportName);
 
         // ---------- 拍摄时间 ----------
         //
@@ -289,7 +285,14 @@ public static class PhotoEditDialog
         // 初始反向回填：让三个字段对齐（以 Name 为准反向查 IATA/ICAO）
         if (!string.IsNullOrWhiteSpace(photo.AirportName))
         {
-            FillAirportFromName(tbAirportName, tbIata, tbIcao);
+            var hits = App.AirportCatalog.SearchByName(photo.AirportName);
+            if (hits.Count == 1)
+            {
+                if (!string.Equals(tbIata.Text, hits[0].Iata, StringComparison.OrdinalIgnoreCase))
+                    tbIata.Text = hits[0].Iata ?? "";
+                if (!string.Equals(tbIcao.Text, hits[0].Icao, StringComparison.OrdinalIgnoreCase))
+                    tbIcao.Text = hits[0].Icao ?? "";
+            }
         }
 
         stack.Children.Add(asbModel);
@@ -384,39 +387,4 @@ public static class PhotoEditDialog
     private static string? NullIfEmpty(string? s) =>
         string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-    /// <summary>用户输入 IATA 三字后，自动回填 ICAO + 机场名。</summary>
-    private static void FillAirportFromIata(TextBox tbIata, TextBox tbIcao, TextBox tbName)
-    {
-        if (tbIata.Text.Length != 3) return;
-        var airport = App.AirportCatalog.FindByIata(tbIata.Text);
-        if (airport is null) return;
-        if (!string.Equals(tbIcao.Text, airport.Icao, StringComparison.OrdinalIgnoreCase))
-            tbIcao.Text = airport.Icao ?? "";
-        if (!string.Equals(tbName.Text, airport.Name, StringComparison.Ordinal))
-            tbName.Text = airport.Name;
-    }
-
-    /// <summary>用户输入 ICAO 四字后，自动回填 IATA + 机场名。</summary>
-    private static void FillAirportFromIcao(TextBox tbIcao, TextBox tbIata, TextBox tbName)
-    {
-        if (tbIcao.Text.Length != 4) return;
-        var airport = App.AirportCatalog.FindByIcao(tbIcao.Text);
-        if (airport is null) return;
-        if (!string.Equals(tbIata.Text, airport.Iata, StringComparison.OrdinalIgnoreCase))
-            tbIata.Text = airport.Iata ?? "";
-        if (!string.Equals(tbName.Text, airport.Name, StringComparison.Ordinal))
-            tbName.Text = airport.Name;
-    }
-
-    /// <summary>用户输入机场名后，反查 IATA + ICAO。仅匹配唯一时回填。</summary>
-    private static void FillAirportFromName(TextBox tbName, TextBox tbIata, TextBox tbIcao)
-    {
-        var results = App.AirportCatalog.SearchByName(tbName.Text);
-        if (results.Count != 1) return;
-        var airport = results[0];
-        if (!string.Equals(tbIata.Text, airport.Iata, StringComparison.OrdinalIgnoreCase))
-            tbIata.Text = airport.Iata ?? "";
-        if (!string.Equals(tbIcao.Text, airport.Icao, StringComparison.OrdinalIgnoreCase))
-            tbIcao.Text = airport.Icao ?? "";
-    }
 }

@@ -19,10 +19,16 @@ public sealed record PhotoBatchFields(
     string? FlightNumber,
     string? Notes);
 
+/// <summary>批量填写结果：真正改动了几张、几张内容本来就已经相同。</summary>
+public sealed record PhotoBatchEditResult(int Updated, int Unchanged);
+
 public interface IPhotoBatchEditService
 {
-    /// <summary>把非空字段批量写入给定的照片，返回成功更新的张数。</summary>
-    Task<int> ApplyAsync(IReadOnlyList<Photo> photos, PhotoBatchFields fields);
+    /// <summary>
+    /// 把非空字段批量写入给定的照片。<b>值本来就相同的字段不会重写</b>，
+    /// 因此「已经全部一样」的照片会原样跳过。
+    /// </summary>
+    Task<PhotoBatchEditResult> ApplyAsync(IReadOnlyList<Photo> photos, PhotoBatchFields fields);
 }
 
 /// <summary>
@@ -39,9 +45,10 @@ public sealed class PhotoBatchEditService : IPhotoBatchEditService
 
     public PhotoBatchEditService(IDatabaseService db) => _db = db;
 
-    public async Task<int> ApplyAsync(IReadOnlyList<Photo> photos, PhotoBatchFields f)
+    public async Task<PhotoBatchEditResult> ApplyAsync(
+        IReadOnlyList<Photo> photos, PhotoBatchFields f)
     {
-        if (photos.Count == 0) return 0;
+        if (photos.Count == 0) return new PhotoBatchEditResult(0, 0);
 
         var model = Clean(f.AircraftModel);
         var registration = Clean(f.RegistrationNumber)?.ToUpperInvariant();
@@ -54,39 +61,86 @@ public sealed class PhotoBatchEditService : IPhotoBatchEditService
         var notes = Clean(f.Notes);
 
         var updated = 0;
+        var unchanged = 0;
+
         foreach (var photo in photos)
         {
-            if (model is not null) photo.AircraftModel = model;
-            if (registration is not null) photo.RegistrationNumber = registration;
-            if (airlineName is not null) photo.AirlineName = airlineName;
-            if (airlineIata is not null) photo.AirlineIata = airlineIata;
-            if (iata is not null)
+            var changed = false;
+
+            if (model is not null && Differs(photo.AircraftModel, model))
+            {
+                photo.AircraftModel = model;
+                photo.RecognitionStatus = 2;
+                changed = true;
+            }
+
+            if (registration is not null && Differs(photo.RegistrationNumber, registration))
+            {
+                photo.RegistrationNumber = registration;
+                changed = true;
+            }
+
+            if (airlineName is not null && Differs(photo.AirlineName, airlineName))
+            {
+                photo.AirlineName = airlineName;
+                changed = true;
+            }
+
+            if (airlineIata is not null && Differs(photo.AirlineIata, airlineIata))
+            {
+                photo.AirlineIata = airlineIata;
+                changed = true;
+            }
+
+            if (iata is not null && Differs(photo.AirportIata, iata))
             {
                 photo.AirportIata = iata;
                 photo.AirportCode ??= iata;
+                changed = true;
             }
-            if (icao is not null)
+
+            if (icao is not null && Differs(photo.AirportIcao, icao))
             {
                 photo.AirportIcao = icao;
                 photo.AirportCode ??= icao;
+                changed = true;
             }
-            if (airportName is not null) photo.AirportName = airportName;
-            if (flight is not null) photo.FlightNumber = flight;
-            if (notes is not null) photo.Notes = notes;
 
-            // 机型补上后，识别状态跟着更新，与手动编辑的规则一致
-            if (model is not null && !string.IsNullOrWhiteSpace(photo.AircraftModel))
+            if (airportName is not null && Differs(photo.AirportName, airportName))
             {
-                photo.RecognitionStatus = 2;
+                photo.AirportName = airportName;
+                changed = true;
+            }
+
+            if (flight is not null && Differs(photo.FlightNumber, flight))
+            {
+                photo.FlightNumber = flight;
+                changed = true;
+            }
+
+            if (notes is not null && Differs(photo.Notes, notes))
+            {
+                photo.Notes = notes;
+                changed = true;
+            }
+
+            if (!changed)
+            {
+                unchanged++;
+                continue;
             }
 
             await _db.UpdatePhotoAsync(photo);
             updated++;
         }
 
-        App.Log($"批量填写：{updated} 张（机型={model ?? "-"}, 注册号={registration ?? "-"}, 航司={airlineName ?? "-"}, 机场={iata ?? icao ?? "-"}）");
-        return updated;
+        App.Log($"批量填写：更新 {updated} 张，内容已相同跳过 {unchanged} 张");
+        return new PhotoBatchEditResult(updated, unchanged);
     }
+
+    /// <summary>新值与库里的值是否有实质差异（忽略大小写与首尾空白）。</summary>
+    private static bool Differs(string? current, string next) =>
+        !string.Equals(current?.Trim(), next, StringComparison.OrdinalIgnoreCase);
 
     private static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

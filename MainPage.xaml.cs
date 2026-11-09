@@ -105,8 +105,17 @@ public sealed partial class MainPage : Page
         {
             WallMultiSelectToggle.Label = count > 0 ? $"多选 · 已选 {count}" : "多选";
         }
-        if (WallBatchFillButton is not null) WallBatchFillButton.IsEnabled = count > 0;
-        if (WallClearSelectionButton is not null) WallClearSelectionButton.IsEnabled = count > 0;
+        // 没选中时不占位，勾选（或全选）之后才出现
+        if (WallBatchFillButton is not null)
+        {
+            WallBatchFillButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            WallBatchFillButton.IsEnabled = count > 0;
+        }
+        if (WallClearSelectionButton is not null)
+        {
+            WallClearSelectionButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            WallClearSelectionButton.IsEnabled = count > 0;
+        }
     }
 
     private void OnWallClearSelectionClick(object sender, RoutedEventArgs e)
@@ -122,19 +131,23 @@ public sealed partial class MainPage : Page
         var cards = WallSelectedCards();
         if (cards.Count == 0) return;
 
-        var fields = await Views.PhotoBatchEditDialog.ShowAsync(XamlRoot, cards.Count);
+        var photos = cards.Select(c => c.Photo).ToList();
+
+        var fields = await Views.PhotoBatchEditDialog.ShowAsync(XamlRoot, photos);
         if (fields is null) return;
 
         try
         {
-            var photos = cards.Select(c => c.Photo).ToList();
-            var updated = await App.BatchEdit.ApplyAsync(photos, fields);
+            var result = await App.BatchEdit.ApplyAsync(photos, fields);
 
             OnWallClearSelectionClick(this, new RoutedEventArgs());
             await ViewModel.InitializeAsync();
             UpdateWallSelection();
 
-            await Views.Dialogs.AlertAsync("批量填写完成", $"已更新 {updated} 张照片。");
+            var message = result.Unchanged == 0
+                ? $"已更新 {result.Updated} 张照片。"
+                : $"已更新 {result.Updated} 张照片；另有 {result.Unchanged} 张内容本来就相同，未改动。";
+            await Views.Dialogs.AlertAsync("批量填写完成", message);
         }
         catch (Exception ex)
         {

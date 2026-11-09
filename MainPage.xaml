@@ -213,12 +213,14 @@
                           Label="批量填写"
                           Icon="Edit"
                           IsEnabled="False"
+                          Visibility="Collapsed"
                           Click="OnWallBatchFillClick"
                           AutomationProperties.Name="批量填写" />
             <AppBarButton x:Name="WallClearSelectionButton"
                           Label="取消选择"
                           Icon="Clear"
                           IsEnabled="False"
+                          Visibility="Collapsed"
                           Click="OnWallClearSelectionClick"
                           AutomationProperties.Name="取消选择" />
 
