@@ -54,10 +54,15 @@ public sealed class PhotoImportService : IPhotoImportService
         var ext = info.Extension.ToLowerInvariant();
         if (string.IsNullOrEmpty(ext)) ext = ".jpg";
 
-        // 目标路径：按拍摄年月分目录（沿用原有口径，暂不改动）
+        // 目标目录一律按「拍摄时间」的年月分：
+        // - ShotAt 存的是相机本地时间 + 偏移 0，取 .DateTime 才是原始墙上时间
+        //   （用 ToLocalTime() 会整体平移 8 小时，23:00 拍的会掉到第二天）
+        // - 绝不用文件修改时间兜底 —— 那是「修图/导出时间」，会让照片落进修图当天
         var exif = await _exifService.ReadAsync(sourceFilePath);
-        var anchor = exif.ShotAt ?? info.LastWriteTime;
-        var relDir = Path.Combine(anchor.ToLocalTime().ToString("yyyy"), anchor.ToLocalTime().ToString("MM"));
+        var shotWall = exif.ShotAt?.DateTime;
+        var relDir = shotWall.HasValue
+            ? Path.Combine(shotWall.Value.ToString("yyyy"), shotWall.Value.ToString("MM"))
+            : "未注日期";
         Directory.CreateDirectory(Path.Combine(_photosRoot, relDir));
         Directory.CreateDirectory(Path.Combine(_thumbsRoot, relDir));
 
