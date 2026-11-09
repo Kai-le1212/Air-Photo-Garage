@@ -78,6 +78,9 @@ public partial class App : Application
     /// <summary>分组头图（covers.json + Covers/ 目录）。不读写数据库。</summary>
     public static ICoverService Covers { get; private set; } = null!;
 
+    /// <summary>照片库修复（把「文件在、库里没有」的照片补登记回来）。</summary>
+    public static ILibraryRepairService LibraryRepair { get; private set; } = null!;
+
     public static GarageViewModel GarageViewModel { get; private set; } = null!;
     public static ImportWizardViewModel ImportWizardViewModel { get; private set; } = null!;
     public static SettingsViewModel SettingsViewModel { get; private set; } = null!;
@@ -166,6 +169,7 @@ public partial class App : Application
             AircraftCatalog = new AircraftCatalogService();
             Airlines = new AirlineCatalogService();
             Covers = new CoverService(LibraryRoot);
+            LibraryRepair = new LibraryRepairService(Database, Exif, LibraryRoot);
             Log("Services ready");
 
             // 历史照片的元数据回填：修好 XMP 读取之前导入的照片 exif_json 全是空的。

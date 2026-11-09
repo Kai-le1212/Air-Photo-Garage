@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AirPhotoGarage.ViewModels;
 
@@ -78,6 +80,55 @@ public sealed partial class SettingsViewModel : ObservableObject
         App.SaveLibraryRoot(path);
         OnPropertyChanged(nameof(LibraryRootText));
         OnPropertyChanged(nameof(DatabasePathText));
+    }
+
+    // ---------- 照片库维护：补登记 + 去重 ----------
+
+    /// <summary>修复进度 / 结果文本。</summary>
+    [ObservableProperty]
+    public partial string RepairStatus { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool IsRepairing { get; set; }
+
+    /// <summary>修复按钮是否可点（修复中禁用，避免重复触发）。</summary>
+    public bool CanRepair => !IsRepairing;
+
+    partial void OnIsRepairingChanged(bool value) => OnPropertyChanged(nameof(CanRepair));
+
+    /// <summary>
+    /// 扫描库目录，把「文件在、库里没有」的照片补登记，并按内容哈希去掉重复记录。
+    /// 磁盘上的照片文件<b>不会</b>被删除。
+    /// </summary>
+    [RelayCommand]
+    private async Task RepairLibraryAsync()
+    {
+        if (IsRepairing) return;
+        IsRepairing = true;
+        RepairStatus = "正在扫描并计算哈希，照片多时需要一会儿…";
+        try
+        {
+            var result = await App.LibraryRepair.RepairAsync(
+                (done, total) => RepairStatus = $"处理中 {done}/{total}…");
+
+            RepairStatus = result.Summary;
+            if (result.Errors.Count > 0)
+            {
+                RepairStatus += Environment.NewLine + string.Join(Environment.NewLine, result.Errors);
+            }
+
+            // 照片墙立刻反映结果（InitializeAsync 内部就是 RefreshAsync）
+            try { await App.GarageViewModel.InitializeAsync(); } catch { /* 刷新失败不影响结论 */ }
+        }
+        catch (Exception ex)
+        {
+            RepairStatus = "修复失败：" + ex.Message;
+            App.LogError("RepairLibrary", ex);
+        }
+        finally
+        {
+            IsRepairing = false;
+        }
     }
 
     /// <summary>判断给定路径是否与当前库目录一致。</summary>
