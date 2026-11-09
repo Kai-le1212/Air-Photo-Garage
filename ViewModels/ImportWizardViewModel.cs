@@ -164,7 +164,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             _thumbnails.Clear();
 
             // 1. 预处理：复制 + 缩略图 + EXIF
-            int succeeded = 0, failed = 0;
+            int succeeded = 0, failed = 0, skipped = 0;
             foreach (var src in sourceFiles)
             {
                 try
@@ -173,18 +173,25 @@ public sealed partial class ImportWizardViewModel : ObservableObject
                     _photos.Add(photo);
                     succeeded++;
                 }
+                catch (DuplicatePhotoException)
+                {
+                    // 同名同内容 = 这张已经导过了，跳过而不是再复制一份
+                    skipped++;
+                }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"PrepareImport failed {src}: {ex}");
                     failed++;
                 }
 
-                progress?.Invoke(succeeded + failed, sourceFiles.Count);
+                progress?.Invoke(succeeded + failed + skipped, sourceFiles.Count);
             }
 
             if (_photos.Count == 0)
             {
-                StatusMessage = $"预处理全部失败：{failed} 张";
+                StatusMessage = skipped > 0 && failed == 0
+                    ? $"这 {skipped} 张都已经在库里了（同名同内容），无需重复导入"
+                    : $"预处理全部失败：{failed} 张";
                 IsOpen = false;
                 _completionTcs.TrySetResult(false);
                 return false;
@@ -200,9 +207,12 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             CurrentIndex = 0;
             IsOpen = true;
             LoadCurrentToFields();
-            StatusMessage = failed == 0
+            var extra = new List<string>();
+            if (skipped > 0) extra.Add($"跳过重复 {skipped} 张");
+            if (failed > 0) extra.Add($"{failed} 张失败");
+            StatusMessage = extra.Count == 0
                 ? $"已加载 {succeeded} 张，请逐张确认信息"
-                : $"已加载 {succeeded} 张（{failed} 张失败）";
+                : $"已加载 {succeeded} 张（{string.Join("，", extra)}）";
             return true;
         }
         finally

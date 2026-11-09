@@ -703,6 +703,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     /// <summary>重新加载当前叶子层（分组调整后调用）。</summary>
     public Task ReloadCurrentGroupAsync() => LoadGroupPhotosAsync();
 
+    /// <summary>重新加载当前照片态（多选批量填写 / 批量设置航司后刷新用）。</summary>
+    public Task ReloadPhotosAsync() => LoadGroupPhotosAsync();
+
     /// <summary>中间层：加载当前分组（机型）下各注册号的统计。</summary>
     private async Task LoadSubGroupsAsync()
     {

@@ -73,6 +73,75 @@ public sealed partial class MainPage : Page
         await ViewModel.ImportPhotosCommand.ExecuteAsync(paths);
     }
 
+    // ---------- 多选 + 批量填写（照片墙） ----------
+
+    private void OnWallMultiSelectToggled(object sender, RoutedEventArgs e)
+    {
+        var on = WallMultiSelectToggle?.IsChecked == true;
+
+        if (WallPhotoGrid is not null)
+        {
+            WallPhotoGrid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
+            WallPhotoGrid.IsItemClickEnabled = !on;
+            if (!on) WallPhotoGrid.SelectedItems.Clear();
+        }
+
+        UpdateWallSelection();
+    }
+
+    private void OnWallSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateWallSelection();
+
+    private List<PhotoCardViewModel> WallSelectedCards() =>
+        WallPhotoGrid is null
+            ? new List<PhotoCardViewModel>()
+            : WallPhotoGrid.SelectedItems.OfType<PhotoCardViewModel>().Distinct().ToList();
+
+    private void UpdateWallSelection()
+    {
+        var count = WallSelectedCards().Count;
+
+        // 计数挂在「多选」按钮的 Label 上（CommandBar 里只放得下 ICommandBarElement）
+        if (WallMultiSelectToggle is not null)
+        {
+            WallMultiSelectToggle.Label = count > 0 ? $"多选 · 已选 {count}" : "多选";
+        }
+        if (WallBatchFillButton is not null) WallBatchFillButton.IsEnabled = count > 0;
+        if (WallClearSelectionButton is not null) WallClearSelectionButton.IsEnabled = count > 0;
+    }
+
+    private void OnWallClearSelectionClick(object sender, RoutedEventArgs e)
+    {
+        if (WallPhotoGrid is not null) WallPhotoGrid.SelectedItems.Clear();
+        UpdateWallSelection();
+    }
+
+    private async void OnWallBatchFillClick(object sender, RoutedEventArgs e)
+    {
+        if (XamlRoot is null) return;
+
+        var cards = WallSelectedCards();
+        if (cards.Count == 0) return;
+
+        var fields = await Views.PhotoBatchEditDialog.ShowAsync(XamlRoot, cards.Count);
+        if (fields is null) return;
+
+        try
+        {
+            var photos = cards.Select(c => c.Photo).ToList();
+            var updated = await App.BatchEdit.ApplyAsync(photos, fields);
+
+            OnWallClearSelectionClick(this, new RoutedEventArgs());
+            await ViewModel.InitializeAsync();
+            UpdateWallSelection();
+
+            await Views.Dialogs.AlertAsync("批量填写完成", $"已更新 {updated} 张照片。");
+        }
+        catch (Exception ex)
+        {
+            await Views.Dialogs.AlertAsync("批量填写失败", ex.Message);
+        }
+    }
+
     private void OnFilterChanged(object sender, TextChangedEventArgs e)
     {
         ViewModel.InvalidateFilter();

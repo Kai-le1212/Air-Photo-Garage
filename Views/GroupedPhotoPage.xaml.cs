@@ -7,6 +7,7 @@ using AirPhotoGarage.Services;
 using AirPhotoGarage.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
@@ -234,6 +235,113 @@ public sealed partial class GroupedPhotoPage : Page
         catch (Exception ex)
         {
             ViewModel.StatusMessage = $"批量设置航司失败：{ex.Message}";
+        }
+    }
+
+    // ---------- 多选 + 批量填写 ----------
+
+    /// <summary>
+    /// 多选开关。两个照片网格都在 DataTemplate 里（x:Name 不生成字段），
+    /// 所以按 ItemTemplate == PhotoCardTpl 走视觉树找，避免依赖控件名。
+    /// </summary>
+    private void OnMultiSelectToggled(object sender, RoutedEventArgs e)
+    {
+        var on = MultiSelectToggle?.IsChecked == true;
+
+        foreach (var grid in PhotoGrids())
+        {
+            grid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
+            grid.IsItemClickEnabled = !on;
+            if (!on) grid.SelectedItems.Clear();
+        }
+
+        if (SelectionBar is not null)
+        {
+            SelectionBar.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        UpdateSelectionCount();
+    }
+
+    private void OnPhotoSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSelectionCount();
+
+    private void UpdateSelectionCount()
+    {
+        if (SelectionCountText is null || BatchFillButton is null) return;
+
+        var count = SelectedCards().Count;
+        SelectionCountText.Text = $"已选 {count} 张";
+        BatchFillButton.IsEnabled = count > 0;
+    }
+
+    private List<PhotoCardViewModel> SelectedCards() =>
+        PhotoGrids()
+            .SelectMany(g => g.SelectedItems.OfType<PhotoCardViewModel>())
+            .Distinct()
+            .ToList();
+
+    private void OnSelectAllClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var grid in PhotoGrids().Where(g => g.Visibility == Visibility.Visible))
+        {
+            grid.SelectAll();
+        }
+        UpdateSelectionCount();
+    }
+
+    private void OnClearSelectionClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var grid in PhotoGrids()) grid.SelectedItems.Clear();
+        UpdateSelectionCount();
+    }
+
+    /// <summary>批量填写：多选的照片一次写入同一组信息（留空的字段不改）。</summary>
+    private async void OnBatchFillClick(object sender, RoutedEventArgs e)
+    {
+        if (XamlRoot is null) return;
+
+        var cards = SelectedCards();
+        if (cards.Count == 0) return;
+
+        var fields = await PhotoBatchEditDialog.ShowAsync(XamlRoot, cards.Count);
+        if (fields is null) return;
+
+        try
+        {
+            var photos = cards.Select(c => c.Photo).ToList();
+            var updated = await App.BatchEdit.ApplyAsync(photos, fields);
+
+            OnClearSelectionClick(this, new RoutedEventArgs());
+            await ViewModel.ReloadPhotosAsync();
+            UpdateSelectionCount();
+
+            await Dialogs.AlertAsync("批量填写完成", $"已更新 {updated} 张照片。");
+        }
+        catch (Exception ex)
+        {
+            await Dialogs.AlertAsync("批量填写失败", ex.Message);
+        }
+    }
+
+    /// <summary>页面里所有「照片卡片」网格（时间轴节点内 + 平铺兜底）。</summary>
+    private IEnumerable<GridView> PhotoGrids()
+    {
+        var template = Resources.TryGetValue("PhotoCardTpl", out var value) ? value as DataTemplate : null;
+
+        return VisualDescendants(this)
+            .OfType<GridView>()
+            .Where(g => template is null || ReferenceEquals(g.ItemTemplate, template))
+            .ToList();
+    }
+
+    private static IEnumerable<DependencyObject> VisualDescendants(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in VisualDescendants(child)) yield return nested;
         }
     }
 

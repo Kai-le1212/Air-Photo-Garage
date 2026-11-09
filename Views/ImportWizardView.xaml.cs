@@ -70,9 +70,19 @@ public sealed partial class ImportWizardView : UserControl
         if (sender is TextBox box) TextInput.ForceUpperCase(box);
     }
 
-    private void OnCancelClick(object sender, RoutedEventArgs e)
+    private async void OnCancelClick(object sender, RoutedEventArgs e)
     {
-        ViewModel.CancelCommand.Execute(null);
+        // 已填的一堆字段点一下就没了太容易误触，先确认一次
+        var discard = await Dialogs.ConfirmAsync(
+            "取消这次导入？",
+            "这一批照片已经填写的信息不会保存，照片副本也会留在库里。",
+            primaryText: "取消导入",
+            closeText: "继续填写");
+
+        if (discard)
+        {
+            ViewModel.CancelCommand.Execute(null);
+        }
     }
 
     // ---------- 机型候选（原生 AutoSuggestBox） ----------

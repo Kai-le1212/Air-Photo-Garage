@@ -54,16 +54,27 @@ public sealed class PhotoImportService : IPhotoImportService
         var ext = info.Extension.ToLowerInvariant();
         if (string.IsNullOrEmpty(ext)) ext = ".jpg";
 
-        // 目标路径：按拍摄年月分目录
+        // 目标路径：按拍摄年月分目录（沿用原有口径，暂不改动）
         var exif = await _exifService.ReadAsync(sourceFilePath);
         var anchor = exif.ShotAt ?? info.LastWriteTime;
         var relDir = Path.Combine(anchor.ToLocalTime().ToString("yyyy"), anchor.ToLocalTime().ToString("MM"));
         Directory.CreateDirectory(Path.Combine(_photosRoot, relDir));
         Directory.CreateDirectory(Path.Combine(_thumbsRoot, relDir));
 
-        var baseName = $"{anchor.ToLocalTime():yyyyMMdd_HHmmss}_{Guid.NewGuid():N}{ext}";
-        var destPath = Path.Combine(_photosRoot, relDir, baseName);
-        var thumbPath = Path.Combine(_thumbsRoot, relDir, baseName);
+        // 保留原始文件名；重名才加 (2)、(3)…；
+        // 同名且内容完全相同 = 已经在库里，直接跳过，不再产生重复副本。
+        var originalName = Path.GetFileName(sourceFilePath);
+        var destPath = Path.Combine(_photosRoot, relDir, originalName);
+        if (File.Exists(destPath))
+        {
+            if (await IsSameContentAsync(sourceFilePath, destPath, cancellationToken))
+            {
+                throw new DuplicatePhotoException(sourceFilePath);
+            }
+            destPath = MakeUniquePath(destPath);
+        }
+
+        var thumbPath = Path.Combine(_thumbsRoot, relDir, Path.GetFileName(destPath));
 
         await CopyAsync(sourceFilePath, destPath, cancellationToken);
 
@@ -120,6 +131,36 @@ public sealed class PhotoImportService : IPhotoImportService
     }
 
     /// <summary>光圈显示文案（<c>f/6.3</c>）。回填历史照片时也复用这一份，避免两处格式不一致。</summary>
+    /// <summary>同名重名时依次尝试「name (2).ext」「name (3).ext」…</summary>
+    private static string MakeUniquePath(string path)
+    {
+        var dir = Path.GetDirectoryName(path)!;
+        var name = Path.GetFileNameWithoutExtension(path);
+        var ext = Path.GetExtension(path);
+
+        for (var i = 2; i < 1000; i++)
+        {
+            var candidate = Path.Combine(dir, $"{name} ({i}){ext}");
+            if (!File.Exists(candidate)) return candidate;
+        }
+
+        return Path.Combine(dir, $"{name}_{Guid.NewGuid():N}{ext}");
+    }
+
+    /// <summary>两份文件是否字节完全一致（先比长度，再比 SHA-256）。</summary>
+    private static async Task<bool> IsSameContentAsync(string a, string b, CancellationToken ct)
+    {
+        if (new FileInfo(a).Length != new FileInfo(b).Length) return false;
+        return await HashAsync(a, ct) == await HashAsync(b, ct);
+    }
+
+    private static async Task<string> HashAsync(string path, CancellationToken ct)
+    {
+        await using var stream = File.OpenRead(path);
+        var hash = await System.Security.Cryptography.SHA256.HashDataAsync(stream, ct);
+        return Convert.ToHexString(hash);
+    }
+
     internal static string? FormatAperture(double? f)
     {
         if (!f.HasValue) return null;
@@ -134,4 +175,19 @@ public sealed class PhotoImportService : IPhotoImportService
         var denom = Math.Round(1.0 / seconds.Value);
         return $"1/{denom:0}s";
     }
+}
+
+/// <summary>
+/// 要导入的文件与库里已有的<b>同名同内容</b>，说明这张图已经导过了 —— 直接跳过，
+/// 不再复制一份副本（以前的重复副本就是这么来的）。
+/// </summary>
+public sealed class DuplicatePhotoException : Exception
+{
+    public DuplicatePhotoException(string sourcePath)
+        : base($"照片已在库中（同名同内容），已跳过：{Path.GetFileName(sourcePath)}")
+    {
+        SourcePath = sourcePath;
+    }
+
+    public string SourcePath { get; }
 }

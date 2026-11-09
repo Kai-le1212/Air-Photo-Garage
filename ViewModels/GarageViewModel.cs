@@ -305,6 +305,20 @@ public sealed partial class GarageViewModel : ObservableObject
 
             await RefreshAsync();
 
+            // 明确告诉用户结果：成功 / 失败各弹一个，避免「点完不知道到底进了没有」
+            if (imported > 0 && failed == 0)
+            {
+                await Views.Dialogs.AlertAsync("导入成功", $"已导入 {imported} 张照片并写入照片库。");
+            }
+            else if (imported == 0)
+            {
+                await Views.Dialogs.AlertAsync("导入失败", $"这 {failed} 张都没能写入数据库，请查看日志 app-startup.log。");
+            }
+            else
+            {
+                await Views.Dialogs.AlertAsync("部分导入失败", $"成功 {imported} 张，失败 {failed} 张。详情见 app-startup.log。");
+            }
+
             // 有筛选条件时新照片很可能被筛掉，不提示的话就是「导入成功但看不到」
             var filter = BuildFilter();
             var filtered = !string.IsNullOrWhiteSpace(filter.Keyword)
