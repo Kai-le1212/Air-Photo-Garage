@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using AirPhotoGarage.Models;
@@ -23,10 +25,11 @@ public static class PhotoDeleteDialog
     /// </summary>
     /// <returns>是否真的执行了删除。调用方需据此刷新自己的集合。</returns>
     /// <remarks>
-    /// <b>只从数据库移除记录，磁盘上的原图保留</b> —— 不会误删用户素材。
-    /// 这里刻意只负责「确认 + 删库」，不碰任何 ViewModel 的集合：
-    /// 照片墙与分组页各自的集合类型不同（平铺 / 分组 / 时间轴），
-    /// 由调用方按自己的结构刷新。
+    /// 删除 = <b>记录 + 磁盘文件（原图 + 缩略图）一起删</b>。
+    /// 早先只删记录、文件留在库里，结果攒出一堆「库里没有、磁盘上还在」的孤儿文件，
+    /// 用户下次「扫描并补登记」又把它们加回来了 —— 删了等于没删。
+    /// 这里仍只负责「确认 + 落库 + 删文件」，不碰任何 ViewModel 的集合：
+    /// 照片墙与分组页各自的集合类型不同（平铺 / 分组 / 时间轴），由调用方刷新。
     /// </remarks>
     public static async Task<bool> ConfirmAndDeleteAsync(XamlRoot? xamlRoot, Photo photo)
     {
@@ -40,7 +43,7 @@ public static class PhotoDeleteDialog
         {
             XamlRoot = xamlRoot,
             Title = $"确认删除照片 #{photo.Id}？",
-            Content = summary.ToString() + "\n（仅从数据库移除，磁盘文件保留）",
+            Content = summary.ToString() + "\n（记录与磁盘上的原图、缩略图都会被删除，不可恢复）",
             PrimaryButtonText = "删除",
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
@@ -49,6 +52,33 @@ public static class PhotoDeleteDialog
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return false;
 
         await App.Database.DeletePhotoAsync(photo.Id);
+        DeleteFiles(photo);
         return true;
+    }
+
+    /// <summary>
+    /// 删掉原图与缩略图。文件被占用 / 已不存在都不影响删除结果（记录已经删了），
+    /// 只写日志，不向上抛。
+    /// </summary>
+    private static void DeleteFiles(Photo photo)
+    {
+        DeleteFile(photo.FilePath);
+        DeleteFile(photo.ThumbnailPath);
+    }
+
+    private static void DeleteFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError($"删除文件失败 {path}", ex);
+        }
     }
 }
