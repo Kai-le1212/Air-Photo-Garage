@@ -72,6 +72,7 @@ public sealed partial class GroupedPhotoPage : Page
     {
         base.OnNavigatedFrom(e);
         ViewModel.DetachViewMode();
+        ViewModel.Detach();
     }
 
     /// <summary>

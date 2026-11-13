@@ -22,6 +22,22 @@ namespace AirPhotoGarage.Services;
 /// （先写 .tmp 再 Move 覆盖），避免中途崩溃把 json 写成半截。
 /// </para>
 /// </summary>
+/// <summary>
+/// 头图变更通知：任何一个页面改了头图，其它页面立刻跟着刷。
+///
+/// <para>
+/// 头图按「维度|分组值」存在 <c>covers.json</c> 里，注册号维度的键在所有页面<b>共用</b>
+/// （照片墙窗格 / 注册号页 / 机型页的注册号层），所以这里只需要一个全局事件，
+/// 各页面订阅后重载自己的封面即可。
+/// </para>
+/// </summary>
+public static class CoverEvents
+{
+    public static event Action? Changed;
+
+    public static void RaiseChanged() => Changed?.Invoke();
+}
+
 public interface ICoverService
 {
     /// <summary>该组的自定义头图本地副本路径；未自定义时返回 null。</summary>
@@ -109,6 +125,7 @@ public sealed class CoverService : ICoverService
         }
 
         DeleteOwnedCopy(oldPath, destPath);
+        CoverEvents.RaiseChanged();
         return destPath;
     }
 
@@ -124,6 +141,7 @@ public sealed class CoverService : ICoverService
         }
 
         DeleteOwnedCopy(oldPath, null);
+        CoverEvents.RaiseChanged();
         return Task.CompletedTask;
     }
 

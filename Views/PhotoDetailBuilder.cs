@@ -240,6 +240,14 @@ internal static class PhotoDetailBuilder
             MaxHeight = 360,
             MaxWidth = 620,
         };
+
+        // 点预览图 = 用系统默认程序打开原图（判读注册号时缩略图不够看）
+        img.Tapped += async (_, e) =>
+        {
+            e.Handled = true;
+            await PhotoLauncher.OpenAsync(photo.FilePath);
+        };
+        ToolTipService.SetToolTip(img, "点击用默认程序打开原图");
         try
         {
             var path = photo.ThumbnailPath ?? photo.FilePath;

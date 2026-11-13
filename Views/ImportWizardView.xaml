@@ -70,6 +70,8 @@
                             Background="{ThemeResource ControlAltFillColorTertiaryBrush}"
                             CornerRadius="6">
                         <Image Source="{x:Bind ViewModel.CurrentThumbnail, Mode=OneWay}"
+                               Tapped="OnPreviewTapped"
+                               ToolTipService.ToolTip="点击用默认程序打开原图"
                                Height="{x:Bind ViewModel.PreviewHeight, Mode=OneWay}"
                                Stretch="Uniform" />
                     </Border>

@@ -4,6 +4,7 @@ using System.Linq;
 using AirPhotoGarage.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace AirPhotoGarage.Views;
 
@@ -68,6 +69,16 @@ public sealed partial class ImportWizardView : UserControl
     private void OnFlightNumberChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is TextBox box) TextInput.ForceUpperCase(box);
+    }
+
+    /// <summary>点预览图 → 用系统默认程序打开这张原图（放大看细节）。</summary>
+    private async void OnPreviewTapped(object sender, TappedRoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (ViewModel.CurrentPhotoPath is { } path)
+        {
+            await PhotoLauncher.OpenAsync(path);
+        }
     }
 
     private async void OnCancelClick(object sender, RoutedEventArgs e)

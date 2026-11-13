@@ -153,12 +153,13 @@ internal static class PhotoBatchEditDialog
 
         panel.Children.Add(asbModel);
         panel.Children.Add(tbReg);
+        // 顺序与导入向导一致：机型 → 注册号 → 航司 → 二字码 → 航班号 → 机场 → 备注
         panel.Children.Add(asbAirline);
         panel.Children.Add(tbAirlineCode);
+        panel.Children.Add(tbFlight);
         panel.Children.Add(tbIata);
         panel.Children.Add(tbIcao);
         panel.Children.Add(tbAirportName);
-        panel.Children.Add(tbFlight);
         panel.Children.Add(tbNotes);
 
         var dialog = new ContentDialog

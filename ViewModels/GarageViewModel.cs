@@ -32,6 +32,7 @@ public sealed partial class GarageViewModel : ObservableObject
         _importer = importer;
         _ui = uiDispatcher;
         _covers = covers;
+        CoverEvents.Changed += OnCoversChanged;
         Photos = new ObservableCollection<PhotoCardViewModel>();
 
         // 视图偏好是全局的：在分组页切了条状/方块，回到照片墙也要跟着变
@@ -148,6 +149,15 @@ public sealed partial class GarageViewModel : ObservableObject
 
     /// <summary>注册号分组在 covers.json 里的维度键。</summary>
     public const string CoverDimension = "registration_number";
+
+    /// <summary>任何页面改了头图 → 窗格封面跟着刷（注册号维度全页面共用一个键）。</summary>
+    private void OnCoversChanged()
+    {
+        foreach (var group in RegistrationGroups)
+        {
+            _ = group.RefreshCoverAsync(_covers?.GetCustomCoverPath(CoverDimension, group.Registration));
+        }
+    }
 
     public bool HasCustomRegistrationCover(RegistrationGroup group) =>
         _covers?.HasCustomCover(CoverDimension, group.Registration) == true;

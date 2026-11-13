@@ -95,8 +95,10 @@
             封面在上、文字在下；图片高度跟随原图比例（CoverHeight），不裁切也不留空。
         -->
         <DataTemplate x:Key="GroupTileTpl" x:DataType="vm:GroupItemViewModel">
+            <!-- RightTapped：方块视图下也要能右键设头图（此前只有条状视图有） -->
             <Border Width="240"
                     Margin="0,0,12,12"
+                    RightTapped="OnGroupRowRightTapped"
                     BorderThickness="1"
                     CornerRadius="8"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -219,21 +221,6 @@
                         <TextBlock Text="方块视图" FontSize="13" />
                     </StackPanel>
                 </ToggleButton>
-
-                <!-- 注册号页专用：勾选多架飞机，一次写好航司（并补齐缺失的机型） -->
-                <Button VerticalAlignment="Bottom"
-                        Height="32"
-                        Padding="12,0"
-                        Click="OnBatchAirlineClick"
-                        Visibility="{x:Bind ViewModel.BatchAirlineVisibility, Mode=OneWay}"
-                        ToolTipService.ToolTip="勾选多架飞机，一次设置航空公司">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  Glyph="&#xE716;"
-                                  FontSize="14" />
-                        <TextBlock Text="批量设置航司" FontSize="13" />
-                    </StackPanel>
-                </Button>
 
                 <!-- 多选：开可勾选卡片批量填写；关则点卡片看详情 -->
                 <ToggleButton x:Name="MultiSelectToggle"

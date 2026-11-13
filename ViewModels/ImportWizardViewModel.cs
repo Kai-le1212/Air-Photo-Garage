@@ -119,6 +119,10 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     /// <summary>完成向导后，向调用方返回的所有 Photo 对象（已含用户填写的元数据）。</summary>
     public IReadOnlyList<Photo> CompletedPhotos => _photos;
 
+    /// <summary>当前这张照片的磁盘路径（点预览图时用默认程序打开原图）。</summary>
+    public string? CurrentPhotoPath =>
+        CurrentIndex >= 0 && CurrentIndex < _photos.Count ? _photos[CurrentIndex].FilePath : null;
+
     /// <summary>机型候选（供 UI 下拉使用，来自内置机型库 + 已入库机型）。</summary>
     public IReadOnlyList<string> AircraftSuggestions(string keyword)
         => _aircraftCatalog.Search(keyword);
@@ -266,6 +270,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         // 切到另一张时同步它的宽高比，否则预览高度会沿用上一张的
         ThumbnailAspect = AspectOf(thumb);
 
+        OnPropertyChanged(nameof(CurrentPhotoPath));
         StepText = $"第 {CurrentIndex + 1} / {_photos.Count} 张";
         NextButtonText = CurrentIndex == _photos.Count - 1 ? "完成导入" : "下一张 >";
 

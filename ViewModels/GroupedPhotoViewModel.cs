@@ -116,6 +116,7 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
     {
         _db = db;
         _covers = covers;
+        CoverEvents.Changed += OnCoversChanged;
         ViewModeStore.Changed += OnViewModeChanged;
         _groupColumn = groupColumn;
         _dimensionLabel = dimensionLabel;
@@ -462,6 +463,16 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         };
 
         var sorted = ordered.ToList();
+
+        // 「未填写 xx」永远置顶：它是待办入口，不该被排序方式埋到中间去
+        var missingIndex = sorted.FindIndex(g => g.IsMissing);
+        if (missingIndex > 0)
+        {
+            var missing = sorted[missingIndex];
+            sorted.RemoveAt(missingIndex);
+            sorted.Insert(0, missing);
+        }
+
         // ObservableCollection 没有 Sort()，用 Move 原地重排以保留选中状态
         for (var target = 0; target < sorted.Count; target++)
         {
@@ -642,7 +653,9 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
         _selectedGroupIsMissing = group.IsMissing;
         _selectedSubGroupIsMissing = false;
 
-        if (_enableRegistrationSubLevel)
+        // 「未填写」桶不提供中间层：这种桶里的照片本来就没有注册号，
+        // 再列一遍「未填写注册号」纯属多余窗口 —— 直接进时间轴。
+        if (_enableRegistrationSubLevel && !group.IsMissing)
         {
             await LoadSubGroupsAsync();
         }
@@ -702,6 +715,19 @@ public sealed partial class GroupedPhotoViewModel : ObservableObject
 
     /// <summary>重新加载当前叶子层（分组调整后调用）。</summary>
     public Task ReloadCurrentGroupAsync() => LoadGroupPhotosAsync();
+
+    /// <summary>头图被任何页面改动时，把自己这层的封面重新贴一遍。</summary>
+    private void OnCoversChanged()
+    {
+        _ = LoadGroupCoversAsync();
+        if (_enableRegistrationSubLevel) _ = LoadSubGroupCoversAsync();
+    }
+
+    /// <summary>离开页面时解除订阅（本 VM 是页面级的，不解除会一直挂着）。</summary>
+    public void Detach()
+    {
+        CoverEvents.Changed -= OnCoversChanged;
+    }
 
     /// <summary>重新加载当前照片态（多选批量填写 / 批量设置航司后刷新用）。</summary>
     public Task ReloadPhotosAsync() => LoadGroupPhotosAsync();
