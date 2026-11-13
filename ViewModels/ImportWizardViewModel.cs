@@ -28,7 +28,21 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     private readonly IAirportCatalogService _airportCatalog;
     private readonly IAircraftCatalogService _aircraftCatalog;
 
+    /// <summary>
+    /// 机场自动填写（默认开启，跨批次保持）。
+    /// 开着时，新一张照片如果还没有机场信息，就沿用<b>最近一次填过的机场</b> ——
+    /// 同一天在同一个机场拍的片子不用反复填。
+    /// </summary>
+    [ObservableProperty]
+    public partial bool AirportAutoFill { get; set; } = _airportAutoFillDefault;
+
+    private static bool _airportAutoFillDefault = true;
+
+    /// <summary>最近一次填过的机场（沿用来源）。</summary>
+    private (string? Iata, string? Icao, string? Name) _lastAirport;
+
     /// <summary>是否正在预处理 —— 防重入用（见 <see cref="StartAsync"/>）。</summary>
+
     private bool _isStarting;
 
     private readonly List<Photo> _photos = new();
@@ -236,6 +250,8 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         return _completionTcs.Task;
     }
 
+    partial void OnAirportAutoFillChanged(bool value) => _airportAutoFillDefault = value;
+
     partial void OnCurrentIndexChanged(int value)
     {
         LoadCurrentToFields();
@@ -264,6 +280,17 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         AirportIata = p.AirportIata ?? "";
         AirportIcao = p.AirportIcao ?? "";
         AirportName = p.AirportName ?? "";
+
+        // 机场自动填写：本张还没有机场信息，就沿用最近一次填过的那套
+        if (AirportAutoFill
+            && string.IsNullOrWhiteSpace(AirportIata)
+            && string.IsNullOrWhiteSpace(AirportIcao)
+            && _lastAirport.Iata is not null)
+        {
+            AirportIata = _lastAirport.Iata ?? "";
+            AirportIcao = _lastAirport.Icao ?? "";
+            AirportName = _lastAirport.Name ?? "";
+        }
         Notes = p.Notes ?? "";
         var thumb = CurrentIndex < _thumbnails.Count ? _thumbnails[CurrentIndex] : null;
         CurrentThumbnail = thumb;
@@ -308,6 +335,12 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         p.AirportCode = p.AirportIata ?? p.AirportIcao; // 兼容旧字段
         p.AirportName = EmptyToNull(AirportName);
         p.Notes = EmptyToNull(Notes);
+
+        // 记住这套机场信息，供后续照片沿用
+        if (!string.IsNullOrWhiteSpace(p.AirportIata) || !string.IsNullOrWhiteSpace(p.AirportIcao))
+        {
+            _lastAirport = (p.AirportIata, p.AirportIcao, p.AirportName);
+        }
     }
 
     private static string? EmptyToNull(string? s) =>
@@ -374,11 +407,19 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         }
     }
 
-    /// <summary>一键把上一张已填写的信息复制到当前张。</summary>
+    /// <summary>
+    /// 一键把上一张已填写的信息复制到当前张，并<b>直接跳到下一张</b>。
+    ///
+    /// <para>
+    /// 连拍几十张同机型/同机场的片子，逐张点「复用 + 下一张」很烦 ——
+    /// 复制完顺手保存并前进，等于一次点击处理一张。
+    /// </para>
+    /// </summary>
     [RelayCommand]
     private void CopyFromPrevious()
     {
         if (CurrentIndex <= 0) return;
+
         var prev = _photos[CurrentIndex - 1];
         AircraftModel = prev.AircraftModel ?? "";
         RegistrationNumber = prev.RegistrationNumber ?? "";
@@ -389,6 +430,9 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         AirportIcao = prev.AirportIcao ?? "";
         AirportName = prev.AirportName ?? "";
         Notes = prev.Notes ?? "";
+
+        // 复用即确认：先把字段写回当前照片，再前进（最后一张则代表完成）
+        Next();
     }
 
     /// <summary>跳过本张，不修改字段并前进。</summary>

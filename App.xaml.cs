@@ -188,6 +188,9 @@ public partial class App : Application
                 LogError("ExifBackfill", ex);
             }
 
+            // 把库里已经用过的机型并进候选（用户手填的写法也能直接选）
+            try { await AircraftCatalog.RefreshUserModelsAsync(); } catch (Exception ex) { LogError("AircraftCatalog.Refresh", ex); }
+
             GarageViewModel = new GarageViewModel(Database, Importer, UiDispatcher, Covers);
             ImportWizardViewModel = new ImportWizardViewModel(Importer, UiDispatcher, AirportCatalog, AircraftCatalog);
             SettingsViewModel = new SettingsViewModel();

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace AirPhotoGarage.Services;
 
@@ -14,6 +15,12 @@ public interface IAircraftCatalogService
     /// 这样输入「B」先出 Boeing，而不是被 "Airbus ..." 挤掉。
     /// </summary>
     IReadOnlyList<string> Search(string keyword);
+
+    /// <summary>
+    /// 重新从库里取「已经在用、但不在内置机型库里的机型」并并入候选。
+    /// 用户自己填过的机型（比如厂家/型号写法特殊）下次也能直接选，不用重打一遍。
+    /// </summary>
+    Task RefreshUserModelsAsync();
 }
 
 /// <summary>
@@ -22,14 +29,40 @@ public interface IAircraftCatalogService
 /// </summary>
 public sealed class AircraftCatalogService : IAircraftCatalogService
 {
-    private readonly List<string> _models;
+    private readonly List<string> _seedModels;
+    private readonly List<string> _userModels = new();
 
     public AircraftCatalogService()
     {
-        _models = SeedModels.OrderBy(m => m).ToList();
+        _seedModels = SeedModels.OrderBy(m => m).ToList();
     }
 
-    public IReadOnlyList<string> All => _models;
+    /// <summary>内置机型 + 库里用过的机型（去重、字母序）。</summary>
+    public IReadOnlyList<string> All =>
+        _userModels.Count == 0
+            ? _seedModels
+            : _seedModels
+                .Concat(_userModels.Where(u => !_seedModels.Contains(u, StringComparer.OrdinalIgnoreCase)))
+                .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+    /// <summary>把库里出现过的机型并进候选（用户手填的写法也算）。</summary>
+    public async Task RefreshUserModelsAsync()
+    {
+        try
+        {
+            var values = await App.Database.GetDistinctValuesAsync("aircraft_model");
+            _userModels.Clear();
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value)) _userModels.Add(value.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogError("RefreshUserModels", ex);
+        }
+    }
 
     /// <summary>
     /// 按关键字搜索（不区分大小写）。<b>排序规则</b>（用户指定的口径）：
@@ -50,7 +83,7 @@ public sealed class AircraftCatalogService : IAircraftCatalogService
         if (string.IsNullOrWhiteSpace(keyword)) return All;
         var k = keyword.Trim();
 
-        return _models
+        return All
             .Where(m => m.Contains(k, System.StringComparison.OrdinalIgnoreCase))
             .OrderBy(m => AircraftModelRanking.Rank(m, k))
             .Take(20)
@@ -110,8 +143,9 @@ public sealed class AircraftCatalogService : IAircraftCatalogService
         "Airbus A380-800",
 
         // ---- COMAC / 中国 ----
-        "COMAC ARJ21-700",
-        "COMAC C919",
+        "COMAC C909",   // ARJ21-700 的商业名，2024 年改名
+        "COMAC C919-100(ER)",   // 与用户已有数据的写法保持一致
+        "COMAC C919-100STD",
         "COMAC C929",
         "XAC Y-8",
         "XAC Y-12",

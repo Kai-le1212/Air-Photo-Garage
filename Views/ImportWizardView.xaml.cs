@@ -33,7 +33,16 @@ public sealed partial class ImportWizardView : UserControl
     /// </summary>
     private void OnRegistrationTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (sender is TextBox box) TextInput.ForceUpperCase(box);
+        if (sender is not TextBox box) return;
+        TextInput.ForceUpperCase(box);
+        // 首字母 B 自动补「-」：B1792 → B-1792
+        var text = box.Text ?? string.Empty;
+        if (text.Length >= 2 && text[0] == 'B' && text[1] != '-' && char.IsLetterOrDigit(text[1]))
+        {
+            var caret = box.SelectionStart;
+            box.Text = "B-" + text[1..];
+            box.SelectionStart = Math.Clamp(caret + 1, 0, box.Text.Length);
+        }
     }
 
     /// <summary>航空公司名称：给候选 + 选中后自动带出二字码（与编辑对话框同一套目录）。</summary>
@@ -65,10 +74,56 @@ public sealed partial class ImportWizardView : UserControl
         if (App.Airlines.NameOf(upper) is { } name) ViewModel.AirlineName = name;
     }
 
-    /// <summary>航班号一律大写（同注册号的做法）。</summary>
+    /// <summary>
+    /// 航班号：大写 + <b>前两位当航司代码带出航司</b>
+    /// （填 <c>CX390</c> → 航空公司=国泰航空、二字码=CX）。
+    /// </summary>
     private void OnFlightNumberChanged(object sender, TextChangedEventArgs e)
     {
-        if (sender is TextBox box) TextInput.ForceUpperCase(box);
+        if (sender is not TextBox box) return;
+        TextInput.ForceUpperCase(box);
+
+        var flight = (box.Text ?? string.Empty).Trim();
+        if (flight.Length < 2) return;
+
+        var code = flight[..2];
+        if (code[0] is < 'A' or > 'Z' || code[1] is < 'A' or > 'Z') return;
+        if (App.Airlines.NameOf(code) is not { } name) return;
+
+        ViewModel.AirlineName = name;
+        ViewModel.AirlineIata = code;
+    }
+
+    /// <summary>机场三字码 → 四字码 + 全称。</summary>
+    private void OnAirportIataChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        TextInput.ForceUpperCase(box);
+
+        var iata = (box.Text ?? string.Empty).Trim();
+        if (iata.Length != 3) return;
+        if (App.AirportCatalog.FindByIata(iata) is not { } airport) return;
+
+        if (!string.Equals(ViewModel.AirportIcao, airport.Icao, StringComparison.OrdinalIgnoreCase))
+            ViewModel.AirportIcao = airport.Icao ?? "";
+        if (!string.Equals(ViewModel.AirportName, airport.Name, StringComparison.Ordinal))
+            ViewModel.AirportName = airport.Name;
+    }
+
+    /// <summary>机场四字码 → 三字码 + 全称。</summary>
+    private void OnAirportIcaoChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        TextInput.ForceUpperCase(box);
+
+        var icao = (box.Text ?? string.Empty).Trim();
+        if (icao.Length != 4) return;
+        if (App.AirportCatalog.FindByIcao(icao) is not { } airport) return;
+
+        if (!string.Equals(ViewModel.AirportIata, airport.Iata, StringComparison.OrdinalIgnoreCase))
+            ViewModel.AirportIata = airport.Iata ?? "";
+        if (!string.Equals(ViewModel.AirportName, airport.Name, StringComparison.Ordinal))
+            ViewModel.AirportName = airport.Name;
     }
 
     /// <summary>点预览图 → 用系统默认程序打开这张原图（放大看细节）。</summary>

@@ -384,7 +384,12 @@ public sealed partial class GarageViewModel : ObservableObject
     /// <summary>
     /// 由 View 在 Loaded 后调用一次，触发首屏数据加载。
     /// </summary>
-    public Task InitializeAsync() => RefreshAsync();
+    public async Task InitializeAsync()
+    {
+        await RefreshAsync();
+        // 导入/编辑之后机型候选要保持最新（用户手填的机型也要能直接选）
+        try { await App.AircraftCatalog.RefreshUserModelsAsync(); } catch { }
+    }
 
     private PhotoFilter BuildFilter()
     {

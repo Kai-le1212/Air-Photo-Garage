@@ -93,7 +93,7 @@ public static class PhotoEditDialog
             CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbReg.TextChanged += (_, _) => TextInput.ForceUpperCase(tbReg);
+        TextInput.ApplyRegistration(tbReg);
 
         // ---------- 航空公司 / 航班号 ----------
         var asbAirline = new AutoSuggestBox
@@ -112,7 +112,6 @@ public static class PhotoEditDialog
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        AirlineLinker.Attach(asbAirline, tbAirlineCode);
 
         var tbFlight = new TextBox
         {
@@ -121,7 +120,10 @@ public static class PhotoEditDialog
             CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbFlight.TextChanged += (_, _) => TextInput.ForceUpperCase(tbFlight);
+        TextInput.ApplyCode(tbFlight);
+
+        // 三向联动：名称 ↔ 二字码 ↔ 航班号前两位（失败时静默，不打断填写）
+        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbFlight);
 
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox

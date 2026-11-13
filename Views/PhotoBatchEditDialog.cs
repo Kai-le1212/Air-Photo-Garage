@@ -49,7 +49,7 @@ internal static class PhotoBatchEditDialog
             PlaceholderText = "如 B-1234",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbReg.TextChanged += (_, _) => TextInput.ForceUpperCase(tbReg);
+        TextInput.ApplyRegistration(tbReg);
 
         var asbAirline = new AutoSuggestBox
         {
@@ -72,7 +72,6 @@ internal static class PhotoBatchEditDialog
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        AirlineLinker.Attach(asbAirline, tbAirlineCode);
 
         var tbIata = new TextBox
         {
@@ -80,7 +79,7 @@ internal static class PhotoBatchEditDialog
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbIata.TextChanged += (_, _) => TextInput.ForceUpperCase(tbIata);
+        TextInput.ApplyCode(tbIata);
 
         var tbIcao = new TextBox
         {
@@ -88,7 +87,7 @@ internal static class PhotoBatchEditDialog
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbIcao.TextChanged += (_, _) => TextInput.ForceUpperCase(tbIcao);
+        TextInput.ApplyCode(tbIcao);
 
         var tbAirportName = new TextBox
         {
@@ -104,7 +103,10 @@ internal static class PhotoBatchEditDialog
             Header = "航班号（如 CX390）",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        tbFlight.TextChanged += (_, _) => TextInput.ForceUpperCase(tbFlight);
+        TextInput.ApplyCode(tbFlight);
+
+        // 三向联动：名称 ↔ 二字码 ↔ 航班号前两位
+        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbFlight);
 
         var tbNotes = new TextBox
         {

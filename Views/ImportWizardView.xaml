@@ -101,9 +101,11 @@
 
                             <TextBox Header="注册号（如 B-1234）"
                                      Text="{x:Bind ViewModel.RegistrationNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     CharacterCasing="Upper"
+                                     IsSpellCheckEnabled="False"
+                                     IsTextPredictionEnabled="False"
+                                     InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnRegistrationTextChanged"
-                                     PlaceholderText="必填" />
+                                     PlaceholderText="必填（首字母 B 会自动补 -）" />
 
                             <!-- 航空公司：名称 ↔ 二字码 互相补齐（填一个，另一个自动带出） -->
                             <AutoSuggestBox x:Name="AsbAirline"
@@ -117,13 +119,19 @@
                             <TextBox Header="航空公司二字码（如 CX）"
                                      MaxLength="2"
                                      Text="{x:Bind ViewModel.AirlineIata, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsSpellCheckEnabled="False"
+                                     IsTextPredictionEnabled="False"
+                                     InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnAirlineCodeChanged"
-                                     PlaceholderText="选填" />
+                                     PlaceholderText="选填（填了名称也会自动带出）" />
 
                             <TextBox Header="航班号（如 CX390）"
                                      Text="{x:Bind ViewModel.FlightNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsSpellCheckEnabled="False"
+                                     IsTextPredictionEnabled="False"
+                                     InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnFlightNumberChanged"
-                                     PlaceholderText="选填" />
+                                     PlaceholderText="选填（前两位是航司代码，会自动带出航司）" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -137,14 +145,27 @@
                                 <TextBox Grid.Row="0" Grid.Column="0" Margin="0,0,4,0"
                                          Header="IATA 三字代码（如 PEK）"
                                          MaxLength="3"
+                                         IsSpellCheckEnabled="False"
+                                         IsTextPredictionEnabled="False"
+                                         InputScope="AlphanumericHalfWidth"
+                                         TextChanged="OnAirportIataChanged"
                                          Text="{x:Bind ViewModel.AirportIata, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBox Grid.Row="0" Grid.Column="1" Margin="4,0,0,0"
                                          Header="ICAO 四字代码（如 ZBAA）"
                                          MaxLength="4"
+                                         IsSpellCheckEnabled="False"
+                                         IsTextPredictionEnabled="False"
+                                         InputScope="AlphanumericHalfWidth"
+                                         TextChanged="OnAirportIcaoChanged"
                                          Text="{x:Bind ViewModel.AirportIcao, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBox Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
                                          Header="机场名称（输入后自动回填 IATA/ICAO）"
                                          Text="{x:Bind ViewModel.AirportName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <!-- 机场自动填写开关：开着就把最近一次填过的机场沿用到后续照片 -->
+                                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Margin="0,4,0,0"
+                                          IsChecked="{x:Bind ViewModel.AirportAutoFill, Mode=TwoWay}"
+                                          Content="自动填写机场信息（沿用上次填过的机场）"
+                                          AutomationProperties.Name="自动填写机场信息" />
                             </Grid>
 
                             <TextBox Header="备注"
