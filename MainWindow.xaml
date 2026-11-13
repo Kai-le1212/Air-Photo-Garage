@@ -16,18 +16,19 @@
     -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="40" />
+            <!-- 32 = 系统最小化/最大化/关闭按钮的高度；高度不一致时左边标题会偏下 -->
+            <RowDefinition Height="32" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Padding="140,0,140,0">
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="32" Padding="14,0,140,0">
             <!--
-                左右留白相等（140 = 系统最小化/最大化/关闭三个按钮的宽度），
-                logo + 应用名在整条标题栏里居中，两边看起来才对称。
+                高度 32 与系统窗口按钮一致（上下对齐）；内容靠左排，
+                右侧留 140px 给最小化/最大化/关闭按钮，避免被压住。
             -->
             <StackPanel Orientation="Horizontal"
                         VerticalAlignment="Center"
-                        HorizontalAlignment="Center"
+                        HorizontalAlignment="Left"
                         Spacing="10">
                 <Image Source="Assets/Square44x44Logo.scale-200.png"
                        Width="24"
