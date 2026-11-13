@@ -5,6 +5,19 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.6.0.1] - 2026-11-13
+
+### 变更
+
+- **照片详情只留常用信息**（去掉「原始 EXIF 数据」整块与文件/路径信息）：
+  - 基本信息：TAG / 机型 / 注册号 / 航空公司 / 航班号 / 拍摄时间 / 机场名称 / 拍摄地代码
+    （备注有内容时才显示）
+  - EXIF 参数：相机型号 / 镜头 / 焦距 / 光圈 / 快门 / ISO / **曝光补偿** / **测光模式**
+  - 图像属性：Image Width / Image Height / Color Space
+  - 位置坐标：GPS Latitude / Longitude / Altitude —— **三项全空时整块不显示**
+  - 已移除：DocumentID/InstanceID 等唯一标识、文件大小与时间戳、缩略图偏移、
+    ExposureProgram/Flash/白平衡 等冗余项、ICC/编码信息、所有 XMP/Composite/Application 字段
+
 ## [0.6.0.0] - 2026-11-13
 
 ### 新增

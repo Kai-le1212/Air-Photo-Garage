@@ -42,68 +42,50 @@ internal static class PhotoDetailBuilder
     {
         var img = await CreatePreviewImageAsync(photo);
 
-        // ---- 右上：基本元数据（全字段，含空值占位） ----
+        // 扁平化的 EXIF 快照（键形如「Exif SubIFD · Metering Mode」）
+        var raw = ParseExifJson(photo.ExifJson);
+
+        // ---- 左：基本信息（只留常用项） ----
         var basicInfo = new StackPanel { Spacing = 4 };
-        AddRowAlways(basicInfo, "ID", photo.Id.ToString());
+        AddRowAlways(basicInfo, "TAG", "Aircraft");
         AddRowAlways(basicInfo, "机型", photo.AircraftModel);
         AddRowAlways(basicInfo, "注册号", photo.RegistrationNumber);
         AddRowAlways(basicInfo, "航空公司", photo.AirlineName);
-        AddRowAlways(basicInfo, "航空公司二字码", photo.AirlineIata);
         AddRowAlways(basicInfo, "航班号", photo.FlightNumber);
         AddRowAlways(basicInfo, "拍摄时间", photo.ShotAt?.ToString("yyyy-MM-dd HH:mm:ss"));
-        AddRowAlways(basicInfo, "机场 IATA", photo.AirportIata);
-        AddRowAlways(basicInfo, "机场 ICAO", photo.AirportIcao);
         AddRowAlways(basicInfo, "机场名称", photo.AirportName);
-        AddRowAlways(basicInfo, "机场代码 (旧)", photo.AirportCode);
-        AddRowAlways(basicInfo, "备注", photo.Notes);
-
-        // ---- 右下：EXIF 详细信息（全字段） ----
-        var exifInfo = new StackPanel { Spacing = 4 };
-        AddRowAlways(exifInfo, "相机厂商", photo.CameraMake);
-        AddRowAlways(exifInfo, "相机型号", photo.CameraModel);
-        AddRowAlways(exifInfo, "镜头", photo.LensModel);
-        AddRowAlways(exifInfo, "焦距", photo.FocalLength.HasValue ? $"{photo.FocalLength.Value:0.##} mm" : null);
-        AddRowAlways(exifInfo, "光圈", photo.Aperture);
-        AddRowAlways(exifInfo, "快门", photo.ShutterSpeed);
-        AddRowAlways(exifInfo, "ISO", photo.Iso?.ToString());
-        AddRowAlways(exifInfo, "GPS 纬度", photo.Latitude?.ToString("0.######"));
-        AddRowAlways(exifInfo, "GPS 经度", photo.Longitude?.ToString("0.######"));
-
-        // ---- 底部：文件信息（全字段） ----
-        var footerInfo = new StackPanel { Spacing = 4, Margin = new Thickness(0, 4, 0, 0) };
-        AddRowAlways(footerInfo, "文件大小", FormatFileSize(photo.FileSize));
-        AddRowAlways(footerInfo, "导入时间", photo.ImportedAt.ToString("yyyy-MM-dd HH:mm:ss"));
-        AddRowAlways(footerInfo, "识别状态", photo.RecognitionStatus switch
+        AddRowAlways(basicInfo, "拍摄地代码", photo.AirportCode ?? photo.AirportIata ?? photo.AirportIcao);
+        if (!string.IsNullOrWhiteSpace(photo.Notes))
         {
-            0 => "0 · 未识别",
-            1 => "1 · 已识别",
-            2 => "2 · 用户已修正",
-            _ => photo.RecognitionStatus.ToString(),
-        });
-        AddRowAlways(footerInfo, "AI 识别机型", photo.RecognizedAircraftModel);
-        AddRowAlways(footerInfo, "AI 置信度", photo.RecognitionConfidence is null
-            ? null
-            : photo.RecognitionConfidence.Value.ToString("P0"));
-        AddRowAlways(footerInfo, "原图路径", photo.FilePath);
-        AddRowAlways(footerInfo, "缩略图路径", photo.ThumbnailPath);
-
-        // ---- 原始 EXIF（解析 exif_json 展开全部条目） ----
-        var rawExif = ParseExifJson(photo.ExifJson);
-        if (rawExif.Count > 0)
-        {
-            footerInfo.Children.Add(new TextBlock
-            {
-                Text = "原始 EXIF 数据",
-                Margin = new Thickness(0, 10, 0, 2),
-                Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
-            });
-            foreach (var kv in rawExif)
-            {
-                AddRowAlways(footerInfo, kv.Key, kv.Value);
-            }
+            AddRowAlways(basicInfo, "备注", photo.Notes);
         }
 
-        // ---- 参数区：基本信息 / EXIF 参数 左右两列 ----
+        // ---- 右：EXIF 参数 ----
+        var exifInfo = new StackPanel { Spacing = 4 };
+        AddRowAlways(exifInfo, "相机型号", photo.CameraModel);
+        AddRowAlways(exifInfo, "镜头", photo.LensModel);
+        AddRowAlways(exifInfo, "焦距", photo.FocalLength.HasValue
+            ? $"{photo.FocalLength.Value:0.#} mm"
+            : null);
+        AddRowAlways(exifInfo, "光圈", photo.Aperture);
+        AddRowAlways(exifInfo, "快门", FormatShutterText(photo.ShutterSpeed));
+        AddRowAlways(exifInfo, "ISO", photo.Iso?.ToString());
+        AddRowAlways(exifInfo, "曝光补偿", FindExif(raw, "Exposure Bias Value"));
+        AddRowAlways(exifInfo, "测光模式", FindExif(raw, "Metering Mode"));
+
+        // ---- 右：图像属性 ----
+        var imageInfo = new StackPanel { Spacing = 4 };
+        AddRowAlways(imageInfo, "Image Width", PixelsOnly(FindExif(raw, "Image Width")));
+        AddRowAlways(imageInfo, "Image Height", PixelsOnly(FindExif(raw, "Image Height")));
+        AddRowAlways(imageInfo, "Color Space", FindExif(raw, "Color Space"));
+
+        // ---- 右：位置坐标 ----
+        var gpsInfo = new StackPanel { Spacing = 4 };
+        AddRowAlways(gpsInfo, "GPS Latitude", photo.Latitude?.ToString("0.######"));
+        AddRowAlways(gpsInfo, "GPS Longitude", photo.Longitude?.ToString("0.######"));
+        AddRowAlways(gpsInfo, "GPS Altitude", FindExif(raw, "GPS Altitude"));
+
+        // ---- 参数区：左边基本信息，右边三组 ----
         var panels = new Grid();
         panels.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         panels.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
@@ -122,13 +104,25 @@ internal static class PhotoDetailBuilder
         var rightPanel = new StackPanel { Spacing = 4 };
         rightPanel.Children.Add(SectionTitle("EXIF 参数"));
         rightPanel.Children.Add(exifInfo);
+        rightPanel.Children.Add(SectionTitle("图像属性", top: 10));
+        rightPanel.Children.Add(imageInfo);
+
+        // 三个坐标全空时整块不出（很多相机根本没写 GPS，留三行「—」纯属噪音）
+        var hasGps = photo.Latitude.HasValue
+                     || photo.Longitude.HasValue
+                     || !string.IsNullOrWhiteSpace(FindExif(raw, "GPS Altitude"));
+        if (hasGps)
+        {
+            rightPanel.Children.Add(SectionTitle("位置坐标", top: 10));
+            rightPanel.Children.Add(gpsInfo);
+        }
 
         Grid.SetColumn(leftPanel, 0);
         panels.Children.Add(leftPanel);
         Grid.SetColumn(rightPanel, 2);
         panels.Children.Add(rightPanel);
 
-        // ---- 整体：上图 + 下双列参数 + 底部文件信息 ----
+        // ---- 整体：上图 + 下双列参数 ----
         // 采用纵向堆叠而不是「左图右参数」：
         // ContentDialog 的可用宽度由主题资源限制且不易精确控制，横向排布时
         // 图片列会把参数列挤出可视区（表现为右侧内容被裁掉）。纵向排布下
@@ -136,7 +130,6 @@ internal static class PhotoDetailBuilder
         var body = new StackPanel { Spacing = 16 };
         body.Children.Add(img);
         body.Children.Add(panels);
-        body.Children.Add(footerInfo);
 
         // ---- 兜底：外层允许宽度不足时，把两列参数退化为单列 ----
         // 这里不写死宽度，仅限制面板的最小宽度，避免极窄窗口下文字被压成竖条。
@@ -220,11 +213,54 @@ internal static class PhotoDetailBuilder
         return dialog;
     }
 
+    /// <summary>
+    /// 从扁平化的 EXIF 快照里按名字取一个值。
+    /// 键形如「Exif SubIFD · Metering Mode」「JPEG · Image Width」「GPS · GPS Altitude」，
+    /// 所以只按键名**包含**关键字匹配；同名多来源时优先 Exif SubIFD，其次其它。
+    /// </summary>
+    private static string? FindExif(IReadOnlyList<KeyValuePair<string, string>> raw, string name)
+    {
+        if (raw.Count == 0) return null;
+
+        string? fallback = null;
+        foreach (var kv in raw)
+        {
+            if (!kv.Key.Contains(name, StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(kv.Value)) continue;
+
+            if (kv.Key.StartsWith("Exif SubIFD", StringComparison.OrdinalIgnoreCase)) return kv.Value.Trim();
+            fallback ??= kv.Value.Trim();
+        }
+        return fallback;
+    }
+
+    /// <summary>快门：库里存 <c>1/1600s</c>，详情页按 <c>1/1600 sec</c> 展示。</summary>
+    private static string? FormatShutterText(string? shutter)
+    {
+        if (string.IsNullOrWhiteSpace(shutter)) return null;
+
+        var value = shutter.Trim();
+        if (value.EndsWith("s", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[..^1].Trim() + " sec";
+        }
+        return value;
+    }
+
+    /// <summary>「7008 pixels」→「7008」。</summary>
+    private static string? PixelsOnly(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var text = value.Trim();
+        var space = text.IndexOf(' ');
+        return space > 0 ? text[..space] : text;
+    }
+
     /// <summary>参数分区的小标题。</summary>
-    private static TextBlock SectionTitle(string text) => new()
+    private static TextBlock SectionTitle(string text, double top = 0) => new()
     {
         Text = text,
-        Margin = new Thickness(0, 0, 0, 2),
+        Margin = new Thickness(0, top, 0, 2),
         Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"],
     };
 
