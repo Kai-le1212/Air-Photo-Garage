@@ -301,6 +301,7 @@ public static class PhotoEditDialog
 
         // 机型 + 注册号 一行；航司二字码 + 航班号 一行（与导入向导一致，省纵向空间）
         stack.Children.Add(Pair(asbModel, tbReg));
+        stack.Children.Add(FlightRadar.CreateLink(() => tbReg.Text));
         stack.Children.Add(asbAirline);
         stack.Children.Add(Pair(tbAirlineCode, tbFlight));
         stack.Children.Add(tbIata);

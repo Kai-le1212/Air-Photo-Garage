@@ -125,6 +125,15 @@
                                      PlaceholderText="如 B-1234（自动补 -）" />
                             </Grid>
 
+                            <!-- 一键去 Flightradar24 查这架飞机（按注册号） -->
+                            <HyperlinkButton x:Name="Fr24Link"
+                                             Content="在 Flightradar24 查看这架飞机"
+                                             Padding="0,0,0,0"
+                                             FontSize="12"
+                                             Margin="0,-6,0,0"
+                                             Click="OnOpenFlightRadarClick"
+                                             AutomationProperties.Name="在 Flightradar24 查看" />
+
                             <!-- 航空公司：名称 ↔ 二字码 互相补齐（填一个，另一个自动带出） -->
                             <AutoSuggestBox x:Name="AsbAirline"
                                             Header="航空公司"

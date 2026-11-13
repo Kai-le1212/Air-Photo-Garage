@@ -113,6 +113,12 @@ internal static class PhotoDetailBuilder
         leftPanel.Children.Add(SectionTitle("基本信息"));
         leftPanel.Children.Add(basicInfo);
 
+        // 有注册号就给个一键去 FR24 查的入口
+        if (!string.IsNullOrWhiteSpace(photo.RegistrationNumber))
+        {
+            leftPanel.Children.Add(FlightRadar.CreateLink(() => photo.RegistrationNumber));
+        }
+
         var rightPanel = new StackPanel { Spacing = 4 };
         rightPanel.Children.Add(SectionTitle("EXIF 参数"));
         rightPanel.Children.Add(exifInfo);

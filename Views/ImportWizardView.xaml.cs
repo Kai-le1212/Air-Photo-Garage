@@ -24,6 +24,16 @@ public sealed partial class ImportWizardView : UserControl
         InitializeComponent();
         ViewModel = App.ImportWizardViewModel;
         HookModelSuggestions();
+
+        // 翻页或向导关闭时把残留的候选浮层收掉
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ImportWizardViewModel.CurrentIndex)
+                or nameof(ImportWizardViewModel.IsOpen))
+            {
+                CloseSuggestionLists();
+            }
+        };
     }
 
     /// <summary>
@@ -35,6 +45,8 @@ public sealed partial class ImportWizardView : UserControl
     private void OnModelTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
+        if (AsbAirline is not null) AsbAirline.IsSuggestionListOpen = false;
 
         var clean = TextInput.SanitizeModel(sender.Text);
         if (!string.Equals(clean, sender.Text, StringComparison.Ordinal)) sender.Text = clean;
@@ -58,6 +70,7 @@ public sealed partial class ImportWizardView : UserControl
     private void OnAirlineNameChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+        if (AsbModel is not null) AsbModel.IsSuggestionListOpen = false;
         sender.ItemsSource = App.Airlines.SearchNames(sender.Text);
 
         // 名称能对上目录就顺手把二字码与航班号代码补齐
@@ -166,6 +179,28 @@ public sealed partial class ImportWizardView : UserControl
             ViewModel.AirportIata = airport.Iata ?? "";
         if (!string.Equals(ViewModel.AirportName, airport.Name, StringComparison.Ordinal))
             ViewModel.AirportName = airport.Name;
+    }
+
+    /// <summary>按当前注册号去 Flightradar24 查这架飞机。</summary>
+    private async void OnOpenFlightRadarClick(object sender, RoutedEventArgs e)
+    {
+        CloseSuggestionLists();
+        await FlightRadar.OpenAsync(ViewModel.RegistrationNumber);
+    }
+
+    /// <summary>
+    /// 收起两个候选下拉。
+    ///
+    /// <para>
+    /// 这两个 AutoSuggestBox 的候选是<b>独立弹出层</b>，不随向导关闭而消失 ——
+    /// 反复点开导入、或翻页时残留，就会像「浮在整页上面的一堆候选框」。
+    /// 切张 / 关向导 / 点其它按钮时主动收掉。
+    /// </para>
+    /// </summary>
+    private void CloseSuggestionLists()
+    {
+        if (AsbModel is not null) AsbModel.IsSuggestionListOpen = false;
+        if (AsbAirline is not null) AsbAirline.IsSuggestionListOpen = false;
     }
 
     /// <summary>点预览图 → 用系统默认程序打开这张原图（放大看细节）。</summary>
