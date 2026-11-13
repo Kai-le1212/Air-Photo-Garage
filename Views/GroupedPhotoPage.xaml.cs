@@ -568,7 +568,7 @@ public sealed partial class GroupedPhotoPage : Page
     private async Task ShowGroupErrorAsync(string title, Exception ex)
     {
         App.LogError($"GroupedPhotoPage.{title}", ex);
-        await new ContentDialog
+        await Views.AppTheme.ShowAsync(new ContentDialog
         {
             XamlRoot = XamlRoot,
             Title = title,
@@ -579,7 +579,7 @@ public sealed partial class GroupedPhotoPage : Page
                 IsTextSelectionEnabled = true,
             },
             CloseButtonText = "关闭",
-        }.ShowAsync();
+        });
     }
 
     /// <summary>
@@ -606,7 +606,7 @@ public sealed partial class GroupedPhotoPage : Page
         catch (Exception ex)
         {
             App.LogError("GroupedPhotoPage.ShowEditDialog", ex);
-            await new ContentDialog
+            await Views.AppTheme.ShowAsync(new ContentDialog
             {
                 XamlRoot = XamlRoot,
                 Title = "无法打开编辑对话框",
@@ -617,7 +617,7 @@ public sealed partial class GroupedPhotoPage : Page
                     IsTextSelectionEnabled = true,
                 },
                 CloseButtonText = "关闭",
-            }.ShowAsync();
+            });
         }
     }
 
@@ -634,7 +634,7 @@ public sealed partial class GroupedPhotoPage : Page
         catch (Exception ex)
         {
             App.LogError("GroupedPhotoPage.ShowPhotoDetail", ex);
-            await new ContentDialog
+            await Views.AppTheme.ShowAsync(new ContentDialog
             {
                 XamlRoot = XamlRoot,
                 Title = "无法打开详细信息",
@@ -645,7 +645,7 @@ public sealed partial class GroupedPhotoPage : Page
                     IsTextSelectionEnabled = true,
                 },
                 CloseButtonText = "关闭",
-            }.ShowAsync();
+            });
         }
     }
 

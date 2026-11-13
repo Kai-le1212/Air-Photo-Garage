@@ -109,6 +109,7 @@ public sealed partial class SettingsPage : Page
             CloseButtonText = "稍后",
             DefaultButton = ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
         {
@@ -126,6 +127,7 @@ public sealed partial class SettingsPage : Page
             CloseButtonText = "知道了",
             DefaultButton = ContentDialogButton.Close,
         };
+        Views.AppTheme.Apply(dialog);
         await dialog.ShowAsync();
     }
 

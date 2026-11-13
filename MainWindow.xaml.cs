@@ -44,6 +44,10 @@ public sealed partial class MainWindow : Window
         // Fluent Design 系统背景（详见 theming.md）
         SystemBackdrop = new MicaBackdrop();
 
+        // 自绘标题栏（顶部那条由 XAML 画，可控主题与 logo）
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+
         // 主题应用回调：SettingsViewModel 通过这个委托切换 RequestedTheme
         ViewModels.SettingsViewModel.ApplyTheme = ApplyTheme;
     }
@@ -172,6 +176,54 @@ public sealed partial class MainWindow : Window
         if (Content is FrameworkElement root)
         {
             root.RequestedTheme = theme;
+        }
+
+        // 弹层（ContentDialog）不继承窗口主题，得靠这个全局值
+        Views.AppTheme.Set(theme);
+        ApplyTitleBarTheme();
+    }
+
+    /// <summary>
+    /// 标题栏跟随主题：深色时整条变深、按钮变白，并<b>把应用图标显示出来</b>。
+    /// WinUI 3 默认隐藏标题栏图标（HideIconAndSystemMenu），必须显式打开。
+    /// </summary>
+    private void ApplyTitleBarTheme()
+    {
+        try
+        {
+            var titleBar = AppWindow.TitleBar;
+            if (titleBar is null) return;
+
+            var dark = Views.AppTheme.IsDark;
+
+            titleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+            titleBar.ButtonHoverBackgroundColor = dark
+                ? Microsoft.UI.ColorHelper.FromArgb(36, 255, 255, 255)
+                : Microsoft.UI.ColorHelper.FromArgb(20, 0, 0, 0);
+            titleBar.ButtonPressedBackgroundColor = dark
+                ? Microsoft.UI.ColorHelper.FromArgb(60, 255, 255, 255)
+                : Microsoft.UI.ColorHelper.FromArgb(36, 0, 0, 0);
+
+            var foreground = dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black;
+            titleBar.ButtonForegroundColor = foreground;
+            titleBar.ButtonHoverForegroundColor = foreground;
+            titleBar.ButtonPressedForegroundColor = foreground;
+            titleBar.ButtonInactiveForegroundColor = dark
+                ? Microsoft.UI.ColorHelper.FromArgb(255, 160, 160, 160)
+                : Microsoft.UI.ColorHelper.FromArgb(255, 110, 110, 110);
+
+            // 整条标题栏底色（WinAppSDK 1.6+ 才有，缺了会静默忽略）
+            titleBar.BackgroundColor = dark
+                ? Microsoft.UI.ColorHelper.FromArgb(255, 32, 32, 32)
+                : Microsoft.UI.ColorHelper.FromArgb(255, 243, 243, 243);
+            titleBar.ForegroundColor = foreground;
+            titleBar.InactiveBackgroundColor = titleBar.BackgroundColor;
+            titleBar.InactiveForegroundColor = titleBar.ButtonInactiveForegroundColor;
+        }
+        catch (Exception ex)
+        {
+            App.LogError("ApplyTitleBarTheme", ex);
         }
     }
 }

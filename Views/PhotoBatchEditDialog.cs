@@ -177,6 +177,7 @@ internal static class PhotoBatchEditDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
 

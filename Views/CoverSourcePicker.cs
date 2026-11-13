@@ -49,6 +49,7 @@ internal static class CoverSourcePicker
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
         };
+        Views.AppTheme.Apply(dialog);
 
         var body = new StackPanel { Spacing = 10 };
 
@@ -155,6 +156,7 @@ internal static class CoverSourcePicker
             Content = "可能格式不受支持，或者文件已经损坏。换一张常见格式（JPG / PNG / WebP）的图片试试。",
             CloseButtonText = "知道了",
         };
+        Views.AppTheme.Apply(dialog);
 
         try { await dialog.ShowAsync(); } catch { /* 已有对话框打开时忽略 */ }
     }

@@ -115,6 +115,7 @@ public static class PhotoGroupDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
         };
+        Views.AppTheme.Apply(dialog);
         // 已在分组里才提供「移出分组」
         if (currentGroupId.HasValue)
         {
@@ -173,6 +174,7 @@ public static class PhotoGroupDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
 
         var confirmed = false;
         dialog.PrimaryButtonClick += (_, args) =>
@@ -210,6 +212,7 @@ public static class PhotoGroupDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
         };
+        Views.AppTheme.Apply(dialog);
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
 }

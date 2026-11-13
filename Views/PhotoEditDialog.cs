@@ -39,6 +39,7 @@ public static class PhotoEditDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
 
         var stack = new StackPanel { Spacing = 10, Width = 460 };  // 固定宽度，确保所有列等宽
 

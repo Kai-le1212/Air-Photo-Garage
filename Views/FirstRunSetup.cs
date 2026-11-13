@@ -103,6 +103,7 @@ public static class FirstRunSetup
             SecondaryButtonText = "使用默认位置",
             DefaultButton = ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
 
         browseButton.Click += async (_, _) =>
         {

@@ -23,14 +23,14 @@ internal static class Dialogs
         var root = Root;
         if (root is null) return;
 
-        await new ContentDialog
+        await Views.AppTheme.ShowAsync(new ContentDialog
         {
             XamlRoot = root,
             Title = title,
             Content = message,
             CloseButtonText = "知道了",
             DefaultButton = ContentDialogButton.Close,
-        }.ShowAsync();
+        });
     }
 
     /// <summary>
@@ -52,6 +52,7 @@ internal static class Dialogs
             CloseButtonText = closeText,
             DefaultButton = defaultIsClose ? ContentDialogButton.Close : ContentDialogButton.Primary,
         };
+        Views.AppTheme.Apply(dialog);
 
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }

@@ -48,6 +48,7 @@ public static class PhotoDeleteDialog
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
         };
+        Views.AppTheme.Apply(dialog);
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return false;
 

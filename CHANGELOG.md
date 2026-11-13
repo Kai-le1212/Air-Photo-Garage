@@ -5,6 +5,21 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.5.2.0] - 2026-11-13
+
+### 修复
+
+- **深色模式下对话框是白的、浅色字几乎看不见**：`ContentDialog` 是弹层，
+  **不继承**窗口根元素的主题，只认 `Application.RequestedTheme`（默认浅色）。
+  现在统一用 `Views.AppTheme` 记录当前主题，并在**每个对话框**（13 处）
+  创建后显式套上主题；内联写法的走 `AppTheme.ShowAsync`。
+
+### 变更
+
+- **标题栏改为自绘**（`ExtendsContentIntoTitleBar`）：顶部那条跟着主题走（深色时是深色），
+  **左侧显示应用 logo + 应用名**，整条可拖动。右侧留给系统的最小化/最大化/关闭按钮。
+  顺便把标题栏按钮的前景/悬停色按主题配好。
+
 ## [0.5.1.1] - 2026-11-13
 
 ### 修复

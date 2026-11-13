@@ -455,7 +455,7 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             App.LogError("ShowDetailDialog", ex);
-            await new ContentDialog
+            await Views.AppTheme.ShowAsync(new ContentDialog
             {
                 XamlRoot = XamlRoot,
                 Title = "无法打开详细信息",
@@ -466,7 +466,7 @@ public sealed partial class MainPage : Page
                     IsTextSelectionEnabled = true,
                 },
                 CloseButtonText = "关闭",
-            }.ShowAsync();
+            });
         }
     }
 
