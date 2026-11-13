@@ -5,6 +5,16 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循项目自定义的四位规则（见 [README](README.md#版本号规则)）。
 
+## [0.4.0.1] - 2026-11-13
+
+### 修复
+
+- **设置页打不开**：`SettingsPage.xaml` 里「照片库维护」区块用了不存在的资源键
+  `TextFillColorSecondaryTextBrush`（正确是 `TextFillColorSecondaryBrush`），
+  导致整页 `XamlParseException`、点「设置」毫无反应。该区块是 0.3.2.0 加的，
+  加完没实际打开过设置页，属于我的疏漏。
+- **照片墙的「未填写注册号」窗格也置顶**：与机型 / 机场 / 航司 / 注册号页保持一致。
+
 ## [0.4.0.0] - 2026-11-13
 
 ### 新增 / 改进（用户一次提了 7 条）

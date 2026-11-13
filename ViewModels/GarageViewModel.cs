@@ -132,7 +132,9 @@ public sealed partial class GarageViewModel : ObservableObject
             .GroupBy(c => string.IsNullOrWhiteSpace(c.Photo.RegistrationNumber)
                 ? null
                 : c.Photo.RegistrationNumber!.Trim())
-            .OrderBy(g => g.Min(c => order[c.Id]))
+            // 「未填写注册号」窗格永远置顶（待补全入口，不该被照片顺序埋到中间）
+            .OrderBy(g => g.Key is null ? 0 : 1)
+            .ThenBy(g => g.Min(c => order[c.Id]))
             .ToList();
 
         foreach (var g in grouped)

@@ -99,7 +99,7 @@
                                    Style="{ThemeResource BodyStrongTextBlockStyle}" />
 
                         <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryTextBrush}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    TextWrapping="Wrap"
                                    Text="扫描库目录里「文件在、数据库里却没有」的照片并补登记回来，同时按文件内容去重（同一张图被导入多次只保留一条记录）。只新增与清理重复记录，不会删除磁盘上的照片文件。拍摄时间/相机/GPS 可还原，手填的机型、注册号、机场、航司等无法还原。" />
 
