@@ -35,6 +35,7 @@ internal static class PhotoBatchEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         AutomationProperties.SetName(asbModel, "机型");
+        TextInput.ApplyModel(asbModel);
         asbModel.TextChanged += (_, e) =>
         {
             if (e.Reason == AutoSuggestionBoxTextChangeReason.UserInput)

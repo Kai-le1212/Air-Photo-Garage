@@ -54,6 +54,7 @@ public static class PhotoEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         AutomationProperties.SetName(asbModel, "机型");
+        TextInput.ApplyModel(asbModel);
 
         // 候选内容：目录查询（按输入做包含匹配）。
         IReadOnlyList<string> SearchModels(string? query)

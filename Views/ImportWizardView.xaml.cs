@@ -31,10 +31,19 @@ public sealed partial class ImportWizardView : UserControl
     /// XAML 上的 <c>CharacterCasing</c> 在本环境实测不生效，真正兜住的是这里
     /// （与照片编辑对话框、照片墙筛选面板同一套做法）。
     /// </summary>
+    /// <summary>机型框：挡掉中文与全角，保留原大小写，同时刷新候选。</summary>
+    private void OnModelTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
+        var clean = TextInput.SanitizeModel(sender.Text);
+        if (!string.Equals(clean, sender.Text, StringComparison.Ordinal)) sender.Text = clean;
+    }
+
     private void OnRegistrationTextChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is not TextBox box) return;
-        TextInput.ForceUpperCase(box);
+        TextInput.SanitizeInPlace(box);
         // 首字母 B 自动补「-」：B1792 → B-1792
         var text = box.Text ?? string.Empty;
         if (text.Length >= 2 && text[0] == 'B' && text[1] != '-' && char.IsLetterOrDigit(text[1]))
@@ -63,15 +72,10 @@ public sealed partial class ImportWizardView : UserControl
     {
         if (sender is not TextBox box) return;
 
-        var upper = (box.Text ?? string.Empty).Trim().ToUpperInvariant();
-        if (!string.Equals(box.Text, upper, StringComparison.Ordinal))
-        {
-            var caret = box.SelectionStart;
-            box.Text = upper;
-            box.SelectionStart = Math.Clamp(caret, 0, upper.Length);
-        }
+        TextInput.SanitizeInPlace(box);
+        var code = (box.Text ?? string.Empty).Trim();
 
-        if (App.Airlines.NameOf(upper) is { } name) ViewModel.AirlineName = name;
+        if (App.Airlines.NameOf(code) is { } name) ViewModel.AirlineName = name;
     }
 
     /// <summary>
@@ -81,7 +85,7 @@ public sealed partial class ImportWizardView : UserControl
     private void OnFlightNumberChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is not TextBox box) return;
-        TextInput.ForceUpperCase(box);
+        TextInput.SanitizeInPlace(box);
 
         var flight = (box.Text ?? string.Empty).Trim();
         if (flight.Length < 2) return;
@@ -98,7 +102,7 @@ public sealed partial class ImportWizardView : UserControl
     private void OnAirportIataChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is not TextBox box) return;
-        TextInput.ForceUpperCase(box);
+        TextInput.SanitizeInPlace(box);
 
         var iata = (box.Text ?? string.Empty).Trim();
         if (iata.Length != 3) return;
@@ -114,7 +118,7 @@ public sealed partial class ImportWizardView : UserControl
     private void OnAirportIcaoChanged(object sender, TextChangedEventArgs e)
     {
         if (sender is not TextBox box) return;
-        TextInput.ForceUpperCase(box);
+        TextInput.SanitizeInPlace(box);
 
         var icao = (box.Text ?? string.Empty).Trim();
         if (icao.Length != 4) return;

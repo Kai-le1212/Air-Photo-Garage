@@ -50,10 +50,8 @@ internal static class TextInput
             Names = { new InputScopeName(InputScopeNameValue.AlphanumericHalfWidth) },
         };
 
-        if (!upperCase) return;
-
-        box.TextChanged += (_, _) => ForceUpperCase(box);
-        ForceUpperCase(box);
+        box.TextChanged += (_, _) => SanitizeInPlace(box, upperCase);
+        SanitizeInPlace(box, upperCase);
     }
 
     /// <summary>
@@ -66,6 +64,78 @@ internal static class TextInput
         box.TextChanged += (_, _) => MaskRegistration(box);
         MaskRegistration(box);
     }
+
+    /// <summary>
+    /// 就地过滤：<b>全角转半角</b>、丢掉非法字符、按需转大写。
+    /// 这是第 8 条真正生效的一步 —— <c>InputScope</c> 只影响触摸键盘，
+    /// 硬件键盘下中文输入法照样会把汉字/全角字符塞进来，只能在文本层面拦。
+    /// </summary>
+    public static void SanitizeInPlace(TextBox box, bool upperCase = true)
+    {
+        var clean = SanitizeCode(box.Text, upperCase);
+        if (string.Equals(clean, box.Text, StringComparison.Ordinal)) return;
+
+        var caret = box.SelectionStart;
+        box.Text = clean;
+        box.SelectionStart = System.Math.Clamp(caret, 0, clean.Length);
+    }
+
+    /// <summary>代码类文本：只留 A-Z / 0-9 / 「-」，全角自动转半角。</summary>
+    public static string SanitizeCode(string? text, bool upperCase = true)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        var builder = new System.Text.StringBuilder(text.Length);
+        foreach (var raw in text)
+        {
+            var c = ToHalfWidth(raw);
+            if (c is >= 'a' and <= 'z') c = upperCase ? (char)(c - 32) : c;
+            if (c is (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '-') builder.Append(c);
+        }
+        return builder.ToString();
+    }
+
+    /// <summary>机型文本：去掉汉字与全角，保留字母数字和常见符号，<b>不改大小写</b>。</summary>
+    public static string SanitizeModel(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        var builder = new System.Text.StringBuilder(text.Length);
+        foreach (var raw in text)
+        {
+            var c = ToHalfWidth(raw);
+            if (c is >= '\u4e00' and <= '\u9fff') continue;   // 汉字
+            if (c is >= '\u3040' and <= '\u30ff') continue;   // 日文假名
+            if (c < 0x20) continue;
+            builder.Append(c);
+        }
+        return builder.ToString();
+    }
+
+    /// <summary>给机型的 AutoSuggestBox 挂过滤（保留大小写，只挡中文与全角）。</summary>
+    public static void ApplyModel(AutoSuggestBox box)
+    {
+        // AutoSuggestBox 没有 IsSpellCheckEnabled / IsTextPredictionEnabled，
+        // 只能靠下面的字符过滤把中文与全角挡掉。
+        box.TextChanged += (_, e) =>
+        {
+            if (e.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
+            var clean = SanitizeModel(box.Text);
+            if (!string.Equals(clean, box.Text, StringComparison.Ordinal))
+            {
+                box.Text = clean;
+            }
+        };
+    }
+
+    /// <summary>全角字符（！-～、全角空格）转半角。</summary>
+    private static char ToHalfWidth(char c) => c switch
+    {
+        '\u3000' => ' ',
+        >= '\uff01' and <= '\uff5e' => (char)(c - 0xFEE0),
+        _ => c,
+    };
 
     private static void MaskRegistration(TextBox box)
     {

@@ -97,6 +97,7 @@
                                             Header="机型（如 Boeing 737-800）"
                                             Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                             PlaceholderText="输入机型，或从下拉候选中选择"
+                                            TextChanged="OnModelTextChanged"
                                             AutomationProperties.Name="机型" />
 
                             <TextBox Header="注册号（如 B-1234）"
@@ -141,6 +142,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBox Grid.Row="0" Grid.Column="0" Margin="0,0,4,0"
                                          Header="IATA 三字代码（如 PEK）"
@@ -162,7 +164,7 @@
                                          Header="机场名称（输入后自动回填 IATA/ICAO）"
                                          Text="{x:Bind ViewModel.AirportName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <!-- 机场自动填写开关：开着就把最近一次填过的机场沿用到后续照片 -->
-                                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Margin="0,4,0,0"
+                                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Margin="0,10,0,0"
                                           IsChecked="{x:Bind ViewModel.AirportAutoFill, Mode=TwoWay}"
                                           Content="自动填写机场信息（沿用上次填过的机场）"
                                           AutomationProperties.Name="自动填写机场信息" />
