@@ -51,6 +51,11 @@ internal static class TextInput
         };
 
         box.TextChanged += (_, _) => SanitizeInPlace(box, upperCase);
+
+        // 聚焦时把输入法切成英文，失焦再切回去（切不动也有字符过滤兜底）
+        box.GotFocus += (_, _) => InputLanguage.SwitchToEnglish();
+        box.LostFocus += (_, _) => InputLanguage.Restore();
+
         SanitizeInPlace(box, upperCase);
     }
 
@@ -117,6 +122,9 @@ internal static class TextInput
     {
         // AutoSuggestBox 没有 IsSpellCheckEnabled / IsTextPredictionEnabled，
         // 只能靠下面的字符过滤把中文与全角挡掉。
+        box.GotFocus += (_, _) => InputLanguage.SwitchToEnglish();
+        box.LostFocus += (_, _) => InputLanguage.Restore();
+
         box.TextChanged += (_, e) =>
         {
             if (e.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;

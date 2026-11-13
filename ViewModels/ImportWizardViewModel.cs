@@ -96,7 +96,11 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     [ObservableProperty] public partial string StepText { get; set; } = "";
     [ObservableProperty] public partial string NextButtonText { get; set; } = "下一张 >";
     [ObservableProperty] public partial string ShotAtText { get; set; } = "";
-    [ObservableProperty] public partial string ExifHint { get; set; } = "";
+    /// <summary>机身与镜头（第一行）。</summary>
+    [ObservableProperty] public partial string ExifGearText { get; set; } = "";
+
+    /// <summary>焦距 / 光圈 / 快门 / ISO（第二行）。</summary>
+    [ObservableProperty] public partial string ExifParamsText { get; set; } = "";
 
     /// <summary>
     /// 用户是否通过「完成导入」按钮正常结束向导。
@@ -306,14 +310,18 @@ public sealed partial class ImportWizardViewModel : ObservableObject
             ? p.ShotAt.Value.ToString("yyyy-MM-dd HH:mm")
             : "未读取到拍摄时间";
 
-        var exifParts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(p.CameraModel)) exifParts.Add(p.CameraModel);
-        if (!string.IsNullOrWhiteSpace(p.LensModel)) exifParts.Add(p.LensModel);
-        if (p.FocalLength.HasValue) exifParts.Add($"{p.FocalLength.Value:0}mm");
-        if (!string.IsNullOrWhiteSpace(p.Aperture)) exifParts.Add(p.Aperture);
-        if (!string.IsNullOrWhiteSpace(p.ShutterSpeed)) exifParts.Add(p.ShutterSpeed);
-        if (p.Iso.HasValue) exifParts.Add($"ISO {p.Iso}");
-        ExifHint = exifParts.Count == 0 ? "" : "  ·  " + string.Join(" · ", exifParts);
+        // 分两行：第一行是「机身 · 镜头」，第二行是拍摄参数 —— 挤成一行会换行错乱
+        var gear = new List<string>();
+        if (!string.IsNullOrWhiteSpace(p.CameraModel)) gear.Add(p.CameraModel);
+        if (!string.IsNullOrWhiteSpace(p.LensModel)) gear.Add(p.LensModel);
+        ExifGearText = string.Join("  ·  ", gear);
+
+        var parameters = new List<string>();
+        if (p.FocalLength.HasValue) parameters.Add($"{p.FocalLength.Value:0}mm");
+        if (!string.IsNullOrWhiteSpace(p.Aperture)) parameters.Add(p.Aperture);
+        if (!string.IsNullOrWhiteSpace(p.ShutterSpeed)) parameters.Add(p.ShutterSpeed);
+        if (p.Iso.HasValue) parameters.Add($"ISO {p.Iso}");
+        ExifParamsText = string.Join("  ·  ", parameters);
 
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(CanCopyPrevious));

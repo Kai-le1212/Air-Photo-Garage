@@ -78,6 +78,7 @@
 
                     <!-- 右侧：表单 -->
                     <ScrollViewer Grid.Column="1" Margin="16,0,0,0"
+                                  Padding="0,0,16,0"
                                   VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -87,10 +88,16 @@
                                            VerticalAlignment="Center"
                                            Style="{StaticResource BodyStrongTextBlockStyle}" />
                             </StackPanel>
-                            <TextBlock Text="{x:Bind ViewModel.ExifHint, Mode=OneWay}"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                       TextWrapping="Wrap" />
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{x:Bind ViewModel.ExifGearText, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{x:Bind ViewModel.ExifParamsText, Mode=OneWay}"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
 
                             <!-- 机型：原生 AutoSuggestBox（Fluent 下拉，单击即选、点击外部收起） -->
                             <AutoSuggestBox x:Name="AsbModel"
