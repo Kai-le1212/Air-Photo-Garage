@@ -298,11 +298,10 @@ public static class PhotoEditDialog
             }
         }
 
-        stack.Children.Add(asbModel);
-        stack.Children.Add(tbReg);
+        // 机型 + 注册号 一行；航司二字码 + 航班号 一行（与导入向导一致，省纵向空间）
+        stack.Children.Add(Pair(asbModel, tbReg));
         stack.Children.Add(asbAirline);
-        stack.Children.Add(tbAirlineCode);
-        stack.Children.Add(tbFlight);
+        stack.Children.Add(Pair(tbAirlineCode, tbFlight));
         stack.Children.Add(tbIata);
         stack.Children.Add(tbIcao);
         stack.Children.Add(tbAirportName);
@@ -390,4 +389,18 @@ public static class PhotoEditDialog
     private static string? NullIfEmpty(string? s) =>
         string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
+
+    /// <summary>把两个控件并排放一行（各占一半，中间留 8px）。</summary>
+    private static Grid Pair(FrameworkElement left, FrameworkElement right)
+    {
+        var grid = new Grid { ColumnSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        Grid.SetColumn(left, 0);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(left);
+        grid.Children.Add(right);
+        return grid;
+    }
 }

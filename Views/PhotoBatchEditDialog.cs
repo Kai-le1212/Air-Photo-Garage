@@ -30,7 +30,7 @@ internal static class PhotoBatchEditDialog
 
         var asbModel = new AutoSuggestBox
         {
-            Header = "机型（留空则不改）",
+            Header = "机型",
             PlaceholderText = "如 Boeing 737-800",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -46,7 +46,7 @@ internal static class PhotoBatchEditDialog
 
         var tbReg = new TextBox
         {
-            Header = "注册号（留空则不改）",
+            Header = "注册号",
             PlaceholderText = "如 B-1234",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -54,7 +54,7 @@ internal static class PhotoBatchEditDialog
 
         var asbAirline = new AutoSuggestBox
         {
-            Header = "航空公司（留空则不改）",
+            Header = "航空公司",
             PlaceholderText = "输入名称或二字码，另一边自动补齐",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -69,7 +69,7 @@ internal static class PhotoBatchEditDialog
 
         var tbAirlineCode = new TextBox
         {
-            Header = "航空公司二字码（如 CX）",
+            Header = "航司二字码",
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -101,7 +101,7 @@ internal static class PhotoBatchEditDialog
 
         var tbFlight = new TextBox
         {
-            Header = "航班号（如 CX390）",
+            Header = "航班号",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         TextInput.ApplyCode(tbFlight);
@@ -154,12 +154,10 @@ internal static class PhotoBatchEditDialog
         };
         panel.Children.Add(hint);
 
-        panel.Children.Add(asbModel);
-        panel.Children.Add(tbReg);
-        // 顺序与导入向导一致：机型 → 注册号 → 航司 → 二字码 → 航班号 → 机场 → 备注
+        // 顺序与导入向导一致：机型+注册号 / 航司 / 二字码+航班号 / 机场 / 备注
+        panel.Children.Add(Pair(asbModel, tbReg));
         panel.Children.Add(asbAirline);
-        panel.Children.Add(tbAirlineCode);
-        panel.Children.Add(tbFlight);
+        panel.Children.Add(Pair(tbAirlineCode, tbFlight));
         panel.Children.Add(tbIata);
         panel.Children.Add(tbIcao);
         panel.Children.Add(tbAirportName);
@@ -213,5 +211,19 @@ internal static class PhotoBatchEditDialog
         }
 
         return first;
+    }
+
+    /// <summary>把两个控件并排放一行（各占一半，中间留 8px）。</summary>
+    private static Grid Pair(FrameworkElement left, FrameworkElement right)
+    {
+        var grid = new Grid { ColumnSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        Grid.SetColumn(left, 0);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(left);
+        grid.Children.Add(right);
+        return grid;
     }
 }

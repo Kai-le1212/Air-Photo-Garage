@@ -100,20 +100,30 @@
                             </StackPanel>
 
                             <!-- 机型：原生 AutoSuggestBox（Fluent 下拉，单击即选、点击外部收起） -->
-                            <AutoSuggestBox x:Name="AsbModel"
-                                            Header="机型（如 Boeing 737-800）"
+                            <!-- 机型 + 注册号 同一行（省一屏纵向空间） -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <AutoSuggestBox Grid.Column="0"
+                                            x:Name="AsbModel"
+                                            Header="机型"
                                             Text="{x:Bind ViewModel.AircraftModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            PlaceholderText="输入机型，或从下拉候选中选择"
+                                            PlaceholderText="如 Boeing 737-800"
                                             TextChanged="OnModelTextChanged"
                                             AutomationProperties.Name="机型" />
 
-                            <TextBox Header="注册号（如 B-1234）"
+                                <TextBox Grid.Column="1"
+                                     Header="注册号"
                                      Text="{x:Bind ViewModel.RegistrationNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      IsSpellCheckEnabled="False"
                                      IsTextPredictionEnabled="False"
                                      InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnRegistrationTextChanged"
-                                     PlaceholderText="必填（首字母 B 会自动补 -）" />
+                                     PlaceholderText="如 B-1234（自动补 -）" />
+                            </Grid>
 
                             <!-- 航空公司：名称 ↔ 二字码 互相补齐（填一个，另一个自动带出） -->
                             <AutoSuggestBox x:Name="AsbAirline"
@@ -124,22 +134,33 @@
                                             SuggestionChosen="OnAirlineNameChosen"
                                             AutomationProperties.Name="航空公司" />
 
-                            <TextBox Header="航空公司二字码（如 CX）"
+                            <!-- 航司二字码 + 航班号 同一行 -->
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                     Header="航司二字码"
                                      MaxLength="2"
                                      Text="{x:Bind ViewModel.AirlineIata, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      IsSpellCheckEnabled="False"
                                      IsTextPredictionEnabled="False"
                                      InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnAirlineCodeChanged"
-                                     PlaceholderText="选填（填了名称也会自动带出）" />
+                                     PlaceholderText="如 CX（自动带出）" />
 
-                            <TextBox Header="航班号（如 CX390）"
+                                <TextBox Grid.Column="1"
+                                     Header="航班号"
+                                     x:Name="TbFlight"
                                      Text="{x:Bind ViewModel.FlightNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      IsSpellCheckEnabled="False"
                                      IsTextPredictionEnabled="False"
                                      InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnFlightNumberChanged"
-                                     PlaceholderText="选填（前两位是航司代码，会自动带出航司）" />
+                                     PlaceholderText="如 CX390" />
+                            </Grid>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>

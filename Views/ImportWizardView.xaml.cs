@@ -59,12 +59,46 @@ public sealed partial class ImportWizardView : UserControl
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
         sender.ItemsSource = App.Airlines.SearchNames(sender.Text);
+
+        // 名称能对上目录就顺手把二字码与航班号代码补齐
+        if (App.Airlines.CodeOf(sender.Text) is { } code)
+        {
+            ViewModel.AirlineIata = code;
+            EnsureFlightPrefix(code);
+        }
     }
 
     private void OnAirlineNameChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
         if (args.SelectedItem is not string name) return;
-        if (App.Airlines.CodeOf(name) is { } code) ViewModel.AirlineIata = code;
+        if (App.Airlines.CodeOf(name) is not { } code) return;
+
+        ViewModel.AirlineIata = code;
+        EnsureFlightPrefix(code);
+    }
+
+    /// <summary>
+    /// 航司确定后把它的二字码填进航班号，用户只补数字即可。
+    /// 已有航班号时只替换前两位代码，后面的数字保留。
+    /// </summary>
+    private void EnsureFlightPrefix(string code)
+    {
+        if (string.IsNullOrEmpty(code)) return;
+
+        var flight = ViewModel.FlightNumber ?? string.Empty;
+        if (flight.Length == 0)
+        {
+            ViewModel.FlightNumber = code;
+            return;
+        }
+
+        if (flight.Length >= 2
+            && char.IsAsciiLetter(flight[0])
+            && char.IsAsciiLetter(flight[1])
+            && !flight[..2].Equals(code, StringComparison.OrdinalIgnoreCase))
+        {
+            ViewModel.FlightNumber = code + flight[2..];
+        }
     }
 
     /// <summary>二字码：强制大写；能在目录里查到就回填名称。</summary>
@@ -75,7 +109,11 @@ public sealed partial class ImportWizardView : UserControl
         TextInput.SanitizeInPlace(box);
         var code = (box.Text ?? string.Empty).Trim();
 
-        if (App.Airlines.NameOf(code) is { } name) ViewModel.AirlineName = name;
+        if (App.Airlines.NameOf(code) is { } name)
+        {
+            ViewModel.AirlineName = name;
+            EnsureFlightPrefix(code);
+        }
     }
 
     /// <summary>

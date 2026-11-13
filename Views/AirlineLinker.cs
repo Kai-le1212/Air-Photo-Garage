@@ -43,6 +43,24 @@ internal static class AirlineLinker
             {
                 codeBox.Text = code;
             }
+
+            // 航班号：把航司代码填进去，用户只需要补后面的数字
+            if (flightBox is not null && !string.IsNullOrEmpty(code))
+            {
+                var flight = flightBox.Text ?? string.Empty;
+                if (flight.Length == 0)
+                {
+                    flightBox.Text = code;
+                }
+                else if (flight.Length >= 2
+                         && char.IsAsciiLetter(flight[0])
+                         && char.IsAsciiLetter(flight[1])
+                         && !flight[..2].Equals(code, StringComparison.OrdinalIgnoreCase))
+                {
+                    flightBox.Text = code + flight[2..];
+                }
+            }
+
             syncing = false;
         }
 
