@@ -20,15 +20,22 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Padding="12,0,150,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="40" Padding="140,0,140,0">
+            <!--
+                左右留白相等（140 = 系统最小化/最大化/关闭三个按钮的宽度），
+                logo + 应用名在整条标题栏里居中，两边看起来才对称。
+            -->
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="10">
                 <Image Source="Assets/Square44x44Logo.scale-200.png"
-                       Width="18"
-                       Height="18"
+                       Width="24"
+                       Height="24"
                        AutomationProperties.Name="应用图标" />
                 <TextBlock Text="Air Photo Garage"
                            VerticalAlignment="Center"
-                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Grid>
