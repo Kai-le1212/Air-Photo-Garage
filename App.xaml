@@ -26,17 +26,49 @@
             </DataTemplate>
 
             <!--
-                Button 的悬停 / 按下底色：默认很淡，压在照片上看不出来。
-                这里只覆盖资源键（不改模板），让「选头图」这类图片按钮有明确的悬停与按下反馈。
+                全应用的悬停 / 按下反馈：默认很淡，压在照片上几乎看不出来。
+                只覆盖资源键、不改模板 —— 按钮、列表项、工具栏、导航项统一成同一套强度。
             -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#59FFFFFF" />
                     <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#8CFFFFFF" />
+
+                    <!-- 列表 / 网格项（照片卡片、分组磁贴）：悬停与按下的高亮 -->
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#38FFFFFF" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#59FFFFFF" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#47FFFFFF" />
+
+                    <!-- 顶部工具栏按钮 -->
+                    <SolidColorBrush x:Key="AppBarButtonBackgroundPointerOver" Color="#38FFFFFF" />
+                    <SolidColorBrush x:Key="AppBarButtonBackgroundPressed" Color="#59FFFFFF" />
+
+                    <!-- 切换按钮（多选、视图切换） -->
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="#38FFFFFF" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="#59FFFFFF" />
+
+                    <!-- 左侧导航项 -->
+                    <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#26FFFFFF" />
+                    <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="#38FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#33000000" />
                     <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#4D000000" />
+
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#26000000" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="#3D000000" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#1F000000" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#33000000" />
+
+                    <SolidColorBrush x:Key="AppBarButtonBackgroundPointerOver" Color="#26000000" />
+                    <SolidColorBrush x:Key="AppBarButtonBackgroundPressed" Color="#3D000000" />
+
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="#26000000" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="#3D000000" />
+
+                    <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#1A000000" />
+                    <SolidColorBrush x:Key="NavigationViewItemBackgroundPressed" Color="#26000000" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
