@@ -54,7 +54,9 @@
                                   VerticalAlignment="Top"
                                   Margin="6,6,0,0"
                                   MinWidth="0"
-                                  IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                  IsThreeState="False"
+                                  IsChecked="{x:Bind IsSelected, Mode=OneWay}"
+                                  Click="OnCardCheckBoxClick"
                                   Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}"
                                   AutomationProperties.Name="选择这张照片" />
 

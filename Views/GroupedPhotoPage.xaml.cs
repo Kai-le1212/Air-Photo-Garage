@@ -778,6 +778,19 @@ public sealed partial class GroupedPhotoPage : Page
             await ShowEditDialogSafeAsync(card);
         }
     }
+    /// <summary>
+    /// 勾选框点击：控件自己已经切换了 IsChecked，这里同步回模型。
+    /// 不用双向绑定 —— bool 与 bool? 之间来回绑会把 null 写进去，
+    /// 那就是截图里那根「−」横杠（不确定态）。
+    /// </summary>
+    private void OnCardCheckBoxClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox box || box.DataContext is not PhotoCardViewModel card) return;
+
+        card.IsSelected = box.IsChecked == true;
+        UpdateSelectionCount();
+    }
+
 }
 
 /// <summary>分组页导航参数。三个菜单共用同一个 Page，靠本参数区分维度与层级行为。</summary>
@@ -885,5 +898,6 @@ public sealed class GroupedPhotoPageParameter
         EnableUserGroups = true,
         SummaryColumns = new[] { "aircraft_model" },
     };
+
 
 }
