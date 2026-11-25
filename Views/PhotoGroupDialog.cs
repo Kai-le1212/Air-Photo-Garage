@@ -13,7 +13,9 @@ namespace AirPhotoGarage.Views;
 /// <param name="Remove">是否选择「移出分组」。</param>
 /// <param name="GroupId">选中的既有分组 Id。</param>
 /// <param name="NewName">要新建的分组名（优先于 <paramref name="GroupId"/>）。</param>
-public sealed record PhotoGroupPickResult(bool Confirmed, bool Remove, long? GroupId, string? NewName);
+/// <param name="PickedName">从列表里选中已有分组时的名字（用于「全库共有名字」的跨界复用）。</param>
+public sealed record PhotoGroupPickResult(
+    bool Confirmed, bool Remove, long? GroupId, string? NewName, string? PickedName = null);
 
 /// <summary>
 /// 自定义分组的交互对话框集合。
@@ -134,7 +136,8 @@ public static class PhotoGroupDialog
             }
             if (list.SelectedIndex >= 0 && list.SelectedIndex < groups.Count)
             {
-                picked = new PhotoGroupPickResult(true, false, groups[list.SelectedIndex].Id, null);
+                picked = new PhotoGroupPickResult(
+                    true, false, groups[list.SelectedIndex].Id, null, groups[list.SelectedIndex].Name);
                 return;
             }
             // 两项都没填 → 阻止关闭，就地提示

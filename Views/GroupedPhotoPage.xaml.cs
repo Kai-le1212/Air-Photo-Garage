@@ -330,14 +330,20 @@ public sealed partial class GroupedPhotoPage : Page
 
     private void OnSelectAllClick(object sender, RoutedEventArgs e)
     {
-        // 「全选」= 当前视图里能看到的照片（平铺 / 时间轴共享同一份 ViewModel.Photos）
-        foreach (var card in ViewModel.Photos) card.IsSelected = true;
+        // 「全选」是开关：已经全选了就取消全选
+        var cards = AllVisibleCards().ToList();
+        var allSelected = cards.Count > 0 && cards.All(c => c.IsSelected);
+
+        foreach (var card in cards) card.IsSelected = !allSelected;
         UpdateSelectionCount();
     }
 
     private void OnClearSelectionClick(object sender, RoutedEventArgs e)
     {
-        foreach (var card in ViewModel.Photos) card.IsSelected = false;
+        foreach (var card in AllVisibleCards().ToList()) card.IsSelected = false;
+
+        // 「取消选择」= 这轮多选结束，退出多选模式
+        if (MultiSelectToggle is not null) MultiSelectToggle.IsChecked = false;
         UpdateSelectionCount();
     }
 
@@ -528,10 +534,19 @@ public sealed partial class GroupedPhotoPage : Page
 
         try
         {
+            // 本架飞机的分组 + **全库其它飞机用过的分组名**（新建的分组名到处都能复用）
+            var local = ViewModel.UserGroups.ToList();
+            var allNames = await App.Database.GetAllGroupNamesAsync();
+            var extras = allNames
+                .Where(n => local.All(g => !string.Equals(g.Name, n, StringComparison.OrdinalIgnoreCase)))
+                .Select(n => new PhotoGroup { Id = 0, Name = n })
+                .ToList();
+            var candidates = local.Concat(extras).ToList();
+
             var result = await PhotoGroupDialog.PickAsync(
                 XamlRoot,
                 ViewModel.SelectedGroup ?? string.Empty,
-                ViewModel.UserGroups.ToList(),
+                candidates,
                 ViewModel.GroupIdOf(card.Id));
 
             if (!result.Confirmed) return;
@@ -543,6 +558,12 @@ public sealed partial class GroupedPhotoPage : Page
             }
 
             long? targetId = result.GroupId;
+            if (targetId is null or 0 && !string.IsNullOrWhiteSpace(result.PickedName))
+            {
+                // 选的是别架飞机建过的名字 —— 在本注册号下建一个同名分组（幂等）
+                var created = await ViewModel.CreateUserGroupAsync(result.PickedName!);
+                targetId = created.Id;
+            }
             if (!string.IsNullOrWhiteSpace(result.NewName))
             {
                 // CreateGroupAsync 幂等：同名分组已存在时直接复用，不会重复建

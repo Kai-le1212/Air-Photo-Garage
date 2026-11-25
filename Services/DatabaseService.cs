@@ -34,6 +34,9 @@ public interface IDatabaseService
     /// <summary>读取所有不同的机型/机场/注册号（用于自动补全）。</summary>
     Task<IReadOnlyList<string>> GetDistinctValuesAsync(string column);
 
+    /// <summary>库里出现过的所有自定义分组名（跨注册号去重，字母序）。</summary>
+    Task<IReadOnlyList<string>> GetAllGroupNamesAsync();
+
     /// <summary>
     /// 给一批飞机（按注册号）批量设置航空公司，并<b>顺手补齐缺失的机型</b>。
     ///
@@ -419,6 +422,21 @@ public sealed class DatabaseService : IDatabaseService
         }
         var result = await cmd.ExecuteScalarAsync();
         return Convert.ToInt32(result);
+    }
+
+    public async Task<IReadOnlyList<string>> GetAllGroupNamesAsync()
+    {
+        var result = new List<string>();
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT DISTINCT name FROM photo_groups ORDER BY name COLLATE NOCASE";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            if (!reader.IsDBNull(0)) result.Add(reader.GetString(0));
+        }
+        return result;
     }
 
     public async Task<IReadOnlyList<string>> GetDistinctValuesAsync(string column)
