@@ -76,19 +76,14 @@
                             真正的 WinUI CheckBox：未选是灰框、选中是蓝底白勾、悬停有高亮，
                             全部由系统渲染。多选模式才显示，平时不打扰。
                         -->
-                        <Border HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Margin="4,4,0,0"
-                                Padding="2"
-                                CornerRadius="6"
-                                Background="Transparent"
-                                PointerEntered="OnSelectionHoverEntered"
-                                PointerExited="OnSelectionHoverExited">
-                            <CheckBox MinWidth="0"
-                                      IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
-                                      Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}"
-                                      AutomationProperties.Name="选择这张照片" />
-                        </Border>
+                        <!-- 纯 WinUI CheckBox：灰框 / 蓝勾 / 悬停高亮全部由系统渲染，不加任何自绘 -->
+                        <CheckBox HorizontalAlignment="Right"
+                                  VerticalAlignment="Top"
+                                  Margin="6,6,0,0"
+                                  MinWidth="0"
+                                  IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                  Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}"
+                                  AutomationProperties.Name="选择这张照片" />
 
 </Grid>
 
