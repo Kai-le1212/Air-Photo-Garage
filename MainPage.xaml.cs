@@ -79,7 +79,7 @@ public sealed partial class MainPage : Page
     {
         var on = WallMultiSelectToggle?.IsChecked == true;
 
-        SetWallSelectionMode(on);
+        foreach (var card in ViewModel.Photos) card.IsSelectionMode = on;
 
         if (WallPhotoGrid is not null)
         {
@@ -93,16 +93,6 @@ public sealed partial class MainPage : Page
 
     private void OnWallSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateWallSelection();
 
-    /// <summary>多选开关变化时，让所有卡片决定要不要显示右上角方框。</summary>
-    private void SetWallSelectionMode(bool on)
-    {
-        foreach (var card in ViewModel.Photos)
-        {
-            card.IsSelectionMode = on;
-            if (!on) card.IsSelected = false;
-        }
-    }
-
     private List<PhotoCardViewModel> WallSelectedCards() =>
         WallPhotoGrid is null
             ? new List<PhotoCardViewModel>()
@@ -110,15 +100,7 @@ public sealed partial class MainPage : Page
 
     private void UpdateWallSelection()
     {
-        var selected = WallSelectedCards();
-        var count = selected.Count;
-
-        // 卡片上的勾选徽标自己画（已关掉 GridView 的系统勾选框）
-        var set = new HashSet<PhotoCardViewModel>(selected);
-        foreach (var card in ViewModel.Photos)
-        {
-            card.IsSelected = set.Contains(card);
-        }
+        var count = WallSelectedCards().Count;
 
         // 「全选」只在多选模式开启时出现
         if (WallSelectAllButton is not null)

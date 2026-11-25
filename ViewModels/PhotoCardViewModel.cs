@@ -31,42 +31,17 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsThumbnailLoaded { get; set; }
 
-    /// <summary>是否处于多选模式（决定右上角方框要不要显示）。</summary>
+    /// <summary>是否处于多选模式（只用来给系统勾选框垫一层衬底）。</summary>
     [ObservableProperty]
     public partial bool IsSelectionMode { get; set; }
 
-    /// <summary>多选模式下该卡片是否被勾选。</summary>
-    [ObservableProperty]
-    public partial bool IsSelected { get; set; }
-
-    /// <summary>
-    /// 右上角选择框：<b>多选模式下恒显示</b>（未选是空框、选中是勾），
-    /// 非多选模式整个不出现 —— 这样才能「选和没选都有框」又不干扰日常浏览。
-    /// </summary>
-    public Microsoft.UI.Xaml.Visibility SelectionBoxVisibility =>
+    public Microsoft.UI.Xaml.Visibility SelectionPlateVisibility =>
         IsSelectionMode
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
-    /// <summary>勾号：只有选中时才画。</summary>
-    public Microsoft.UI.Xaml.Visibility SelectionCheckVisibility =>
-        IsSelected
-            ? Microsoft.UI.Xaml.Visibility.Visible
-            : Microsoft.UI.Xaml.Visibility.Collapsed;
-
-    /// <summary>空框用半透明黑底（压在照片上也看得清），选中时换成强调色。</summary>
-    public Microsoft.UI.Xaml.Media.Brush SelectionBoxBackground => IsSelected
-        ? (Microsoft.UI.Xaml.Media.Brush)Microsoft.UI.Xaml.Application.Current.Resources["AccentFillColorDefaultBrush"]
-        : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(140, 0, 0, 0));
-
     partial void OnIsSelectionModeChanged(bool value) =>
-        OnPropertyChanged(nameof(SelectionBoxVisibility));
-
-    partial void OnIsSelectedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(SelectionCheckVisibility));
-        OnPropertyChanged(nameof(SelectionBoxBackground));
-    }
+        OnPropertyChanged(nameof(SelectionPlateVisibility));
 
     /// <summary>
     /// 已加载缩略图的宽高比（宽 ÷ 高）。缩略图未就绪时为 0。

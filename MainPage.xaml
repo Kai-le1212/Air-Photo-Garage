@@ -45,9 +45,13 @@
                                Stretch="Uniform" />
 
 
+
+
+
                         <!--
-                            多选方框：多选模式下右上角恒显示 —— 未选是空框、选中是带勾的强调色框。
-                            压在照片上，所以未选态用半透明黑底 + 白描边，任何照片上都看得清。
+                            勾选框衬底：系统勾选框（右上角）在照片上对比度太低，
+                            选中后几乎只剩一个勾。这里只在多选模式下垫一块半透明黑底，
+                            勾选框本身仍是 WinUI 原生渲染。
                         -->
                         <Border HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
@@ -55,16 +59,9 @@
                                 Width="24"
                                 Height="24"
                                 CornerRadius="4"
-                                BorderThickness="1.5"
-                                BorderBrush="White"
-                                Background="{x:Bind SelectionBoxBackground, Mode=OneWay}"
-                                Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}">
-                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                      Glyph="&#xE73E;"
-                                      FontSize="12"
-                                      Foreground="White"
-                                      Visibility="{x:Bind SelectionCheckVisibility, Mode=OneWay}" />
-                        </Border>
+                                Background="#8C000000"
+                                Visibility="{x:Bind SelectionPlateVisibility, Mode=OneWay}"
+                                IsHitTestVisible="False" />
 
                         <!-- 未提供信息覆盖层 -->
                         <Border VerticalAlignment="Top"
@@ -423,7 +420,6 @@
                     <GridView x:Name="WallPhotoGrid"
                               ItemsSource="{x:Bind ViewModel.Photos, Mode=OneWay}"
                               Visibility="{x:Bind ViewModel.FlatWallVisibility, Mode=OneWay}"
-                              IsMultiSelectCheckBoxEnabled="False"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               SelectionChanged="OnWallSelectionChanged"
