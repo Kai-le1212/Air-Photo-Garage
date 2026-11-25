@@ -251,11 +251,7 @@ public sealed partial class GroupedPhotoPage : Page
         var on = MultiSelectToggle?.IsChecked == true;
 
         // 方框显隐由卡片自己决定：多选模式恒显示，未选是空框
-        foreach (var card in ViewModel.Photos)
-        {
-            card.IsSelectionMode = on;
-            if (!on) card.IsSelected = false;
-        }
+        ApplySelectionModeToCards(on);
 
         foreach (var card in ViewModel.Photos)
         {
@@ -284,6 +280,9 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (SelectionCountText is null || BatchFillButton is null) return;
 
+        // 分组视图切换后会新建卡片实例，这里顺手把多选状态补上
+        if (MultiSelectToggle?.IsChecked == true) ApplySelectionModeToCards(true);
+
         var count = SelectedCards().Count;
         SelectionCountText.Text = $"已选 {count} 张";
 
@@ -292,8 +291,40 @@ public sealed partial class GroupedPhotoPage : Page
         ClearSelectionButton.IsEnabled = count > 0;
     }
 
+    /// <summary>
+    /// 当前各照片网格实际绑定的卡片（平铺 / 时间轴 / 自定义分组可能用不同的集合实例，
+    /// 只认 ViewModel.Photos 会漏掉自定义分组里的卡片）。
+    /// </summary>
+    private IEnumerable<PhotoCardViewModel> AllVisibleCards()
+    {
+        var seen = new HashSet<PhotoCardViewModel>();
+        foreach (var grid in PhotoGrids())
+        {
+            if (grid.ItemsSource is not System.Collections.IEnumerable items) continue;
+            foreach (var card in items.OfType<PhotoCardViewModel>())
+            {
+                if (seen.Add(card)) yield return card;
+            }
+        }
+
+        foreach (var card in ViewModel.Photos)
+        {
+            if (seen.Add(card)) yield return card;
+        }
+    }
+
     private List<PhotoCardViewModel> SelectedCards() =>
-        ViewModel.Photos.Where(c => c.IsSelected).ToList();
+        AllVisibleCards().Where(c => c.IsSelected).ToList();
+
+    /// <summary>把「是否多选」同步到当前所有可见卡片（切换视图后新卡片也要有勾选框）。</summary>
+    private void ApplySelectionModeToCards(bool on)
+    {
+        foreach (var card in AllVisibleCards().ToList())
+        {
+            card.IsSelectionMode = on;
+            if (!on) card.IsSelected = false;
+        }
+    }
 
     private void OnSelectAllClick(object sender, RoutedEventArgs e)
     {
@@ -325,7 +356,9 @@ public sealed partial class GroupedPhotoPage : Page
         {
             var result = await App.BatchEdit.ApplyAsync(photos, fields);
 
+            // 批量填写完成 = 这轮多选结束，把多选开关复位
             OnClearSelectionClick(this, new RoutedEventArgs());
+            if (MultiSelectToggle is not null) MultiSelectToggle.IsChecked = false;
             await ViewModel.ReloadPhotosAsync();
             UpdateSelectionCount();
 
