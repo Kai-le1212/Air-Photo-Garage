@@ -115,6 +115,7 @@ internal static class PhotoBatchEditDialog
         var tbFlight = new TextBox
         {
             Header = "航班号",
+            PlaceholderText = "如 CX390",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         TextInput.ApplyCode(tbFlight);
@@ -125,6 +126,7 @@ internal static class PhotoBatchEditDialog
         var tbNotes = new TextBox
         {
             Header = "备注",
+            PlaceholderText = "留空则不改",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 

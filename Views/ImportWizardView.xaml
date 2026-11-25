@@ -220,6 +220,7 @@
                             </Grid>
 
                             <TextBox Header="备注"
+                                     PlaceholderText="记录拍摄情形等补充说明"
                                      Text="{x:Bind ViewModel.Notes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"

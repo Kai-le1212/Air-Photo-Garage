@@ -88,6 +88,7 @@ public static class PhotoEditDialog
         var tbReg = new TextBox
         {
             Header = "注册号",
+            PlaceholderText = "如 B-1234（自动补 -）",
             Text = photo.RegistrationNumber ?? "",
             // 注册号统一大写：B-1234 与小写 b-1234 会被当成两架不同的飞机。
             // CharacterCasing 在本环境实测不生效（键入小写仍是小写），
@@ -101,7 +102,7 @@ public static class PhotoEditDialog
         var asbAirline = new AutoSuggestBox
         {
             Header = "航空公司",
-            PlaceholderText = "输入名称或二字码，另一边自动补齐",
+            PlaceholderText = "输入名称或任一代码，其余自动补齐",
             Text = photo.AirlineName ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -110,6 +111,7 @@ public static class PhotoEditDialog
         var tbAirlineCode = new TextBox
         {
             Header = "航司二字码",
+            PlaceholderText = "如 CX",
             Text = photo.AirlineIata ?? "",
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -128,6 +130,7 @@ public static class PhotoEditDialog
         var tbFlight = new TextBox
         {
             Header = "航班号",
+            PlaceholderText = "如 CX390",
             Text = photo.FlightNumber ?? "",
             CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -157,6 +160,7 @@ public static class PhotoEditDialog
         var tbAirportName = new TextBox
         {
             Header = "机场名称",
+            PlaceholderText = "如 深圳宝安国际机场",
             Text = photo.AirportName ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -289,6 +293,7 @@ public static class PhotoEditDialog
 
         var tbNotes = new TextBox
         {
+            PlaceholderText = "记录拍摄情形等补充说明",
             Header = "备注",
             Text = photo.Notes ?? "",
             AcceptsReturn = true,
