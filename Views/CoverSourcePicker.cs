@@ -80,7 +80,7 @@ internal static class CoverSourcePicker
                 var aspect = CoverImageLoader.AspectOf(bitmap);
                 var height = aspect > 0.01 ? Math.Clamp(CellWidth / aspect, 96, 240) : CellHeight;
 
-                var cell = new Border
+                var picture = new Border
                 {
                     Width = CellWidth,
                     Height = height,
@@ -90,40 +90,37 @@ internal static class CoverSourcePicker
                     Background = new ImageBrush
                     {
                         ImageSource = bitmap,
-                        Stretch = Stretch.Uniform,   // 比例已由卡片高度对齐，这里不裁切
+                        Stretch = Stretch.Uniform,
                     },
                 };
-                ToolTipService.SetToolTip(cell, System.IO.Path.GetFileName(sourcePath));
 
-                // 悬停反馈：描边变强调色 + 盖一层半透明白（原描边留一份，离开时还原）
-                var restBrush = cell.BorderBrush;
-                var accentBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
-                var overlay = new Border
+                // 上层透明按钮：悬停 / 按下的底色由 Button 自己的视觉状态绘制，
+                // 因为是半透明且盖在图片之上，所以能看见反馈（原生行为，无需手写指针事件）
+                var button = new Button
                 {
+                    Width = CellWidth,
+                    Height = height,
+                    Padding = new Thickness(0),
+                    BorderThickness = new Thickness(0),
                     CornerRadius = new CornerRadius(8),
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    IsHitTestVisible = false,
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Stretch,
                 };
-                cell.Child = overlay;
-                cell.PointerEntered += (_, _) =>
-                {
-                    cell.BorderBrush = accentBrush;
-                    cell.BorderThickness = new Thickness(2);
-                    overlay.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x24, 255, 255, 255));
-                };
-                cell.PointerExited += (_, _) =>
-                {
-                    cell.BorderBrush = restBrush;
-                    cell.BorderThickness = new Thickness(1);
-                    overlay.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-                };
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                    button, $"用 {System.IO.Path.GetFileName(sourcePath)} 作头图");
+                ToolTipService.SetToolTip(button, System.IO.Path.GetFileName(sourcePath));
 
                 var path = sourcePath;
-                cell.Tapped += (_, _) =>
+                button.Click += (_, _) =>
                 {
                     chosen = path;
                     dialog.Hide();
                 };
+
+                var cell = new Grid { Width = CellWidth, Height = height };
+                cell.Children.Add(picture);
+                cell.Children.Add(button);
 
                 strip.Children.Add(cell);
             }

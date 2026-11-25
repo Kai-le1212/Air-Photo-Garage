@@ -26,6 +26,21 @@
             </DataTemplate>
 
             <!--
+                Button 的悬停 / 按下底色：默认很淡，压在照片上看不出来。
+                这里只覆盖资源键（不改模板），让「选头图」这类图片按钮有明确的悬停与按下反馈。
+            -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#2EFFFFFF" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#4DFFFFFF" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1A000000" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#33000000" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!--
                 照片详情弹窗的内容宽度控制在 ~520，落在 WinUI 默认的
                 ContentDialog 宽度范围内，因此这里无需覆盖 ContentDialogMaxWidth。
                 保留此注释是为了记录踩坑结论：把该键写在 Application.Resources 顶层
