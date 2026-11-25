@@ -114,7 +114,6 @@
         <DataTemplate x:Key="GroupTileTpl" x:DataType="vm:GroupItemViewModel">
             <!-- RightTapped：方块视图下也要能右键设头图（此前只有条状视图有） -->
             <Border Width="240"
-                    Margin="0,0,12,12"
                     RightTapped="OnGroupRowRightTapped"
                     BorderThickness="1"
                     CornerRadius="8"
@@ -377,7 +376,7 @@
                     <GridView.ItemContainerStyle>
                         <Style TargetType="GridViewItem">
                             <Setter Property="Padding" Value="0" />
-                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Margin" Value="0,0,12,12" />
                             <Setter Property="HorizontalContentAlignment" Value="Left" />
                             <Setter Property="VerticalContentAlignment" Value="Top" />
                                                     <Setter Property="CornerRadius" Value="8" />
