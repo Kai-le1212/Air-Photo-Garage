@@ -505,6 +505,8 @@ public sealed class RegistrationGroup : ObservableObject
                 if (e.PropertyName == nameof(PhotoCardViewModel.Thumbnail))
                 {
                     OnPropertyChanged(nameof(CoverThumbnail));
+        OnPropertyChanged(nameof(CoverBrush));
+                    OnPropertyChanged(nameof(CoverBrush));
                 }
                 else if (e.PropertyName == nameof(PhotoCardViewModel.CardImageHeight))
                 {
@@ -550,6 +552,15 @@ public sealed class RegistrationGroup : ObservableObject
 
     /// <summary>窗格封面：自定义头图优先，否则取组内第一张的缩略图。</summary>
     public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbnail => _customCover ?? _cover?.Thumbnail;
+
+    /// <summary>封面画刷：用 Border.Background 画图，圆角才会裁到图片上。</summary>
+    public Microsoft.UI.Xaml.Media.ImageBrush? CoverBrush => CoverThumbnail is null
+        ? null
+        : new Microsoft.UI.Xaml.Media.ImageBrush
+        {
+            ImageSource = CoverThumbnail,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+        };
 
     /// <summary>
     /// 封面图片区的应有高度 —— 跟随封面图片的比例，上下不留空、也不裁切。

@@ -1283,6 +1283,15 @@ public sealed class GroupItemViewModel : ObservableObject
     /// 行首头图。由 <see cref="GroupedPhotoViewModel"/> 在分组加载完（或用户改过头图）后填进来：
     /// 自定义优先，没有就用 <see cref="AutoCoverPath"/>。
     /// </summary>
+    /// <summary>封面画刷（圆角裁切用）。</summary>
+    public Microsoft.UI.Xaml.Media.ImageBrush? CoverBrush => CoverSource is null
+        ? null
+        : new Microsoft.UI.Xaml.Media.ImageBrush
+        {
+            ImageSource = CoverSource,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+        };
+
     public Microsoft.UI.Xaml.Media.ImageSource? CoverSource
     {
         get => _coverSource;

@@ -31,6 +31,21 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsThumbnailLoaded { get; set; }
 
+    /// <summary>
+    /// 缩略图画刷。用 Border.Background 画图，圆角才能真正裁到图片
+    /// （WinUI 的 Border 不会裁子元素，直接放 Image 会露出方角）。
+    /// </summary>
+    public Microsoft.UI.Xaml.Media.ImageBrush? ThumbnailBrush => Thumbnail is null
+        ? null
+        : new Microsoft.UI.Xaml.Media.ImageBrush
+        {
+            ImageSource = Thumbnail,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+        };
+
+    partial void OnThumbnailChanged(Microsoft.UI.Xaml.Media.ImageSource? value) =>
+        OnPropertyChanged(nameof(ThumbnailBrush));
+
     /// <summary>是否处于多选模式（决定右上角方框要不要显示）。</summary>
     [ObservableProperty]
     public partial bool IsSelectionMode { get; set; }

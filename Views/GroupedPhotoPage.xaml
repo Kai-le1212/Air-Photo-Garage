@@ -44,9 +44,9 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                        <Image Source="{x:Bind Thumbnail, Mode=OneWay}"
-                               Height="{x:Bind CardImageHeight, Mode=OneWay}"
-                               Stretch="Uniform" />
+                        <Border Height="{x:Bind CardImageHeight, Mode=OneWay}"
+                                CornerRadius="7,7,0,0"
+                                Background="{x:Bind ThumbnailBrush, Mode=OneWay}" />
                         <Border VerticalAlignment="Top"
                                 HorizontalAlignment="Stretch"
                                 Padding="8,4"
@@ -127,9 +127,9 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                        <Image Source="{x:Bind CoverSource, Mode=OneWay}"
-                               Height="{x:Bind CoverHeight, Mode=OneWay}"
-                               Stretch="Uniform" />
+                        <Border Height="{x:Bind CoverHeight, Mode=OneWay}"
+                                CornerRadius="7,7,0,0"
+                                Background="{x:Bind CoverBrush, Mode=OneWay}" />
 
                         <!-- 张数 / 架数角标 -->
                         <Border VerticalAlignment="Top" HorizontalAlignment="Right"

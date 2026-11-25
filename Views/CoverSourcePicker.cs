@@ -179,10 +179,12 @@ internal static class CoverSourcePicker
         {
             Content = new FontIcon
             {
-                Glyph = char.ConvertFromUtf32(glyph),
-                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                FontSize = 12,
+                Glyph = char.ConvertFromUtf32(glyph),   // E76B / E76C：Segoe Fluent Icons 的 Chevron
+                FontFamily = new FontFamily("Segoe Fluent Icons"),
+                FontSize = 14,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
             },
             Width = 30,
             Height = 96,
