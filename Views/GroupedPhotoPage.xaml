@@ -270,8 +270,8 @@
                                Style="{ThemeResource CaptionTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <Button Content="全选" Click="OnSelectAllClick" />
-                    <Button x:Name="BatchFillButton" Content="批量填写…" Click="OnBatchFillClick" IsEnabled="False" Visibility="Collapsed" />
-                    <Button x:Name="ClearSelectionButton" Content="取消选择" Click="OnClearSelectionClick" Visibility="Collapsed" />
+                    <Button x:Name="BatchFillButton" Content="批量填写…" Click="OnBatchFillClick" IsEnabled="False" />
+                    <Button x:Name="ClearSelectionButton" Content="取消选择" Click="OnClearSelectionClick" IsEnabled="False" />
                 </StackPanel>
             </StackPanel>
         </Grid>

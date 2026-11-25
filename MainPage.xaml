@@ -213,8 +213,9 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- 顶部工具栏 -->
-        <CommandBar Grid.Row="0" DefaultLabelPosition="Right" Background="Transparent">
+        <!-- 顶部工具栏 + 多选工具条（同一块区域，选择相关操作集中在此） -->
+        <StackPanel Grid.Row="0">
+        <CommandBar DefaultLabelPosition="Right" Background="Transparent">
             <AppBarButton Label="导入照片" Icon="Add" Click="OnImportClick" />
             <AppBarButton Label="刷新" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
             <AppBarSeparator />
@@ -229,48 +230,29 @@
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE762;" />
                 </AppBarToggleButton.Icon>
             </AppBarToggleButton>
-            <AppBarButton x:Name="WallSelectAllButton"
-                          Label="全选"
-                          Icon="SelectAll"
-                          Visibility="Collapsed"
-                          Click="OnWallSelectAllClick"
-                          AutomationProperties.Name="全选" />
-            <AppBarButton x:Name="WallBatchFillButton"
-                          Label="批量填写"
-                          Icon="Edit"
-                          IsEnabled="False"
-                          Visibility="Collapsed"
-                          Click="OnWallBatchFillClick"
-                          AutomationProperties.Name="批量填写" />
-            <AppBarButton x:Name="WallClearSelectionButton"
-                          Label="取消选择"
-                          Icon="Clear"
-                          IsEnabled="False"
-                          Visibility="Collapsed"
-                          Click="OnWallClearSelectionClick"
-                          AutomationProperties.Name="取消选择" />
+                    </CommandBar>
 
-            <AppBarSeparator />
-            <AppBarToggleButton Label="按注册号分组"
-                                IsChecked="{x:Bind ViewModel.GroupByRegistration, Mode=TwoWay}"
-                                AutomationProperties.Name="按注册号分组">
-                <AppBarToggleButton.Icon>
-                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
-                </AppBarToggleButton.Icon>
-            </AppBarToggleButton>
-            <!-- 分组视图的条状 / 方块切换；未按注册号分组时无意义，隐藏 -->
-            <AppBarToggleButton Label="方块视图"
-                                IsChecked="{x:Bind ViewModel.IsWallGrid, Mode=OneWay}"
-                                Command="{x:Bind ViewModel.ToggleWallViewCommand}"
-                                Visibility="{x:Bind ViewModel.GroupedWallVisibility, Mode=OneWay}"
-                                AutomationProperties.Name="方块视图">
-                <AppBarToggleButton.Icon>
-                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xECA5;" />
-                </AppBarToggleButton.Icon>
-            </AppBarToggleButton>
-            <AppBarSeparator />
-            <AppBarButton Label="清空筛选" Icon="Clear" Command="{x:Bind ViewModel.ClearFilterCommand}" />
-        </CommandBar>
+        <!--
+            多选工具条：与机型 / 机场 / 航司 / 注册号页完全一致的布局 ——
+            已选数量 + 全选 + 批量填写 + 取消选择，集中在一处，不再混进顶部工具栏。
+        -->
+        <StackPanel x:Name="WallSelectionBar"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="16,0,0,8"
+                    Visibility="Collapsed">
+            <TextBlock x:Name="WallSelectionCountText"
+                       VerticalAlignment="Center"
+                       Text="已选 0 张"
+                       Style="{ThemeResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Button x:Name="WallSelectAllButton" Content="全选" Click="OnWallSelectAllClick" />
+            <Button x:Name="WallBatchFillButton" Content="批量填写…" Click="OnWallBatchFillClick" IsEnabled="False" />
+            <Button x:Name="WallClearSelectionButton" Content="取消选择" Click="OnWallClearSelectionClick" />
+        </StackPanel>
+        </StackPanel>
+
+
 
         <!-- 主区：左侧筛选 + 右侧照片墙 -->
         <Grid Grid.Row="1">
