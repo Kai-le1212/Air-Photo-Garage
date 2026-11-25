@@ -613,20 +613,39 @@
                                                        TextWrapping="Wrap" />
                                         </StackPanel>
 
-                                        <GridView ItemsSource="{x:Bind Photos}"
-                                                  IsMultiSelectCheckBoxEnabled="False"
-                                                  SelectionMode="None"
-                                                  IsItemClickEnabled="True"
-                                                  SelectionChanged="OnPhotoSelectionChanged"
-                                                  ItemClick="OnPhotoClick"
-                                                  ItemTemplate="{StaticResource PhotoCardTpl}">
-                                            <GridView.ItemContainerStyle>
-                                                <Style TargetType="GridViewItem">
-                                                    <Setter Property="Margin" Value="4" />
-                                                    <Setter Property="Background" Value="Transparent" />
-                                                </Style>
-                                            </GridView.ItemContainerStyle>
-                                        </GridView>
+                                        <!--
+                                            同一天内按「航班号」分段：不同航班号的照片分开展示，
+                                            但都还在这一天节点下。只有一个航班号时段头也会显示号。
+                                        -->
+                                        <ItemsControl ItemsSource="{x:Bind FlightSections}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:FlightSection">
+                                                    <StackPanel Spacing="2" Margin="0,4,0,0">
+                                                        <TextBlock Text="{x:Bind Header}"
+                                                                   Visibility="{x:Bind HeaderVisibility}"
+                                                                   Margin="8,2,0,2"
+                                                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                   Typography.NumeralAlignment="Tabular" />
+
+                                                        <GridView ItemsSource="{x:Bind Photos}"
+                                                                  IsMultiSelectCheckBoxEnabled="False"
+                                                                  SelectionMode="None"
+                                                                  IsItemClickEnabled="True"
+                                                                  SelectionChanged="OnPhotoSelectionChanged"
+                                                                  ItemClick="OnPhotoClick"
+                                                                  ItemTemplate="{StaticResource PhotoCardTpl}">
+                                                            <GridView.ItemContainerStyle>
+                                                                <Style TargetType="GridViewItem">
+                                                                    <Setter Property="Margin" Value="4" />
+                                                                    <Setter Property="Background" Value="Transparent" />
+                                                                </Style>
+                                                            </GridView.ItemContainerStyle>
+                                                        </GridView>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

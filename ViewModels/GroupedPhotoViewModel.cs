@@ -1336,7 +1336,37 @@ public sealed class TimelineNode
         // 机场页会把同一架飞机的多张照片收成一张卡，此时「5 张卡」≠「7 张照片」，
         // 由调用方给出准确的文案（如「6 架 · 7 张」）；其它页面沿用卡片数即可。
         CountText = countText ?? $"{photos.Count} 张";
+        FlightSections = BuildFlightSections(photos);
     }
+
+    /// <summary>
+    /// 同一天里按<b>航班号</b>分段：不同航班号的照片分开展示，但仍在同一天节点下。
+    /// 只有一个航班号时也把号显示出来（用户要求「把航班号显示出来」）。
+    /// </summary>
+    private static IReadOnlyList<FlightSection> BuildFlightSections(
+        IReadOnlyList<PhotoCardViewModel> photos)
+    {
+        var groups = photos
+            .GroupBy(p => Normalize(p.Photo.FlightNumber))
+            .OrderBy(g => g.Min(p => p.Photo.ShotAt?.DateTime ?? DateTime.MaxValue))
+            .ToList();
+
+        var sections = groups
+            .Select(g => new FlightSection(g.First().Photo.FlightNumber, g.ToList()))
+            .ToList();
+
+        // 只有一段且这段没填航班号 → 不显示段头（没信息可显示）
+        var showHeaders = sections.Count > 1 || sections.Any(x => !x.IsMissing);
+        foreach (var section in sections) section.ShowHeader = showHeaders;
+
+        return sections;
+    }
+
+    private static string Normalize(string? flight) =>
+        (flight ?? string.Empty).Trim().ToUpperInvariant();
+
+    /// <summary>节点内按航班号分的段（同一天、不同航班号分开展示）。</summary>
+    public IReadOnlyList<FlightSection> FlightSections { get; }
 
     /// <summary>节点标题：自定义分组显示组名，按天显示日期。</summary>
     public string Title { get; }
@@ -1385,4 +1415,27 @@ public sealed class TimelineNode
     /// </summary>
     public Microsoft.UI.Xaml.Visibility DayDotVisibility =>
         IsUserGroup ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+}
+
+/// <summary>时间轴节点内「同一航班号」的一段照片。</summary>
+public sealed class FlightSection
+{
+    public FlightSection(string? flightNumber, IReadOnlyList<PhotoCardViewModel> photos)
+    {
+        IsMissing = string.IsNullOrWhiteSpace(flightNumber);
+        Header = IsMissing ? "未填写航班号" : flightNumber!.Trim().ToUpperInvariant();
+        Photos = photos;
+    }
+
+    /// <summary>段头文字：航班号，或「未填写航班号」。</summary>
+    public string Header { get; }
+
+    public bool IsMissing { get; }
+
+    public IReadOnlyList<PhotoCardViewModel> Photos { get; }
+
+    public bool ShowHeader { get; set; }
+
+    public Microsoft.UI.Xaml.Visibility HeaderVisibility =>
+        ShowHeader ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 }
