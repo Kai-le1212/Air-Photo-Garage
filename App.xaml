@@ -10,31 +10,6 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-
-            <!--
-                勾选框「悬停/按下」配色：默认只在选中态把蓝调亮一点点，20px 的小框上几乎看不出。
-                这里只覆盖交互态（常态保持系统值），让鼠标移上去有明显的明暗变化 ——
-                控件本身仍是 WinUI CheckBox，只是换了配色资源。
-            -->
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver"
-                                     Color="{ThemeResource SystemAccentColorLight1}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed"
-                                     Color="{ThemeResource SystemAccentColorDark1}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#26FFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#40FFFFFF" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver"
-                                     Color="{ThemeResource SystemAccentColorLight1}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed"
-                                     Color="{ThemeResource SystemAccentColorDark1}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#1F000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#33000000" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
-
             <!--
                 照片详情弹窗的内容宽度控制在 ~520，落在 WinUI 默认的
                 ContentDialog 宽度范围内，因此这里无需覆盖 ContentDialogMaxWidth。
