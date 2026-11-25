@@ -648,4 +648,24 @@ public sealed partial class MainPage : Page
         }
         return null;
     }
+
+    /// <summary>
+    /// 勾选框的悬停反馈：系统只在未选中时给底色变化，选中（蓝）后几乎看不出 ——
+    /// 这里在外层加一块半透明白底，鼠标进出都能看到。
+    /// </summary>
+    private void OnSelectionHoverEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            border.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
+        }
+    }
+
+    private void OnSelectionHoverExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            border.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        }
+    }
 }
