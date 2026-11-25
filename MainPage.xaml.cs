@@ -98,7 +98,22 @@ public sealed partial class MainPage : Page
 
     private void UpdateWallSelection()
     {
-        var count = WallSelectedCards().Count;
+        var selected = WallSelectedCards();
+        var count = selected.Count;
+
+        // 卡片上的勾选徽标自己画（已关掉 GridView 的系统勾选框）
+        var set = new HashSet<PhotoCardViewModel>(selected);
+        foreach (var card in ViewModel.Photos)
+        {
+            card.IsSelected = set.Contains(card);
+        }
+
+        // 「全选」只在多选模式开启时出现
+        if (WallSelectAllButton is not null)
+        {
+            WallSelectAllButton.Visibility =
+                WallMultiSelectToggle?.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         // 计数挂在「多选」按钮的 Label 上（CommandBar 里只放得下 ICommandBarElement）
         if (WallMultiSelectToggle is not null)
@@ -116,6 +131,12 @@ public sealed partial class MainPage : Page
             WallClearSelectionButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
             WallClearSelectionButton.IsEnabled = count > 0;
         }
+    }
+
+    private void OnWallSelectAllClick(object sender, RoutedEventArgs e)
+    {
+        WallPhotoGrid?.SelectAll();
+        UpdateWallSelection();
     }
 
     private void OnWallClearSelectionClick(object sender, RoutedEventArgs e)

@@ -44,6 +44,22 @@
                                Height="{x:Bind CardImageHeight, Mode=OneWay}"
                                Stretch="Uniform" />
 
+
+                        <!-- 多选徽标：平时不显示，勾选后出现在右上角（自带圆底，不依赖 GridView 的系统勾选框） -->
+                        <Border HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom"
+                                Margin="8"
+                                Width="26"
+                                Height="26"
+                                CornerRadius="13"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                Visibility="{x:Bind SelectedBadgeVisibility, Mode=OneWay}">
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xE73E;"
+                                      FontSize="13"
+                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+
                         <!-- 未提供信息覆盖层 -->
                         <Border VerticalAlignment="Top"
                                 HorizontalAlignment="Stretch"
@@ -204,11 +220,18 @@
                                 Label="多选"
                                 Checked="OnWallMultiSelectToggled"
                                 Unchecked="OnWallMultiSelectToggled"
+                                Visibility="{x:Bind ViewModel.FlatWallVisibility, Mode=OneWay}"
                                 AutomationProperties.Name="多选">
                 <AppBarToggleButton.Icon>
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE762;" />
                 </AppBarToggleButton.Icon>
             </AppBarToggleButton>
+            <AppBarButton x:Name="WallSelectAllButton"
+                          Label="全选"
+                          Icon="SelectAll"
+                          Visibility="Collapsed"
+                          Click="OnWallSelectAllClick"
+                          AutomationProperties.Name="全选" />
             <AppBarButton x:Name="WallBatchFillButton"
                           Label="批量填写"
                           Icon="Edit"
@@ -394,6 +417,7 @@
                     <GridView x:Name="WallPhotoGrid"
                               ItemsSource="{x:Bind ViewModel.Photos, Mode=OneWay}"
                               Visibility="{x:Bind ViewModel.FlatWallVisibility, Mode=OneWay}"
+                              IsMultiSelectCheckBoxEnabled="False"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               SelectionChanged="OnWallSelectionChanged"

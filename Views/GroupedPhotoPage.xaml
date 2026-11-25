@@ -70,7 +70,22 @@
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                         </Border>
-                    </Grid>
+                    
+                        <!-- 多选徽标：平时不显示，勾选后出现在右上角（自带圆底，不依赖 GridView 的系统勾选框） -->
+                        <Border HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom"
+                                Margin="8"
+                                Width="26"
+                                Height="26"
+                                CornerRadius="13"
+                                Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                Visibility="{x:Bind SelectedBadgeVisibility, Mode=OneWay}">
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xE73E;"
+                                      FontSize="13"
+                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+</Grid>
 
                     <StackPanel Grid.Row="1" Padding="10,8" Spacing="2"
                                 Visibility="{x:Bind CardTextVisibility}">
@@ -597,6 +612,7 @@
                                         </StackPanel>
 
                                         <GridView ItemsSource="{x:Bind Photos}"
+                                                  IsMultiSelectCheckBoxEnabled="False"
                                                   SelectionMode="None"
                                                   IsItemClickEnabled="True"
                                                   SelectionChanged="OnPhotoSelectionChanged"
@@ -618,6 +634,7 @@
                     <!-- 平铺照片（未启用二层分组，或时间轴为空时兜底） -->
                     <GridView ItemsSource="{x:Bind ViewModel.Photos, Mode=OneWay}"
                               Visibility="{x:Bind ViewModel.FlatPhotosVisibility, Mode=OneWay}"
+                              IsMultiSelectCheckBoxEnabled="False"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               SelectionChanged="OnPhotoSelectionChanged"

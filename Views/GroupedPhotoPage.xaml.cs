@@ -271,7 +271,16 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (SelectionCountText is null || BatchFillButton is null) return;
 
-        var count = SelectedCards().Count;
+        var selected = SelectedCards();
+        var count = selected.Count;
+
+        // 勾选徽标由卡片自己画（系统勾选框已关闭）
+        var set = new HashSet<PhotoCardViewModel>(selected);
+        if (ViewModel.Photos is { } photos)
+        {
+            foreach (var card in photos) card.IsSelected = set.Contains(card);
+        }
+
         SelectionCountText.Text = $"已选 {count} 张";
 
         // 没选中时这两个按钮不占位；勾选（或点全选）之后才出现

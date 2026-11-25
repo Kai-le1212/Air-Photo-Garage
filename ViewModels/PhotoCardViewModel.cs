@@ -31,6 +31,17 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsThumbnailLoaded { get; set; }
 
+    /// <summary>多选模式下该卡片是否被勾选（决定右上角的勾选徽标）。</summary>
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
+
+    /// <summary>勾选徽标是否显示 —— DataTemplate 里直接绑这个，省一个转换器。</summary>
+    public Microsoft.UI.Xaml.Visibility SelectedBadgeVisibility =>
+        IsSelected ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+    partial void OnIsSelectedChanged(bool value) =>
+        OnPropertyChanged(nameof(SelectedBadgeVisibility));
+
     /// <summary>
     /// 已加载缩略图的宽高比（宽 ÷ 高）。缩略图未就绪时为 0。
     /// 缩略图按 <c>DecodePixelHeight = 480</c> 解码，所以 <c>PixelWidth/PixelHeight</c>
