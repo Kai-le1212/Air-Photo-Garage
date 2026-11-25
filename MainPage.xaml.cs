@@ -104,9 +104,7 @@ public sealed partial class MainPage : Page
     }
 
     private List<PhotoCardViewModel> WallSelectedCards() =>
-        WallPhotoGrid is null
-            ? new List<PhotoCardViewModel>()
-            : WallPhotoGrid.SelectedItems.OfType<PhotoCardViewModel>().Distinct().ToList();
+        ViewModel.Photos.Where(c => c.IsSelected).ToList();
 
     private void UpdateWallSelection()
     {
@@ -147,13 +145,13 @@ public sealed partial class MainPage : Page
 
     private void OnWallSelectAllClick(object sender, RoutedEventArgs e)
     {
-        WallPhotoGrid?.SelectAll();
+        foreach (var card in ViewModel.Photos) card.IsSelected = true;
         UpdateWallSelection();
     }
 
     private void OnWallClearSelectionClick(object sender, RoutedEventArgs e)
     {
-        if (WallPhotoGrid is not null) WallPhotoGrid.SelectedItems.Clear();
+        foreach (var card in ViewModel.Photos) card.IsSelected = false;
         UpdateWallSelection();
     }
 
@@ -361,10 +359,17 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void OnPhotoItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is PhotoCardViewModel card)
+        if (e.ClickedItem is not PhotoCardViewModel card) return;
+
+        // 多选模式下，点卡片本身 = 勾选/取消勾选
+        if (WallMultiSelectToggle?.IsChecked == true)
         {
-            _ = ShowDetailDialogSafeAsync(card);
+            card.IsSelected = !card.IsSelected;
+            UpdateWallSelection();
+            return;
         }
+
+        _ = ShowDetailDialogSafeAsync(card);
     }
 
     // ---------- 注册号窗格 ----------

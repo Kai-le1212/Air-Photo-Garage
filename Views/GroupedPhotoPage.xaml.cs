@@ -257,11 +257,17 @@ public sealed partial class GroupedPhotoPage : Page
             if (!on) card.IsSelected = false;
         }
 
+        foreach (var card in ViewModel.Photos)
+        {
+            card.IsSelectionMode = on;
+            if (!on) card.IsSelected = false;
+        }
+
+        // 选择完全交给卡片里的 CheckBox，GridView 自己不做选择（避免两套高亮打架）
         foreach (var grid in PhotoGrids())
         {
-            grid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
-            grid.IsItemClickEnabled = !on;
-            if (!on) grid.SelectedItems.Clear();
+            grid.SelectionMode = ListViewSelectionMode.None;
+            grid.IsItemClickEnabled = true;
         }
 
         if (SelectionBar is not null)
@@ -278,16 +284,7 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (SelectionCountText is null || BatchFillButton is null) return;
 
-        var selected = SelectedCards();
-        var count = selected.Count;
-
-        // 勾选徽标由卡片自己画（系统勾选框已关闭）
-        var set = new HashSet<PhotoCardViewModel>(selected);
-        if (ViewModel.Photos is { } photos)
-        {
-            foreach (var card in photos) card.IsSelected = set.Contains(card);
-        }
-
+        var count = SelectedCards().Count;
         SelectionCountText.Text = $"已选 {count} 张";
 
         // 没选中时这两个按钮不占位；勾选（或点全选）之后才出现
@@ -297,23 +294,18 @@ public sealed partial class GroupedPhotoPage : Page
     }
 
     private List<PhotoCardViewModel> SelectedCards() =>
-        PhotoGrids()
-            .SelectMany(g => g.SelectedItems.OfType<PhotoCardViewModel>())
-            .Distinct()
-            .ToList();
+        ViewModel.Photos.Where(c => c.IsSelected).ToList();
 
     private void OnSelectAllClick(object sender, RoutedEventArgs e)
     {
-        foreach (var grid in PhotoGrids().Where(g => g.Visibility == Visibility.Visible))
-        {
-            grid.SelectAll();
-        }
+        // 「全选」= 当前视图里能看到的照片（平铺 / 时间轴共享同一份 ViewModel.Photos）
+        foreach (var card in ViewModel.Photos) card.IsSelected = true;
         UpdateSelectionCount();
     }
 
     private void OnClearSelectionClick(object sender, RoutedEventArgs e)
     {
-        foreach (var grid in PhotoGrids()) grid.SelectedItems.Clear();
+        foreach (var card in ViewModel.Photos) card.IsSelected = false;
         UpdateSelectionCount();
     }
 
@@ -373,6 +365,14 @@ public sealed partial class GroupedPhotoPage : Page
 
     private void OnPhotoClick(object sender, ItemClickEventArgs e)    {
         if (e.ClickedItem is not PhotoCardViewModel card) return;
+
+        // 多选模式下，点卡片本身 = 勾选/取消勾选
+        if (MultiSelectToggle?.IsChecked == true)
+        {
+            card.IsSelected = !card.IsSelected;
+            UpdateSelectionCount();
+            return;
+        }
 
         // 机场页里一架飞机只露一张卡（右上角标着总张数）：
         // 点它不打开这一张的详情，而是跳去「注册号」页看这架飞机的全部照片。

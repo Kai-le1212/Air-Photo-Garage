@@ -73,33 +73,17 @@
                         </Border>
                     
                         <!--
-                            多选方框：多选模式下右上角恒显示 —— 未选是空框、选中是带勾的强调色框。
-                            压在照片上，所以未选态用半透明黑底 + 白描边，任何照片上都看得清。
+                            真正的 WinUI CheckBox：未选是灰框、选中是蓝底白勾、悬停有高亮，
+                            全部由系统渲染。多选模式才显示，平时不打扰。
                         -->
-                        <Border HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
-                                Margin="8"
-                                Width="24"
-                                Height="24"
-                                CornerRadius="4"
-                                BorderThickness="1.5"
-                                BorderBrush="White"
-                                Background="{x:Bind SelectionBoxBackground, Mode=OneWay}"
-                                Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}">
-                            <!-- 用矢量 Path 画对勾：图标字形自带偏置会让勾看起来没居中 -->
-                            <Path Width="13"
-                                  Height="11"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Stretch="Uniform"
-                                  Stroke="White"
-                                  StrokeThickness="1.9"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round"
-                                  Data="M 1,5.4 L 4.6,9 L 12,1.4"
-                                  Visibility="{x:Bind SelectionCheckVisibility, Mode=OneWay}" />
-                        </Border>
+                        <CheckBox HorizontalAlignment="Right"
+                                  VerticalAlignment="Top"
+                                  Margin="4,4,0,0"
+                                  MinWidth="0"
+                                  IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                  Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}"
+                                  AutomationProperties.Name="选择这张照片" />
+
 </Grid>
 
                     <StackPanel Grid.Row="1" Padding="10,8" Spacing="2"
