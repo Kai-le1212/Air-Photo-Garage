@@ -70,23 +70,27 @@ internal static class CoverSourcePicker
             });
 
             var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+
             foreach (var (previewPath, sourcePath) in candidates.Take(200))
             {
                 var bitmap = await CoverImageLoader.LoadAsync(previewPath);
                 if (bitmap is null) continue;
 
-                // 图片直接用画刷铺满卡片：圆角由 Border 自己裁，左右也不会留灰边
+                // 卡片高度跟着照片比例走 —— 不裁切、不拉伸、也不留黑边
+                var aspect = CoverImageLoader.AspectOf(bitmap);
+                var height = aspect > 0.01 ? Math.Clamp(CellWidth / aspect, 80, 200) : CellHeight;
+
                 var cell = new Border
                 {
-                    Width = CellWidth * 2,
-                    Height = CellHeight,
+                    Width = CellWidth,
+                    Height = height,
                     CornerRadius = new CornerRadius(8),
                     BorderThickness = new Thickness(1),
                     BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
                     Background = new ImageBrush
                     {
                         ImageSource = bitmap,
-                        Stretch = Stretch.UniformToFill,
+                        Stretch = Stretch.Uniform,   // 比例已由卡片高度对齐，这里不裁切
                     },
                 };
                 ToolTipService.SetToolTip(cell, System.IO.Path.GetFileName(sourcePath));
@@ -101,13 +105,53 @@ internal static class CoverSourcePicker
                 strip.Children.Add(cell);
             }
 
-            body.Children.Add(new ScrollViewer
+            var scroller = new ScrollViewer
             {
                 Content = strip,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 HorizontalScrollMode = ScrollMode.Enabled,
-            });
+                VerticalScrollMode = ScrollMode.Disabled,
+            };
+
+            // 鼠标滚轮 → 横向滚动（默认滚轮只滚纵向，横向区域滚不动）
+            scroller.PointerWheelChanged += (_, e) =>
+            {
+                var delta = e.GetCurrentPoint(scroller).Properties.MouseWheelDelta;
+                if (delta == 0) return;
+                scroller.ChangeView(
+                    Math.Clamp(scroller.HorizontalOffset - delta, 0, scroller.ScrollableWidth),
+                    null, null, false);
+                e.Handled = true;
+            };
+
+            // 两端箭头
+            var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
+            var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
+
+            void SyncChevrons()
+            {
+                var canScroll = scroller.ScrollableWidth > 1;
+                leftChevron.Visibility = canScroll && scroller.HorizontalOffset > 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+                rightChevron.Visibility = canScroll && scroller.HorizontalOffset < scroller.ScrollableWidth - 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            scroller.ViewChanged += (_, _) => SyncChevrons();
+            scroller.Loaded += (_, _) => SyncChevrons();
+
+            leftChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Max(0, scroller.HorizontalOffset - CellWidth * 3), null, null, false);
+            rightChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Min(scroller.ScrollableWidth, scroller.HorizontalOffset + CellWidth * 3), null, null, false);
+
+            var host = new Grid();
+            host.Children.Add(scroller);
+            host.Children.Add(leftChevron);
+            host.Children.Add(rightChevron);
+
+            body.Children.Add(host);
         }
 
         dialog.Content = body;
@@ -119,6 +163,37 @@ internal static class CoverSourcePicker
         }
 
         return chosen;
+    }
+
+    /// <summary>两端翻页箭头（Segoe Fluent Icons 的 ChevronLeft/Right）。</summary>
+    private static Button MakeChevron(int glyph, HorizontalAlignment side)
+    {
+        var button = new Button
+        {
+            Content = new FontIcon
+            {
+                Glyph = char.ConvertFromUtf32(glyph),
+                FontFamily = new FontFamily("Segoe Fluent Icons"),
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+            Width = 24,
+            Height = 64,
+            Padding = new Thickness(0),
+            HorizontalAlignment = side,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 4, 0),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xE6, 48, 48, 48)),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(8),
+            Visibility = Visibility.Collapsed,
+            IsTabStop = false,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            button, side == HorizontalAlignment.Left ? "向前翻" : "向后翻");
+        return button;
     }
 
     /// <summary>标准文件选择器。WinUI 3 必须显式挂到窗口上，否则一定抛异常。</summary>
