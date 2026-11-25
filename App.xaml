@@ -10,7 +10,11 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 选头图：候选照片卡片（只有图片，圆角卡片，灰色底框与卡片边缘对齐） -->
+            <!--
+                选头图：候选照片卡片。
+                用 ImageBrush 作 Border 的 Background，既能让圆角真正裁到图片（上下左右一致），
+                又可以用 UniformToFill 铺满、不留左右黑边。
+            -->
             <DataTemplate x:Key="CoverCandidateTpl">
                 <Border Width="220"
                         Height="130"
@@ -18,12 +22,7 @@
                         CornerRadius="8"
                         BorderThickness="1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                    <Image Source="{Binding Image}"
-                           Width="218"
-                           Height="128"
-                           Stretch="Uniform" />
-                </Border>
+                        Background="{Binding ImageBrush}" />
             </DataTemplate>
 
             <!--

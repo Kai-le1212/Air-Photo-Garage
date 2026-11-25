@@ -106,7 +106,8 @@ internal static class CoverSourcePicker
             var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
             var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
 
-            var host = new Grid { Width = 520, Height = 132 };
+            var host = new Grid { Height = 132, HorizontalAlignment = HorizontalAlignment.Stretch };
+            grid.Padding = new Thickness(38, 0, 38, 0);   // 首尾卡片不压到箭头上
             host.Children.Add(grid);
             host.Children.Add(leftChevron);
             host.Children.Add(rightChevron);
@@ -183,16 +184,15 @@ internal static class CoverSourcePicker
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             },
-            Width = 28,
-            Height = 28,
+            Width = 30,
+            Height = 96,
             Padding = new Thickness(0),
             HorizontalAlignment = side,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = side == HorizontalAlignment.Left ? new Thickness(4, 0, 0, 0) : new Thickness(0, 0, 4, 0),
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xCC, 45, 45, 45)),
-            BorderThickness = new Thickness(1),
-            BorderBrush = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x40, 255, 255, 255)),
-            CornerRadius = new CornerRadius(14),
+            Margin = new Thickness(2, 0, 2, 0),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xE6, 48, 48, 48)),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(8),
             Visibility = Visibility.Collapsed,
             IsTabStop = false,
         };
@@ -240,9 +240,19 @@ public sealed class CoverCandidate
         Image = image;
         Caption = caption;
         SourcePath = sourcePath;
+
+        // 铺满卡片、不留边；圆角由外层 Border 裁
+        ImageBrush = new Microsoft.UI.Xaml.Media.ImageBrush
+        {
+            ImageSource = image,
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+        };
     }
 
     public Microsoft.UI.Xaml.Media.ImageSource Image { get; }
+
+    /// <summary>卡片背景用的画刷（圆角裁切 + 铺满）。</summary>
+    public Microsoft.UI.Xaml.Media.ImageBrush ImageBrush { get; }
 
     /// <summary>卡片下方的文件名。</summary>
     public string Caption { get; }
