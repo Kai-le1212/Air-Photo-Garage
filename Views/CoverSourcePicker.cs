@@ -26,6 +26,9 @@ namespace AirPhotoGarage.Views;
 /// </summary>
 internal static class CoverSourcePicker
 {
+    private const int CellWidth = 120;
+    private const int CellHeight = 90;
+
     /// <summary>
     /// 弹出选头图对话框。
     /// </summary>
@@ -35,8 +38,6 @@ internal static class CoverSourcePicker
         IReadOnlyList<(string PreviewPath, string SourcePath)> candidates)
     {
         if (xamlRoot is null) return null;
-
-        App.Log($"CoverPicker: enter, candidates={candidates.Count}");
 
         string? chosen = null;
 
@@ -48,7 +49,6 @@ internal static class CoverSourcePicker
             CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.Close,
         };
-        Views.AppTheme.Apply(dialog);
 
         var body = new StackPanel { Spacing = 10 };
 
@@ -69,107 +69,50 @@ internal static class CoverSourcePicker
                 Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             });
 
-            // 先把候选图都加载成画刷（铺满卡片，不留边）
-            var loaded = new List<(Microsoft.UI.Xaml.Media.ImageBrush Preview, string SourcePath, string Caption)>();
+            var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             foreach (var (previewPath, sourcePath) in candidates.Take(200))
             {
                 var bitmap = await CoverImageLoader.LoadAsync(previewPath);
                 if (bitmap is null) continue;
 
-                var brush = new Microsoft.UI.Xaml.Media.ImageBrush
+                // 图片直接用画刷铺满卡片：圆角由 Border 自己裁，左右也不会留灰边
+                var cell = new Border
                 {
-                    ImageSource = bitmap,
-                    Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
-                };
-                loaded.Add((brush, sourcePath, System.IO.Path.GetFileName(sourcePath)));
-            }
-
-            // 横向卡片条：用「按钮 + 圆角 Border」自绘，点击行为确定、尺寸完全可控
-            var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-
-            foreach (var (preview, sourcePath, caption) in loaded)
-            {
-                var card = new Border
-                {
-                    Width = 220,
-                    Height = 130,
+                    Width = CellWidth * 2,
+                    Height = CellHeight,
                     CornerRadius = new CornerRadius(8),
                     BorderThickness = new Thickness(1),
                     BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                    Background = preview,       // ← 已经就是 ImageBrush(UniformToFill)
+                    Background = new ImageBrush
+                    {
+                        ImageSource = bitmap,
+                        Stretch = Stretch.UniformToFill,
+                    },
                 };
-
-                var button = new Button
-                {
-                    Content = card,
-                    Padding = new Thickness(0),
-                    BorderThickness = new Thickness(0),
-                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                    CornerRadius = new CornerRadius(8),
-                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                    VerticalContentAlignment = VerticalAlignment.Stretch,
-                };
-                ToolTipService.SetToolTip(button, caption);
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, $"用 {caption} 作头图");
+                ToolTipService.SetToolTip(cell, System.IO.Path.GetFileName(sourcePath));
 
                 var path = sourcePath;
-                Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(
-                    button, $"cover-card-{strip.Children.Count}");
-                button.Click += (_, _) =>
+                cell.Tapped += (_, _) =>
                 {
-                    App.Log($"CoverPicker: clicked {path}");
                     chosen = path;
                     dialog.Hide();
                 };
 
-                strip.Children.Add(button);
+                strip.Children.Add(cell);
             }
 
-            App.Log($"CoverPicker: built {strip.Children.Count} cards");
-
-            var scroller = new ScrollViewer
+            body.Children.Add(new ScrollViewer
             {
                 Content = strip,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 HorizontalScrollMode = ScrollMode.Enabled,
-                Padding = new Thickness(0, 4, 0, 4),
-            };
-
-            var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
-            var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
-
-            void SyncChevrons()
-            {
-                var canScroll = scroller.ScrollableWidth > 1;
-                leftChevron.Visibility = canScroll && scroller.HorizontalOffset > 1
-                    ? Visibility.Visible : Visibility.Collapsed;
-                rightChevron.Visibility = canScroll && scroller.HorizontalOffset < scroller.ScrollableWidth - 1
-                    ? Visibility.Visible : Visibility.Collapsed;
-            }
-
-            scroller.ViewChanged += (_, _) => SyncChevrons();
-            scroller.Loaded += (_, _) => SyncChevrons();
-
-            const double page = 232 * 2;
-            leftChevron.Click += (_, _) => scroller.ChangeView(
-                Math.Max(0, scroller.HorizontalOffset - page), null, null, false);
-            rightChevron.Click += (_, _) => scroller.ChangeView(
-                Math.Min(scroller.ScrollableWidth, scroller.HorizontalOffset + page), null, null, false);
-
-            var host = new Grid { Height = 142 };
-            host.Children.Add(scroller);
-            host.Children.Add(leftChevron);
-            host.Children.Add(rightChevron);
-
-            body.Children.Add(host);
+            });
         }
 
         dialog.Content = body;
 
         var result = await dialog.ShowAsync();
-        App.Log($"CoverPicker: closed result={result} chosen={chosen ?? "(null)"}");
-
         if (result == ContentDialogResult.Primary)
         {
             return await PickFromFileAsync();
@@ -198,50 +141,6 @@ internal static class CoverSourcePicker
         return string.IsNullOrEmpty(file?.Path) ? null : file.Path;
     }
 
-    /// <summary>两端翻页箭头：半透明圆角底 + 白箭头。</summary>
-    private static Button MakeChevron(int glyph, HorizontalAlignment side)
-    {
-        var button = new Button
-        {
-            Content = new FontIcon
-            {
-                Glyph = char.ConvertFromUtf32(glyph),   // E76B / E76C：Segoe Fluent Icons 的 Chevron
-                FontFamily = new FontFamily("Segoe Fluent Icons"),
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
-            Width = 24,
-            Height = 64,
-            Padding = new Thickness(0),
-            HorizontalAlignment = side,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(2, 0, 2, 0),
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xE6, 48, 48, 48)),
-            BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(8),
-            Visibility = Visibility.Collapsed,
-            IsTabStop = false,
-        };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            button, side == HorizontalAlignment.Left ? "向前翻" : "向后翻");
-        return button;
-    }
-
-    /// <summary>取 GridView / ListView 内部那个 ScrollViewer（翻页箭头要对它 ChangeView）。</summary>
-    private static ScrollViewer? FindScrollViewer(DependencyObject root)
-    {
-        var count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < count; i++)
-        {
-            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
-            if (child is ScrollViewer sv) return sv;
-            if (FindScrollViewer(child) is { } nested) return nested;
-        }
-        return null;
-    }
-
     /// <summary>图片读不了/编码失败时给一句人话提示。</summary>
     public static async Task ShowFailedAsync(XamlRoot? xamlRoot)
     {
@@ -254,37 +153,7 @@ internal static class CoverSourcePicker
             Content = "可能格式不受支持，或者文件已经损坏。换一张常见格式（JPG / PNG / WebP）的图片试试。",
             CloseButtonText = "知道了",
         };
-        Views.AppTheme.Apply(dialog);
 
         try { await dialog.ShowAsync(); } catch { /* 已有对话框打开时忽略 */ }
     }
-}
-
-/// <summary>选头图的一张候选照片。</summary>
-public sealed class CoverCandidate
-{
-    public CoverCandidate(Microsoft.UI.Xaml.Media.ImageSource image, string caption, string sourcePath)
-    {
-        Image = image;
-        Caption = caption;
-        SourcePath = sourcePath;
-
-        // 铺满卡片、不留边；圆角由外层 Border 裁
-        ImageBrush = new Microsoft.UI.Xaml.Media.ImageBrush
-        {
-            ImageSource = image,
-            Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
-        };
-    }
-
-    public Microsoft.UI.Xaml.Media.ImageSource Image { get; }
-
-    /// <summary>卡片背景用的画刷（圆角裁切 + 铺满）。</summary>
-    public Microsoft.UI.Xaml.Media.ImageBrush ImageBrush { get; }
-
-    /// <summary>卡片下方的文件名。</summary>
-    public string Caption { get; }
-
-    /// <summary>真正用于生成头图的原图路径。</summary>
-    public string SourcePath { get; }
 }
