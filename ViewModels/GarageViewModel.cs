@@ -541,6 +541,7 @@ public sealed class RegistrationGroup : ObservableObject
         }
 
         OnPropertyChanged(nameof(CoverThumbnail));
+        OnPropertyChanged(nameof(CoverBrush));
         OnPropertyChanged(nameof(CoverHeight));
     }
 

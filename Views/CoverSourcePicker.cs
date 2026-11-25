@@ -36,6 +36,8 @@ internal static class CoverSourcePicker
     {
         if (xamlRoot is null) return null;
 
+        App.Log($"CoverPicker: enter, candidates={candidates.Count}");
+
         string? chosen = null;
 
         var dialog = new ContentDialog
@@ -111,14 +113,19 @@ internal static class CoverSourcePicker
                 Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, $"用 {caption} 作头图");
 
                 var path = sourcePath;
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(
+                    button, $"cover-card-{strip.Children.Count}");
                 button.Click += (_, _) =>
                 {
+                    App.Log($"CoverPicker: clicked {path}");
                     chosen = path;
                     dialog.Hide();
                 };
 
                 strip.Children.Add(button);
             }
+
+            App.Log($"CoverPicker: built {strip.Children.Count} cards");
 
             var scroller = new ScrollViewer
             {
@@ -161,6 +168,8 @@ internal static class CoverSourcePicker
         dialog.Content = body;
 
         var result = await dialog.ShowAsync();
+        App.Log($"CoverPicker: closed result={result} chosen={chosen ?? "(null)"}");
+
         if (result == ContentDialogResult.Primary)
         {
             return await PickFromFileAsync();

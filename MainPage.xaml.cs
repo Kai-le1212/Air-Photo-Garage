@@ -332,6 +332,7 @@ public sealed partial class MainPage : Page
 
             var picked = await Views.CoverSourcePicker.PickAsync(
                 XamlRoot, $"{group.Title} · 选择头图", candidates);
+            App.Log($"CoverPicker 返回: {picked ?? "(null)"}");
             if (string.IsNullOrEmpty(picked)) return;
 
             if (!await ViewModel.SetRegistrationCoverAsync(group, picked))

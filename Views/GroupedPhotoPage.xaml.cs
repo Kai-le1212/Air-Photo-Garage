@@ -165,6 +165,7 @@ public sealed partial class GroupedPhotoPage : Page
 
             var picked = await CoverSourcePicker.PickAsync(
                 XamlRoot, $"{group.DisplayText} · 选择头图", candidates);
+            App.Log($"CoverPicker 返回: {picked ?? "(null)"}");
             if (string.IsNullOrEmpty(picked)) return;
 
             if (!await ViewModel.SetCoverAsync(group, picked))
