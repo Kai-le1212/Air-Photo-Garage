@@ -26,8 +26,8 @@ namespace AirPhotoGarage.Views;
 /// </summary>
 internal static class CoverSourcePicker
 {
-    private const int CellWidth = 120;
-    private const int CellHeight = 90;
+    private const int CellWidth = 144;
+    private const int CellHeight = 96;
 
     /// <summary>
     /// 弹出选头图对话框。
@@ -78,7 +78,7 @@ internal static class CoverSourcePicker
 
                 // 卡片高度跟着照片比例走 —— 不裁切、不拉伸、也不留黑边
                 var aspect = CoverImageLoader.AspectOf(bitmap);
-                var height = aspect > 0.01 ? Math.Clamp(CellWidth / aspect, 80, 200) : CellHeight;
+                var height = aspect > 0.01 ? Math.Clamp(CellWidth / aspect, 96, 240) : CellHeight;
 
                 var cell = new Border
                 {
@@ -94,6 +94,29 @@ internal static class CoverSourcePicker
                     },
                 };
                 ToolTipService.SetToolTip(cell, System.IO.Path.GetFileName(sourcePath));
+
+                // 悬停反馈：描边变强调色 + 盖一层半透明白（原描边留一份，离开时还原）
+                var restBrush = cell.BorderBrush;
+                var accentBrush = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+                var overlay = new Border
+                {
+                    CornerRadius = new CornerRadius(8),
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                    IsHitTestVisible = false,
+                };
+                cell.Child = overlay;
+                cell.PointerEntered += (_, _) =>
+                {
+                    cell.BorderBrush = accentBrush;
+                    cell.BorderThickness = new Thickness(2);
+                    overlay.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x24, 255, 255, 255));
+                };
+                cell.PointerExited += (_, _) =>
+                {
+                    cell.BorderBrush = restBrush;
+                    cell.BorderThickness = new Thickness(1);
+                    overlay.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+                };
 
                 var path = sourcePath;
                 cell.Tapped += (_, _) =>
