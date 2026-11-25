@@ -107,7 +107,7 @@ internal static class CoverSourcePicker
             var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
 
             var host = new Grid { Height = 132, HorizontalAlignment = HorizontalAlignment.Stretch };
-            grid.Padding = new Thickness(38, 0, 38, 0);   // 首尾卡片不压到箭头上
+            grid.Padding = new Thickness(0);              // 首张卡片贴左边缘
             host.Children.Add(grid);
             host.Children.Add(leftChevron);
             host.Children.Add(rightChevron);
@@ -181,13 +181,13 @@ internal static class CoverSourcePicker
             {
                 Glyph = char.ConvertFromUtf32(glyph),   // E76B / E76C：Segoe Fluent Icons 的 Chevron
                 FontFamily = new FontFamily("Segoe Fluent Icons"),
-                FontSize = 14,
+                FontSize = 11,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
-            Width = 30,
-            Height = 96,
+            Width = 24,
+            Height = 64,
             Padding = new Thickness(0),
             HorizontalAlignment = side,
             VerticalAlignment = VerticalAlignment.Center,

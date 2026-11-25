@@ -1301,6 +1301,7 @@ public sealed class GroupItemViewModel : ObservableObject
             _coverSource = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasCover));
+            OnPropertyChanged(nameof(CoverBrush));
         }
     }
 
