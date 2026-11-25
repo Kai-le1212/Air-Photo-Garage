@@ -43,8 +43,14 @@ public sealed partial class PhotoCardViewModel : ObservableObject
     /// 右上角选择框：<b>多选模式下恒显示</b>（未选是空框、选中是勾），
     /// 非多选模式整个不出现 —— 这样才能「选和没选都有框」又不干扰日常浏览。
     /// </summary>
+    /// <summary>
+    /// 全局多选开关。卡片实例是按视图新建的（时间轴 / 自定义分组各不相同），
+    /// 逐个实例设置总会漏 —— 让显隐同时看这个静态值，新建的卡片天然就是对的。
+    /// </summary>
+    public static bool SelectionModeOn { get; set; }
+
     public Microsoft.UI.Xaml.Visibility SelectionBoxVisibility =>
-        IsSelectionMode
+        IsSelectionMode || SelectionModeOn
             ? Microsoft.UI.Xaml.Visibility.Visible
             : Microsoft.UI.Xaml.Visibility.Collapsed;
 
@@ -60,6 +66,10 @@ public sealed partial class PhotoCardViewModel : ObservableObject
         : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(140, 0, 0, 0));
 
     partial void OnIsSelectionModeChanged(bool value) =>
+        OnPropertyChanged(nameof(SelectionBoxVisibility));
+
+    /// <summary>切换全局多选开关后，让已有卡片刷新显隐。</summary>
+    public void RefreshSelectionVisibility() =>
         OnPropertyChanged(nameof(SelectionBoxVisibility));
 
     partial void OnIsSelectedChanged(bool value)

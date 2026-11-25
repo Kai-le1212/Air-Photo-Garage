@@ -53,15 +53,15 @@ public static class PhotoDeleteDialog
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return false;
 
         await App.Database.DeletePhotoAsync(photo.Id);
-        DeleteFiles(photo);
+        DeleteFilesFor(photo);
         return true;
     }
 
     /// <summary>
-    /// 删掉原图与缩略图。文件被占用 / 已不存在都不影响删除结果（记录已经删了），
+    /// 删掉原图与缩略图（批量删除时也用它）。文件被占用 / 已不存在都不影响结果，
     /// 只写日志，不向上抛。
     /// </summary>
-    private static void DeleteFiles(Photo photo)
+    internal static void DeleteFilesFor(Photo photo)
     {
         DeleteFile(photo.FilePath);
         DeleteFile(photo.ThumbnailPath);

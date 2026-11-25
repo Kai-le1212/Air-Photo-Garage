@@ -251,6 +251,7 @@ public sealed partial class GroupedPhotoPage : Page
         var on = MultiSelectToggle?.IsChecked == true;
 
         // 方框显隐由卡片自己决定：多选模式恒显示，未选是空框
+        PhotoCardViewModel.SelectionModeOn = on;
         ApplySelectionModeToCards(on);
 
         foreach (var card in ViewModel.Photos)
@@ -323,6 +324,7 @@ public sealed partial class GroupedPhotoPage : Page
         {
             card.IsSelectionMode = on;
             if (!on) card.IsSelected = false;
+            card.RefreshSelectionVisibility();
         }
     }
 
@@ -448,6 +450,13 @@ public sealed partial class GroupedPhotoPage : Page
 
         var flyout = new MenuFlyout();
 
+        // 多选状态下，右键菜单的作用对象是**所有已选照片**（被右键的那张也在其中）
+        var selected = SelectedCards();
+        var batch = selected.Count > 1 && selected.Any(c => c.Id == card.Id)
+            ? selected
+            : new List<PhotoCardViewModel> { card };
+        var batchText = batch.Count > 1 ? $"（{batch.Count} 张）" : string.Empty;
+
         // ↓ 前两项的文案与图标与照片墙右键菜单<b>逐字一致</b>，不要再各写一套
         var detailItem = new MenuFlyoutItem { Text = "查看详情" };
         detailItem.Icon = new FontIcon { Glyph = "\uE890" }; // Info
@@ -464,9 +473,9 @@ public sealed partial class GroupedPhotoPage : Page
         {
             flyout.Items.Add(new MenuFlyoutSeparator());
 
-            var groupItem = new MenuFlyoutItem { Text = "加入分组…" };
+            var groupItem = new MenuFlyoutItem { Text = $"加入分组{batchText}…" };
             groupItem.Icon = new FontIcon { Glyph = "\uE8B7" }; // Folder
-            groupItem.Click += (_, _) => _ = ShowGroupPickerSafeAsync(card);
+            groupItem.Click += (_, _) => _ = ShowGroupPickerSafeAsync(batch);
             flyout.Items.Add(groupItem);
 
             var currentGroupId = ViewModel.GroupIdOf(card.Id);
@@ -475,9 +484,9 @@ public sealed partial class GroupedPhotoPage : Page
                 var currentName = ViewModel.UserGroups
                     .FirstOrDefault(g => g.Id == currentGroupId.Value)?.Name ?? "分组";
 
-                var removeItem = new MenuFlyoutItem { Text = "移出分组" };
+                var removeItem = new MenuFlyoutItem { Text = $"移出分组{batchText}" };
                 removeItem.Icon = new FontIcon { Glyph = "\uE894" }; // Remove
-                removeItem.Click += (_, _) => _ = RemoveFromGroupAsync(card);
+                removeItem.Click += (_, _) => _ = RemoveFromGroupAsync(batch);
                 flyout.Items.Add(removeItem);
 
                 var renameItem = new MenuFlyoutItem { Text = "重命名分组…" };
@@ -497,9 +506,9 @@ public sealed partial class GroupedPhotoPage : Page
         // 变量名加 Photo 前缀：上面分组块里已有一个 deleteItem（解散分组），避免重名。
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        var deletePhotoItem = new MenuFlyoutItem { Text = "删除" };
+        var deletePhotoItem = new MenuFlyoutItem { Text = $"删除{batchText}" };
         deletePhotoItem.Icon = new FontIcon { Glyph = "\uE74D" }; // Delete
-        deletePhotoItem.Click += (_, _) => _ = ConfirmDeleteAsync(card);
+        deletePhotoItem.Click += (_, _) => _ = ConfirmDeleteAsync(card, batch);
         flyout.Items.Add(deletePhotoItem);
 
         flyout.ShowAt(element, new FlyoutShowOptions
@@ -512,8 +521,11 @@ public sealed partial class GroupedPhotoPage : Page
     // ---------- 二层分组：加入 / 移出 / 重命名 / 解散 ----------
 
     /// <summary>「加入分组…」：选择既有分组，或输入名称新建，然后指派。</summary>
-    private async Task ShowGroupPickerSafeAsync(PhotoCardViewModel card)
+    private async Task ShowGroupPickerSafeAsync(IReadOnlyList<PhotoCardViewModel> cards)
     {
+        if (cards.Count == 0) return;
+        var card = cards[0];
+
         try
         {
             var result = await PhotoGroupDialog.PickAsync(
@@ -526,7 +538,7 @@ public sealed partial class GroupedPhotoPage : Page
 
             if (result.Remove)
             {
-                await ViewModel.AssignToGroupAsync(card.Id, null);
+                foreach (var c in cards) await ViewModel.AssignToGroupAsync(c.Id, null);
                 return;
             }
 
@@ -539,7 +551,15 @@ public sealed partial class GroupedPhotoPage : Page
             }
             if (targetId is null) return;
 
-            await ViewModel.AssignToGroupAsync(card.Id, targetId);
+            // 多选时把选中的照片一起放进这个分组
+            foreach (var c in cards) await ViewModel.AssignToGroupAsync(c.Id, targetId);
+
+            if (cards.Count > 1)
+            {
+                // 批量分组完成：这一轮多选结束，开关复位
+                if (MultiSelectToggle is not null) MultiSelectToggle.IsChecked = false;
+                await ViewModel.ReloadCurrentGroupAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -548,11 +568,11 @@ public sealed partial class GroupedPhotoPage : Page
     }
 
     /// <summary>把单张照片移出分组（照片回到「按天」节点，文件不受影响）。</summary>
-    private async Task RemoveFromGroupAsync(PhotoCardViewModel card)
+    private async Task RemoveFromGroupAsync(IReadOnlyList<PhotoCardViewModel> cards)
     {
         try
         {
-            await ViewModel.AssignToGroupAsync(card.Id, null);
+            foreach (var card in cards) await ViewModel.AssignToGroupAsync(card.Id, null);
         }
         catch (Exception ex)
         {
@@ -592,11 +612,31 @@ public sealed partial class GroupedPhotoPage : Page
     /// 删除照片。确认框与落库走与照片墙共用的 <see cref="PhotoDeleteDialog"/>；
     /// 删除后重建当前视图 —— 时间轴节点、分组计数、空状态都要跟着变。
     /// </summary>
-    private async Task ConfirmDeleteAsync(PhotoCardViewModel card)
+    private async Task ConfirmDeleteAsync(PhotoCardViewModel card, IReadOnlyList<PhotoCardViewModel>? batch = null)
     {
         try
         {
-            if (!await PhotoDeleteDialog.ConfirmAndDeleteAsync(XamlRoot, card.Photo)) return;
+            var targets = (batch is { Count: > 1 } ? batch : new List<PhotoCardViewModel> { card });
+
+            if (targets.Count == 1)
+            {
+                if (!await PhotoDeleteDialog.ConfirmAndDeleteAsync(XamlRoot, card.Photo)) return;
+            }
+            else
+            {
+                var confirmed = await Views.Dialogs.ConfirmAsync(
+                    $"删除这 {targets.Count} 张照片？",
+                    "记录与磁盘上的原图、缩略图都会被删除，不可恢复。",
+                    primaryText: "删除",
+                    closeText: "取消");
+                if (!confirmed) return;
+            }
+
+            foreach (var item in targets)
+            {
+                await App.Database.DeletePhotoAsync(item.Photo.Id);
+                PhotoDeleteDialog.DeleteFilesFor(item.Photo);
+            }
 
             if (ViewModel.IsViewingGroup)
             {
