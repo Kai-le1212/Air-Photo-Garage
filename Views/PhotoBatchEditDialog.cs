@@ -74,6 +74,14 @@ internal static class PhotoBatchEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
+        var tbAirlineIcao = new TextBox
+        {
+            Header = "航司三字码",
+            MaxLength = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        TextInput.ApplyCode(tbAirlineIcao);
+
         var tbIata = new TextBox
         {
             Header = "机场 IATA 三字码（如 PEK）",
@@ -107,7 +115,7 @@ internal static class PhotoBatchEditDialog
         TextInput.ApplyCode(tbFlight);
 
         // 三向联动：名称 ↔ 二字码 ↔ 航班号前两位
-        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbFlight);
+        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbAirlineIcao, tbFlight);
 
         var tbNotes = new TextBox
         {
@@ -142,6 +150,9 @@ internal static class PhotoBatchEditDialog
         var commonCode = CommonValue(photos, p => p.AirlineIata);
         if (commonCode is not null) { tbAirlineCode.Text = commonCode; prefilled++; }
 
+        var commonIcao = CommonValue(photos, p => p.AirlineIcao);
+        if (commonIcao is not null) { tbAirlineIcao.Text = commonIcao; prefilled++; }
+
         var panel = new StackPanel { Spacing = 10, MinWidth = 440 };
 
         var hint = new TextBlock
@@ -157,7 +168,8 @@ internal static class PhotoBatchEditDialog
         // 顺序与导入向导一致：机型+注册号 / 航司 / 二字码+航班号 / 机场 / 备注
         panel.Children.Add(Pair(asbModel, tbReg));
         panel.Children.Add(asbAirline);
-        panel.Children.Add(Pair(tbAirlineCode, tbFlight));
+        panel.Children.Add(Pair(tbAirlineCode, tbAirlineIcao));
+        panel.Children.Add(tbFlight);
         panel.Children.Add(tbIata);
         panel.Children.Add(tbIcao);
         panel.Children.Add(tbAirportName);
@@ -186,6 +198,7 @@ internal static class PhotoBatchEditDialog
             RegistrationNumber: tbReg.Text,
             AirlineName: asbAirline.Text,
             AirlineIata: tbAirlineCode.Text,
+            AirlineIcao: tbAirlineIcao.Text,
             AirportIata: tbIata.Text,
             AirportIcao: tbIcao.Text,
             AirportName: tbAirportName.Text,

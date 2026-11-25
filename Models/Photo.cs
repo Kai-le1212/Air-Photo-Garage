@@ -56,6 +56,9 @@ public sealed class Photo
     /// <summary>航空公司二字码（IATA，如 <c>CX</c>）。与 <see cref="AirlineName"/> 互相补齐。</summary>
     public string? AirlineIata { get; set; }
 
+    /// <summary>航空公司三字码（ICAO，如 <c>CPA</c>）。同样参与互相补齐。</summary>
+    public string? AirlineIcao { get; set; }
+
     /// <summary>航班号（如 <c>CX390</c>），按用户输入原样保存（已转大写）。</summary>
     public string? FlightNumber { get; set; }
 

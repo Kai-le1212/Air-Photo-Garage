@@ -115,6 +115,15 @@ public static class PhotoEditDialog
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
+        var tbAirlineIcao = new TextBox
+        {
+            Header = "航司三字码",
+            MaxLength = 3,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Text = photo.AirlineIcao ?? "",
+        };
+        TextInput.ApplyCode(tbAirlineIcao);
+
         var tbFlight = new TextBox
         {
             Header = "航班号（如 CX390）",
@@ -125,7 +134,7 @@ public static class PhotoEditDialog
         TextInput.ApplyCode(tbFlight);
 
         // 三向联动：名称 ↔ 二字码 ↔ 航班号前两位（失败时静默，不打断填写）
-        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbFlight);
+        AirlineLinker.Attach(asbAirline, tbAirlineCode, tbAirlineIcao, tbFlight);
 
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox
@@ -303,7 +312,8 @@ public static class PhotoEditDialog
         stack.Children.Add(Pair(asbModel, tbReg));
         stack.Children.Add(FlightRadar.CreateLink(() => tbReg.Text));
         stack.Children.Add(asbAirline);
-        stack.Children.Add(Pair(tbAirlineCode, tbFlight));
+        stack.Children.Add(Pair(tbAirlineCode, tbAirlineIcao));
+        stack.Children.Add(tbFlight);
         stack.Children.Add(tbIata);
         stack.Children.Add(tbIcao);
         stack.Children.Add(tbAirportName);
@@ -338,6 +348,7 @@ public static class PhotoEditDialog
         photo.RegistrationNumber = NullIfEmpty(tbReg.Text?.ToUpperInvariant());
         photo.AirlineName = NullIfEmpty(asbAirline.Text);
         photo.AirlineIata = NullIfEmpty(tbAirlineCode.Text?.ToUpperInvariant());
+        photo.AirlineIcao = NullIfEmpty(tbAirlineIcao.Text?.ToUpperInvariant());
         photo.FlightNumber = NullIfEmpty(tbFlight.Text?.ToUpperInvariant());
         photo.AirportIata = NullIfEmpty(tbIata.Text?.ToUpperInvariant());
         photo.AirportIcao = NullIfEmpty(tbIcao.Text?.ToUpperInvariant());

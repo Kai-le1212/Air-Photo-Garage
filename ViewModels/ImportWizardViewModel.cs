@@ -61,6 +61,8 @@ public sealed partial class ImportWizardViewModel : ObservableObject
     [ObservableProperty] public partial string AirportName { get; set; } = "";
     [ObservableProperty] public partial string AirlineName { get; set; } = "";
     [ObservableProperty] public partial string AirlineIata { get; set; } = "";
+
+    [ObservableProperty] public partial string AirlineIcao { get; set; } = "";
     [ObservableProperty] public partial string FlightNumber { get; set; } = "";
     [ObservableProperty] public partial string Notes { get; set; } = "";
 
@@ -280,6 +282,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         RegistrationNumber = p.RegistrationNumber ?? "";
         AirlineName = p.AirlineName ?? "";
         AirlineIata = p.AirlineIata ?? "";
+        AirlineIcao = p.AirlineIcao ?? "";
         FlightNumber = p.FlightNumber ?? "";
         AirportIata = p.AirportIata ?? "";
         AirportIcao = p.AirportIcao ?? "";
@@ -337,6 +340,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         p.RegistrationNumber = EmptyToNull(RegistrationNumber?.ToUpperInvariant());
         p.AirlineName = EmptyToNull(AirlineName);
         p.AirlineIata = EmptyToNull(AirlineIata?.ToUpperInvariant());
+        p.AirlineIcao = EmptyToNull(AirlineIcao?.ToUpperInvariant());
         p.FlightNumber = EmptyToNull(FlightNumber?.ToUpperInvariant());
         p.AirportIata = EmptyToNull(AirportIata?.ToUpperInvariant());
         p.AirportIcao = EmptyToNull(AirportIcao?.ToUpperInvariant());
@@ -433,6 +437,7 @@ public sealed partial class ImportWizardViewModel : ObservableObject
         RegistrationNumber = prev.RegistrationNumber ?? "";
         AirlineName = prev.AirlineName ?? "";
         AirlineIata = prev.AirlineIata ?? "";
+        AirlineIcao = prev.AirlineIcao ?? "";
         FlightNumber = prev.FlightNumber ?? "";
         AirportIata = prev.AirportIata ?? "";
         AirportIcao = prev.AirportIcao ?? "";

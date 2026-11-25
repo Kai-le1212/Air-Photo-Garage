@@ -13,6 +13,7 @@ public sealed record PhotoBatchFields(
     string? RegistrationNumber,
     string? AirlineName,
     string? AirlineIata,
+    string? AirlineIcao,
     string? AirportIata,
     string? AirportIcao,
     string? AirportName,
@@ -54,6 +55,7 @@ public sealed class PhotoBatchEditService : IPhotoBatchEditService
         var registration = Clean(f.RegistrationNumber)?.ToUpperInvariant();
         var airlineName = Clean(f.AirlineName);
         var airlineIata = Clean(f.AirlineIata)?.ToUpperInvariant();
+        var airlineIcao = Clean(f.AirlineIcao)?.ToUpperInvariant();
         var iata = Clean(f.AirportIata)?.ToUpperInvariant();
         var icao = Clean(f.AirportIcao)?.ToUpperInvariant();
         var airportName = Clean(f.AirportName);
@@ -89,6 +91,12 @@ public sealed class PhotoBatchEditService : IPhotoBatchEditService
             if (airlineIata is not null && Differs(photo.AirlineIata, airlineIata))
             {
                 photo.AirlineIata = airlineIata;
+                changed = true;
+            }
+
+            if (airlineIcao is not null && Differs(photo.AirlineIcao, airlineIcao))
+            {
+                photo.AirlineIcao = airlineIcao;
                 changed = true;
             }
 

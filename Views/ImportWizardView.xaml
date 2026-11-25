@@ -143,7 +143,7 @@
                                             SuggestionChosen="OnAirlineNameChosen"
                                             AutomationProperties.Name="航空公司" />
 
-                            <!-- 航司二字码 + 航班号 同一行 -->
+                            <!-- 二字码 + 三字码 同一行（航司名称单独一行） -->
                             <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -161,15 +161,24 @@
                                      PlaceholderText="如 CX（自动带出）" />
 
                                 <TextBox Grid.Column="1"
-                                     Header="航班号"
+                                     Header="航司三字码"
+                                     MaxLength="3"
+                                     Text="{x:Bind ViewModel.AirlineIcao, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsSpellCheckEnabled="False"
+                                     IsTextPredictionEnabled="False"
+                                     InputScope="AlphanumericHalfWidth"
+                                     TextChanged="OnAirlineIcaoChanged"
+                                     PlaceholderText="如 CPA（自动带出）" />
+                            </Grid>
+
+                            <TextBox Header="航班号"
                                      x:Name="TbFlight"
                                      Text="{x:Bind ViewModel.FlightNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      IsSpellCheckEnabled="False"
                                      IsTextPredictionEnabled="False"
                                      InputScope="AlphanumericHalfWidth"
                                      TextChanged="OnFlightNumberChanged"
-                                     PlaceholderText="如 CX390" />
-                            </Grid>
+                                     PlaceholderText="如 CX390（前两位是航司代码）" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>

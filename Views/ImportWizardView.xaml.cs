@@ -77,6 +77,7 @@ public sealed partial class ImportWizardView : UserControl
         if (App.Airlines.CodeOf(sender.Text) is { } code)
         {
             ViewModel.AirlineIata = code;
+            ViewModel.AirlineIcao = App.Airlines.IcaoOf(sender.Text) ?? ViewModel.AirlineIcao;
             EnsureFlightPrefix(code);
         }
     }
@@ -87,6 +88,7 @@ public sealed partial class ImportWizardView : UserControl
         if (App.Airlines.CodeOf(name) is not { } code) return;
 
         ViewModel.AirlineIata = code;
+        ViewModel.AirlineIcao = App.Airlines.IcaoOf(name) ?? ViewModel.AirlineIcao;
         EnsureFlightPrefix(code);
     }
 
@@ -125,6 +127,7 @@ public sealed partial class ImportWizardView : UserControl
         if (App.Airlines.NameOf(code) is { } name)
         {
             ViewModel.AirlineName = name;
+            ViewModel.AirlineIcao = App.Airlines.IcaoOf(name) ?? ViewModel.AirlineIcao;
             EnsureFlightPrefix(code);
         }
     }
@@ -147,6 +150,25 @@ public sealed partial class ImportWizardView : UserControl
 
         ViewModel.AirlineName = name;
         ViewModel.AirlineIata = code;
+        ViewModel.AirlineIcao = App.Airlines.IcaoOf(name) ?? ViewModel.AirlineIcao;
+    }
+
+    /// <summary>航司三字码：大写；能查到就回填名称与二字码。</summary>
+    private void OnAirlineIcaoChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is not TextBox box) return;
+        TextInput.SanitizeInPlace(box);
+
+        var icao = (box.Text ?? string.Empty).Trim();
+        if (icao.Length != 3) return;
+        if (App.Airlines.NameOfIcao(icao) is not { } name) return;
+
+        ViewModel.AirlineName = name;
+        if (App.Airlines.CodeOf(name) is { } code)
+        {
+            ViewModel.AirlineIata = code;
+            EnsureFlightPrefix(code);
+        }
     }
 
     /// <summary>机场三字码 → 四字码 + 全称。</summary>

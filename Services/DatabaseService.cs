@@ -45,7 +45,8 @@ public interface IDatabaseService
     /// </summary>
     /// <returns>实际被更新的照片行数。</returns>
     Task<int> AssignAirlineAsync(
-        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata);
+        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata,
+        string? airlineIcao);
 
     /// <summary>
     /// 按分组维度聚合。返回<b>真实值分布</b> + <b>「未填写」桶</b>
@@ -238,6 +239,7 @@ public sealed class DatabaseService : IDatabaseService
             notes TEXT,
             airline_name TEXT,
             airline_iata TEXT,
+            airline_icao TEXT,
             flight_number TEXT,
             camera_make TEXT,
             camera_model TEXT,
@@ -304,6 +306,7 @@ public sealed class DatabaseService : IDatabaseService
         // v0.3：航空公司（名称 + 二字码，互为补齐）与航班号
         "ALTER TABLE photos ADD COLUMN airline_name TEXT",
         "ALTER TABLE photos ADD COLUMN airline_iata TEXT",
+        "ALTER TABLE photos ADD COLUMN airline_icao TEXT",
         "ALTER TABLE photos ADD COLUMN flight_number TEXT",
     };
 
@@ -424,7 +427,7 @@ public sealed class DatabaseService : IDatabaseService
         var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "aircraft_model", "registration_number", "airport_code", "airport_name", "camera_model",
-            "airline_name", "airline_iata", "flight_number"
+            "airline_name", "airline_iata", "airline_icao", "flight_number"
         };
         if (!allowed.Contains(column))
         {
@@ -464,7 +467,8 @@ public sealed class DatabaseService : IDatabaseService
     }
 
     public async Task<int> AssignAirlineAsync(
-        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata)
+        IReadOnlyList<string> registrations, string? airlineName, string? airlineIata,
+        string? airlineIcao)
     {
         if (registrations.Count == 0) return 0;
 
@@ -484,11 +488,12 @@ public sealed class DatabaseService : IDatabaseService
                 cmd.Transaction = tx;
                 cmd.CommandText = """
                     UPDATE photos
-                    SET airline_name = $name, airline_iata = $iata
+                    SET airline_name = $name, airline_iata = $iata, airline_icao = $icao
                     WHERE registration_number = $reg COLLATE NOCASE
                     """;
                 cmd.Parameters.AddWithValue("$name", (object?)airlineName ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("$iata", (object?)airlineIata ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("$icao", (object?)airlineIcao ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("$reg", reg);
                 affected += await cmd.ExecuteNonQueryAsync();
             }
@@ -981,7 +986,7 @@ public sealed class DatabaseService : IDatabaseService
         INSERT INTO photos (
             file_path, thumbnail_path, file_size, shot_at,
             aircraft_model, registration_number, airport_code, airport_iata, airport_icao, airport_name, notes,
-            airline_name, airline_iata, flight_number,
+            airline_name, airline_iata, airline_icao, flight_number,
             camera_make, camera_model, lens_model, focal_length, aperture, shutter_speed, iso,
             latitude, longitude, exif_json,
             recognition_status, recognized_aircraft_model, recognition_confidence,
@@ -989,7 +994,7 @@ public sealed class DatabaseService : IDatabaseService
         ) VALUES (
             $file_path, $thumbnail_path, $file_size, $shot_at,
             $aircraft_model, $registration_number, $airport_code, $airport_iata, $airport_icao, $airport_name, $notes,
-            $airline_name, $airline_iata, $flight_number,
+            $airline_name, $airline_iata, $airline_icao, $flight_number,
             $camera_make, $camera_model, $lens_model, $focal_length, $aperture, $shutter_speed, $iso,
             $latitude, $longitude, $exif_json,
             $recognition_status, $recognized_aircraft_model, $recognition_confidence,
@@ -1005,7 +1010,8 @@ public sealed class DatabaseService : IDatabaseService
             aircraft_model=$aircraft_model, registration_number=$registration_number,
             airport_code=$airport_code, airport_iata=$airport_iata, airport_icao=$airport_icao,
             airport_name=$airport_name, notes=$notes,
-            airline_name=$airline_name, airline_iata=$airline_iata, flight_number=$flight_number,
+            airline_name=$airline_name, airline_iata=$airline_iata, airline_icao=$airline_icao,
+            flight_number=$flight_number,
             camera_make=$camera_make, camera_model=$camera_model, lens_model=$lens_model,
             focal_length=$focal_length, aperture=$aperture, shutter_speed=$shutter_speed, iso=$iso,
             latitude=$latitude, longitude=$longitude, exif_json=$exif_json,
@@ -1031,6 +1037,7 @@ public sealed class DatabaseService : IDatabaseService
         cmd.Parameters.AddWithValue("$notes", (object?)photo.Notes ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$airline_name", (object?)photo.AirlineName ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$airline_iata", (object?)photo.AirlineIata ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$airline_icao", (object?)photo.AirlineIcao ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$flight_number", (object?)photo.FlightNumber ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$camera_make", (object?)photo.CameraMake ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$camera_model", (object?)photo.CameraModel ?? DBNull.Value);
@@ -1080,6 +1087,7 @@ public sealed class DatabaseService : IDatabaseService
         Notes = r.IsDBNull(r.GetOrdinal("notes")) ? null : r.GetString(r.GetOrdinal("notes")),
         AirlineName = SafeGetString(r, "airline_name"),
         AirlineIata = SafeGetString(r, "airline_iata"),
+        AirlineIcao = SafeGetString(r, "airline_icao"),
         FlightNumber = SafeGetString(r, "flight_number"),
         CameraMake = r.IsDBNull(r.GetOrdinal("camera_make")) ? null : r.GetString(r.GetOrdinal("camera_make")),
         CameraModel = r.IsDBNull(r.GetOrdinal("camera_model")) ? null : r.GetString(r.GetOrdinal("camera_model")),

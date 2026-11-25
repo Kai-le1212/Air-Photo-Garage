@@ -226,7 +226,8 @@ public sealed partial class GroupedPhotoPage : Page
         try
         {
             var affected = await App.Database.AssignAirlineAsync(
-                result.Registrations, result.AirlineName, result.AirlineIata);
+                result.Registrations, result.AirlineName, result.AirlineIata,
+                App.Airlines.IcaoOf(result.AirlineName));
 
             await ViewModel.LoadGroupsAsync();
 
