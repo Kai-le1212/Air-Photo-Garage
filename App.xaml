@@ -10,42 +10,6 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-
-            <!--
-                GridView 多选勾选框的配色覆盖（原生控件，不改模板）。
-                默认配色压在照片上对比度太低 —— 选中时几乎只剩一个勾、看不出框。
-                这里把「未选 / 悬停 / 选中」三种状态的底色与描边都改成
-                半透明黑底 + 白描边 / 强调色，保证在任何照片上都看得见。
-            -->
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="#8C000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#B3000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#B3000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPressed" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#FFFFFFFF" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="#73000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="#99000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="#99000000" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPressed" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="{ThemeResource SystemAccentColor}" />
-                    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#FFFFFFFF" />
-                    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedPointerOver" Color="#FFFFFFFF" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
-
             <!--
                 照片详情弹窗的内容宽度控制在 ~520，落在 WinUI 默认的
                 ContentDialog 宽度范围内，因此这里无需覆盖 ContentDialogMaxWidth。

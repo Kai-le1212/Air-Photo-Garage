@@ -250,7 +250,12 @@ public sealed partial class GroupedPhotoPage : Page
     {
         var on = MultiSelectToggle?.IsChecked == true;
 
-        foreach (var card in ViewModel.Photos) card.IsSelectionMode = on;
+        // 方框显隐由卡片自己决定：多选模式恒显示，未选是空框
+        foreach (var card in ViewModel.Photos)
+        {
+            card.IsSelectionMode = on;
+            if (!on) card.IsSelected = false;
+        }
 
         foreach (var grid in PhotoGrids())
         {
@@ -273,7 +278,16 @@ public sealed partial class GroupedPhotoPage : Page
     {
         if (SelectionCountText is null || BatchFillButton is null) return;
 
-        var count = SelectedCards().Count;
+        var selected = SelectedCards();
+        var count = selected.Count;
+
+        // 勾选徽标由卡片自己画（系统勾选框已关闭）
+        var set = new HashSet<PhotoCardViewModel>(selected);
+        if (ViewModel.Photos is { } photos)
+        {
+            foreach (var card in photos) card.IsSelected = set.Contains(card);
+        }
+
         SelectionCountText.Text = $"已选 {count} 张";
 
         // 没选中时这两个按钮不占位；勾选（或点全选）之后才出现
