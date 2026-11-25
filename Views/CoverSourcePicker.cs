@@ -26,9 +26,6 @@ namespace AirPhotoGarage.Views;
 /// </summary>
 internal static class CoverSourcePicker
 {
-    private const int CellWidth = 120;
-    private const int CellHeight = 90;
-
     /// <summary>
     /// 弹出选头图对话框。
     /// </summary>
@@ -70,76 +67,77 @@ internal static class CoverSourcePicker
                 Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             });
 
-            var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            // 横向卡片条：和数据模板配合，像 WinUI Gallery 首页那种并排大卡片
+            var items = new List<CoverCandidate>();
             foreach (var (previewPath, sourcePath) in candidates.Take(200))
             {
                 var bitmap = await CoverImageLoader.LoadAsync(previewPath);
                 if (bitmap is null) continue;
-
-                var image = new Image
-                {
-                    Source = bitmap,
-                    Width = CellWidth,
-                    Height = CellHeight,
-                    Stretch = Stretch.Uniform,   // 与全应用一致：预览不裁切
-                };
-
-                var cell = new Border
-                {
-                    CornerRadius = new CornerRadius(4),
-                    BorderThickness = new Thickness(1),
-                    BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                    Background = (Brush)Application.Current.Resources["ControlAltFillColorTertiaryBrush"],
-                    Child = image,
-                };
-                ToolTipService.SetToolTip(cell, System.IO.Path.GetFileName(sourcePath));
-
-                var path = sourcePath;
-                cell.Tapped += (_, _) =>
-                {
-                    chosen = path;
-                    dialog.Hide();
-                };
-
-                strip.Children.Add(cell);
+                items.Add(new CoverCandidate(bitmap, System.IO.Path.GetFileName(sourcePath), sourcePath));
             }
 
-            // ---- 横向滑动条：隐藏滚动条，两端加「‹ ›」翻页按钮（只在该方向还有内容时出现）----
-            var scroller = new ScrollViewer
+            var grid = new GridView
             {
-                Content = strip,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                HorizontalScrollMode = ScrollMode.Enabled,
-                Padding = new Thickness(0, 4, 0, 4),
+                ItemsSource = items,
+                ItemTemplate = (DataTemplate)Application.Current.Resources["CoverCandidateTpl"],
+                SelectionMode = ListViewSelectionMode.None,
+                IsItemClickEnabled = true,
+            };
+            ToolTipService.SetToolTip(grid, "点一张作为头图");
+
+            // 单行横排 + 横向滚动、不要纵向滚动
+            grid.ItemsPanel = (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+                "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
+                "<ItemsStackPanel Orientation='Horizontal' />" +
+                "</ItemsPanelTemplate>");
+            Microsoft.UI.Xaml.Controls.ScrollViewer.SetHorizontalScrollBarVisibility(grid, ScrollBarVisibility.Hidden);
+            Microsoft.UI.Xaml.Controls.ScrollViewer.SetVerticalScrollBarVisibility(grid, ScrollBarVisibility.Disabled);
+            Microsoft.UI.Xaml.Controls.ScrollViewer.SetHorizontalScrollMode(grid, ScrollMode.Enabled);
+            Microsoft.UI.Xaml.Controls.ScrollViewer.SetVerticalScrollMode(grid, ScrollMode.Disabled);
+
+            grid.ItemClick += (_, e) =>
+            {
+                if (e.ClickedItem is not CoverCandidate picked) return;
+                chosen = picked.SourcePath;
+                dialog.Hide();
             };
 
+            // 两端翻页箭头（Gallery「Recently visited」那种）：只在该方向还有内容时出现
             var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
             var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
 
+            var host = new Grid { Width = 520, Height = 212 };
+            host.Children.Add(grid);
+            host.Children.Add(leftChevron);
+            host.Children.Add(rightChevron);
+
+            ScrollViewer? inner = null;
+
             void SyncChevrons()
             {
-                var canScroll = scroller.ScrollableWidth > 1;
-                leftChevron.Visibility = canScroll && scroller.HorizontalOffset > 1
+                if (inner is null) return;
+                var canScroll = inner.ScrollableWidth > 1;
+                leftChevron.Visibility = canScroll && inner.HorizontalOffset > 1
                     ? Visibility.Visible : Visibility.Collapsed;
-                rightChevron.Visibility = canScroll && scroller.HorizontalOffset < scroller.ScrollableWidth - 1
+                rightChevron.Visibility = canScroll && inner.HorizontalOffset < inner.ScrollableWidth - 1
                     ? Visibility.Visible : Visibility.Collapsed;
             }
 
-            leftChevron.Click += (_, _) => scroller.ChangeView(
-                Math.Max(0, scroller.HorizontalOffset - CellWidth * 2.5), null, null, false);
-            rightChevron.Click += (_, _) => scroller.ChangeView(
-                Math.Min(scroller.ScrollableWidth, scroller.HorizontalOffset + CellWidth * 2.5), null, null, false);
+            grid.Loaded += (_, _) =>
+            {
+                inner = FindScrollViewer(grid);
+                if (inner is null) return;
+                inner.ViewChanged += (_, _) => SyncChevrons();
+                SyncChevrons();
+            };
 
-            scroller.ViewChanged += (_, _) => SyncChevrons();
-            scroller.Loaded += (_, _) => SyncChevrons();
+            const double page = 232 * 2;   // 两格多一点
+            leftChevron.Click += (_, _) => inner?.ChangeView(
+                Math.Max(0, inner.HorizontalOffset - page), null, null, false);
+            rightChevron.Click += (_, _) => inner?.ChangeView(
+                Math.Min(inner.ScrollableWidth, inner.HorizontalOffset + page), null, null, false);
 
-            var stripHost = new Grid { Height = CellHeight + 8 };
-            stripHost.Children.Add(scroller);
-            stripHost.Children.Add(leftChevron);
-            stripHost.Children.Add(rightChevron);
-
-            body.Children.Add(stripHost);
+            body.Children.Add(host);
         }
 
         dialog.Content = body;
@@ -173,7 +171,7 @@ internal static class CoverSourcePicker
         return string.IsNullOrEmpty(file?.Path) ? null : file.Path;
     }
 
-    /// <summary>两端翻页按钮：半透明圆角底 + 白箭头，贴在滑动条左右边缘。</summary>
+    /// <summary>两端翻页箭头：半透明圆角底 + 白箭头。</summary>
     private static Button MakeChevron(int glyph, HorizontalAlignment side)
     {
         var button = new Button
@@ -182,24 +180,37 @@ internal static class CoverSourcePicker
             {
                 Glyph = char.ConvertFromUtf32(glyph),
                 FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
-                FontSize = 14,
+                FontSize = 12,
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             },
-            Width = 32,
-            Height = 56,
+            Width = 28,
+            Height = 64,
             Padding = new Thickness(0),
             HorizontalAlignment = side,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = side == HorizontalAlignment.Left ? new Thickness(8, 0, 0, 0) : new Thickness(0, 0, 8, 0),
+            Margin = side == HorizontalAlignment.Left ? new Thickness(6, 0, 0, 12) : new Thickness(0, 0, 6, 12),
             Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xB3, 32, 32, 32)),
             BorderThickness = new Thickness(0),
-            CornerRadius = new CornerRadius(16),
+            CornerRadius = new CornerRadius(14),
             Visibility = Visibility.Collapsed,
             IsTabStop = false,
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             button, side == HorizontalAlignment.Left ? "向前翻" : "向后翻");
         return button;
+    }
+
+    /// <summary>取 GridView / ListView 内部那个 ScrollViewer（翻页箭头要对它 ChangeView）。</summary>
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        var count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer sv) return sv;
+            if (FindScrollViewer(child) is { } nested) return nested;
+        }
+        return null;
     }
 
     /// <summary>图片读不了/编码失败时给一句人话提示。</summary>
@@ -218,4 +229,23 @@ internal static class CoverSourcePicker
 
         try { await dialog.ShowAsync(); } catch { /* 已有对话框打开时忽略 */ }
     }
+}
+
+/// <summary>选头图的一张候选照片。</summary>
+public sealed class CoverCandidate
+{
+    public CoverCandidate(Microsoft.UI.Xaml.Media.ImageSource image, string caption, string sourcePath)
+    {
+        Image = image;
+        Caption = caption;
+        SourcePath = sourcePath;
+    }
+
+    public Microsoft.UI.Xaml.Media.ImageSource Image { get; }
+
+    /// <summary>卡片下方的文件名。</summary>
+    public string Caption { get; }
+
+    /// <summary>真正用于生成头图的原图路径。</summary>
+    public string SourcePath { get; }
 }

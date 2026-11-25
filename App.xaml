@@ -10,6 +10,31 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- 选头图：候选照片卡片（横向排列，圆角卡片 + 悬停高亮由 GridViewItem 提供） -->
+            <DataTemplate x:Key="CoverCandidateTpl">
+                <Border Width="220"
+                        Margin="0,0,12,12"
+                        CornerRadius="8"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <StackPanel>
+                        <Border CornerRadius="8,8,0,0"
+                                Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                            <Image Source="{Binding Image}"
+                                   Width="220"
+                                   Height="130"
+                                   Stretch="Uniform" />
+                        </Border>
+                        <TextBlock Text="{Binding Caption}"
+                                   Margin="12,8,12,12"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+
             <!--
                 照片详情弹窗的内容宽度控制在 ~520，落在 WinUI 默认的
                 ContentDialog 宽度范围内，因此这里无需覆盖 ContentDialogMaxWidth。
