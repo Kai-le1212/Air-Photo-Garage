@@ -31,12 +31,12 @@
             -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#2EFFFFFF" />
-                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#4DFFFFFF" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#59FFFFFF" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#8CFFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1A000000" />
-                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#33000000" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#33000000" />
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#4D000000" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
