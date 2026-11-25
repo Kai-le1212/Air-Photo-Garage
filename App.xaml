@@ -10,28 +10,19 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 选头图：候选照片卡片（横向排列，圆角卡片 + 悬停高亮由 GridViewItem 提供） -->
+            <!-- 选头图：候选照片卡片（只有图片，圆角卡片，灰色底框与卡片边缘对齐） -->
             <DataTemplate x:Key="CoverCandidateTpl">
                 <Border Width="220"
-                        Margin="0,0,12,12"
+                        Height="130"
+                        Margin="0,0,12,0"
                         CornerRadius="8"
                         BorderThickness="1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <StackPanel>
-                        <Border CornerRadius="8,8,0,0"
-                                Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
-                            <Image Source="{Binding Image}"
-                                   Width="220"
-                                   Height="130"
-                                   Stretch="Uniform" />
-                        </Border>
-                        <TextBlock Text="{Binding Caption}"
-                                   Margin="12,8,12,12"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                        Background="{ThemeResource ControlAltFillColorTertiaryBrush}">
+                    <Image Source="{Binding Image}"
+                           Width="218"
+                           Height="128"
+                           Stretch="Uniform" />
                 </Border>
             </DataTemplate>
 

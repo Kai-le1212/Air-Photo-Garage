@@ -106,7 +106,7 @@ internal static class CoverSourcePicker
             var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
             var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
 
-            var host = new Grid { Width = 520, Height = 212 };
+            var host = new Grid { Width = 520, Height = 132 };
             host.Children.Add(grid);
             host.Children.Add(leftChevron);
             host.Children.Add(rightChevron);
@@ -184,13 +184,14 @@ internal static class CoverSourcePicker
                 Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             },
             Width = 28,
-            Height = 64,
+            Height = 28,
             Padding = new Thickness(0),
             HorizontalAlignment = side,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = side == HorizontalAlignment.Left ? new Thickness(6, 0, 0, 12) : new Thickness(0, 0, 6, 12),
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xB3, 32, 32, 32)),
-            BorderThickness = new Thickness(0),
+            Margin = side == HorizontalAlignment.Left ? new Thickness(4, 0, 0, 0) : new Thickness(0, 0, 4, 0),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xCC, 45, 45, 45)),
+            BorderThickness = new Thickness(1),
+            BorderBrush = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x40, 255, 255, 255)),
             CornerRadius = new CornerRadius(14),
             Visibility = Visibility.Collapsed,
             IsTabStop = false,
