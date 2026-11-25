@@ -67,89 +67,93 @@ internal static class CoverSourcePicker
                 Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             });
 
-            // 横向卡片条：和数据模板配合，像 WinUI Gallery 首页那种并排大卡片
-            var items = new List<CoverCandidate>();
+            // 先把候选图都加载成画刷（铺满卡片，不留边）
+            var loaded = new List<(Microsoft.UI.Xaml.Media.ImageBrush Preview, string SourcePath, string Caption)>();
             foreach (var (previewPath, sourcePath) in candidates.Take(200))
             {
                 var bitmap = await CoverImageLoader.LoadAsync(previewPath);
                 if (bitmap is null) continue;
-                items.Add(new CoverCandidate(bitmap, System.IO.Path.GetFileName(sourcePath), sourcePath));
+
+                var brush = new Microsoft.UI.Xaml.Media.ImageBrush
+                {
+                    ImageSource = bitmap,
+                    Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+                };
+                loaded.Add((brush, sourcePath, System.IO.Path.GetFileName(sourcePath)));
             }
 
-            var grid = new GridView
+            // 横向卡片条：用「按钮 + 圆角 Border」自绘，点击行为确定、尺寸完全可控
+            var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+
+            foreach (var (preview, sourcePath, caption) in loaded)
             {
-                ItemsSource = items,
-                ItemTemplate = (DataTemplate)Application.Current.Resources["CoverCandidateTpl"],
-                // 用「单选 + 选中即确认」：比 ItemClick 更可靠（ItemClick 在某些容器状态下不触发）
-                SelectionMode = ListViewSelectionMode.Single,
-                IsItemClickEnabled = true,
+                var card = new Border
+                {
+                    Width = 220,
+                    Height = 130,
+                    CornerRadius = new CornerRadius(8),
+                    BorderThickness = new Thickness(1),
+                    BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                    Background = preview,       // ← 已经就是 ImageBrush(UniformToFill)
+                };
+
+                var button = new Button
+                {
+                    Content = card,
+                    Padding = new Thickness(0),
+                    BorderThickness = new Thickness(0),
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                    CornerRadius = new CornerRadius(8),
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Stretch,
+                };
+                ToolTipService.SetToolTip(button, caption);
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, $"用 {caption} 作头图");
+
+                var path = sourcePath;
+                button.Click += (_, _) =>
+                {
+                    chosen = path;
+                    dialog.Hide();
+                };
+
+                strip.Children.Add(button);
+            }
+
+            var scroller = new ScrollViewer
+            {
+                Content = strip,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                HorizontalScrollMode = ScrollMode.Enabled,
+                Padding = new Thickness(0, 4, 0, 4),
             };
-            ToolTipService.SetToolTip(grid, "点一张作为头图");
 
-            // 容器不要内边距/外边距，卡片才能和图片严丝合缝对齐
-            var containerStyle = new Style(typeof(GridViewItem));
-            containerStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
-            containerStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0)));
-            containerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
-            containerStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Stretch));
-            containerStyle.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(8)));
-            grid.ItemContainerStyle = containerStyle;
-
-            // 单行横排 + 横向滚动、不要纵向滚动
-            grid.ItemsPanel = (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-                "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
-                "<ItemsStackPanel Orientation='Horizontal' />" +
-                "</ItemsPanelTemplate>");
-            Microsoft.UI.Xaml.Controls.ScrollViewer.SetHorizontalScrollBarVisibility(grid, ScrollBarVisibility.Hidden);
-            Microsoft.UI.Xaml.Controls.ScrollViewer.SetVerticalScrollBarVisibility(grid, ScrollBarVisibility.Disabled);
-            Microsoft.UI.Xaml.Controls.ScrollViewer.SetHorizontalScrollMode(grid, ScrollMode.Enabled);
-            Microsoft.UI.Xaml.Controls.ScrollViewer.SetVerticalScrollMode(grid, ScrollMode.Disabled);
-
-            void Confirm(CoverCandidate? picked)
-            {
-                if (picked is null) return;
-                chosen = picked.SourcePath;
-                dialog.Hide();
-            }
-
-            grid.ItemClick += (_, e) => Confirm(e.ClickedItem as CoverCandidate);
-            grid.SelectionChanged += (_, _) => Confirm(grid.SelectedItem as CoverCandidate);
-
-            // 两端翻页箭头（Gallery「Recently visited」那种）：只在该方向还有内容时出现
             var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
             var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
 
-            var host = new Grid { Height = 132, HorizontalAlignment = HorizontalAlignment.Stretch };
-            grid.Padding = new Thickness(0);              // 首张卡片贴左边缘
-            host.Children.Add(grid);
-            host.Children.Add(leftChevron);
-            host.Children.Add(rightChevron);
-
-            ScrollViewer? inner = null;
-
             void SyncChevrons()
             {
-                if (inner is null) return;
-                var canScroll = inner.ScrollableWidth > 1;
-                leftChevron.Visibility = canScroll && inner.HorizontalOffset > 1
+                var canScroll = scroller.ScrollableWidth > 1;
+                leftChevron.Visibility = canScroll && scroller.HorizontalOffset > 1
                     ? Visibility.Visible : Visibility.Collapsed;
-                rightChevron.Visibility = canScroll && inner.HorizontalOffset < inner.ScrollableWidth - 1
+                rightChevron.Visibility = canScroll && scroller.HorizontalOffset < scroller.ScrollableWidth - 1
                     ? Visibility.Visible : Visibility.Collapsed;
             }
 
-            grid.Loaded += (_, _) =>
-            {
-                inner = FindScrollViewer(grid);
-                if (inner is null) return;
-                inner.ViewChanged += (_, _) => SyncChevrons();
-                SyncChevrons();
-            };
+            scroller.ViewChanged += (_, _) => SyncChevrons();
+            scroller.Loaded += (_, _) => SyncChevrons();
 
-            const double page = 232 * 2;   // 两格多一点
-            leftChevron.Click += (_, _) => inner?.ChangeView(
-                Math.Max(0, inner.HorizontalOffset - page), null, null, false);
-            rightChevron.Click += (_, _) => inner?.ChangeView(
-                Math.Min(inner.ScrollableWidth, inner.HorizontalOffset + page), null, null, false);
+            const double page = 232 * 2;
+            leftChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Max(0, scroller.HorizontalOffset - page), null, null, false);
+            rightChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Min(scroller.ScrollableWidth, scroller.HorizontalOffset + page), null, null, false);
+
+            var host = new Grid { Height = 142 };
+            host.Children.Add(scroller);
+            host.Children.Add(leftChevron);
+            host.Children.Add(rightChevron);
 
             body.Children.Add(host);
         }
