@@ -88,13 +88,6 @@ public sealed partial class MainPage : Page
             if (!on) WallPhotoGrid.SelectedItems.Clear();
         }
 
-        // 选择相关操作集中在这条工具条里（与四个分组页一致）
-        if (WallSelectionBar is not null)
-        {
-            WallSelectionBar.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-        }
-        if (WallMultiSelectToggle is not null) WallMultiSelectToggle.Label = "多选";
-
         UpdateWallSelection();
     }
 
@@ -109,9 +102,29 @@ public sealed partial class MainPage : Page
     {
         var count = WallSelectedCards().Count;
 
-        if (WallSelectionCountText is not null) WallSelectionCountText.Text = $"已选 {count} 张";
-        if (WallBatchFillButton is not null) WallBatchFillButton.IsEnabled = count > 0;
-        if (WallClearSelectionButton is not null) WallClearSelectionButton.IsEnabled = count > 0;
+        // 「全选」只在多选模式开启时出现
+        if (WallSelectAllButton is not null)
+        {
+            WallSelectAllButton.Visibility =
+                WallMultiSelectToggle?.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // 计数挂在「多选」按钮的 Label 上（CommandBar 里只放得下 ICommandBarElement）
+        if (WallMultiSelectToggle is not null)
+        {
+            WallMultiSelectToggle.Label = count > 0 ? $"多选 · 已选 {count}" : "多选";
+        }
+        // 没选中时不占位，勾选（或全选）之后才出现
+        if (WallBatchFillButton is not null)
+        {
+            WallBatchFillButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            WallBatchFillButton.IsEnabled = count > 0;
+        }
+        if (WallClearSelectionButton is not null)
+        {
+            WallClearSelectionButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            WallClearSelectionButton.IsEnabled = count > 0;
+        }
     }
 
     private void OnWallSelectAllClick(object sender, RoutedEventArgs e)
