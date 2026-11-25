@@ -70,6 +70,7 @@ internal static class PhotoBatchEditDialog
         var tbAirlineCode = new TextBox
         {
             Header = "航司二字码",
+            PlaceholderText = "如 CX",
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -77,6 +78,7 @@ internal static class PhotoBatchEditDialog
         var tbAirlineIcao = new TextBox
         {
             Header = "航司三字码",
+            PlaceholderText = "如 CPA",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -84,7 +86,7 @@ internal static class PhotoBatchEditDialog
 
         var tbIata = new TextBox
         {
-            Header = "机场 IATA 三字码（如 PEK）",
+            Header = "机场 IATA",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -92,7 +94,7 @@ internal static class PhotoBatchEditDialog
 
         var tbIcao = new TextBox
         {
-            Header = "机场 ICAO 四字码（如 ZBAA）",
+            Header = "机场 ICAO",
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -100,7 +102,7 @@ internal static class PhotoBatchEditDialog
 
         var tbAirportName = new TextBox
         {
-            Header = "机场名称（如 北京首都国际机场）",
+            Header = "机场名称",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
@@ -119,7 +121,7 @@ internal static class PhotoBatchEditDialog
 
         var tbNotes = new TextBox
         {
-            Header = "备注（留空则不改）",
+            Header = "备注",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 

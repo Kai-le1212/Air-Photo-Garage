@@ -109,7 +109,7 @@ public static class PhotoEditDialog
 
         var tbAirlineCode = new TextBox
         {
-            Header = "航空公司二字码（如 CX）",
+            Header = "航司二字码",
             Text = photo.AirlineIata ?? "",
             MaxLength = 2,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -118,6 +118,7 @@ public static class PhotoEditDialog
         var tbAirlineIcao = new TextBox
         {
             Header = "航司三字码",
+            PlaceholderText = "如 CPA",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Text = photo.AirlineIcao ?? "",
@@ -126,7 +127,7 @@ public static class PhotoEditDialog
 
         var tbFlight = new TextBox
         {
-            Header = "航班号（如 CX390）",
+            Header = "航班号",
             Text = photo.FlightNumber ?? "",
             CharacterCasing = CharacterCasing.Upper,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -139,14 +140,16 @@ public static class PhotoEditDialog
         // ---------- 机场三字段联动 ----------
         var tbIata = new TextBox
         {
-            Header = "IATA 三字代码 (如 PEK)",
+            Header = "机场 IATA",
+            PlaceholderText = "如 PEK",
             Text = photo.AirportIata ?? "",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var tbIcao = new TextBox
         {
-            Header = "ICAO 四字代码 (如 ZBAA)",
+            Header = "机场 ICAO",
+            PlaceholderText = "如 ZBAA",
             Text = photo.AirportIcao ?? "",
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -208,7 +211,7 @@ public static class PhotoEditDialog
         // ---------- 相机与镜头参数（EXIF 自动读取，允许手动修正） ----------
         var tbCameraMake = new TextBox
         {
-            Header = "相机厂牌",
+            Header = "相机厂商",
             PlaceholderText = "如 NIKON CORPORATION",
             Text = photo.CameraMake ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -224,7 +227,7 @@ public static class PhotoEditDialog
         };
         var tbLensModel = new TextBox
         {
-            Header = "镜头型号",
+            Header = "镜头",
             PlaceholderText = "如 NIKKOR Z 100-400mm f/4.5-5.6 VR S",
             Text = photo.LensModel ?? "",
             HorizontalAlignment = HorizontalAlignment.Stretch,
