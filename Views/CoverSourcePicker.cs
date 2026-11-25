@@ -80,10 +80,20 @@ internal static class CoverSourcePicker
             {
                 ItemsSource = items,
                 ItemTemplate = (DataTemplate)Application.Current.Resources["CoverCandidateTpl"],
-                SelectionMode = ListViewSelectionMode.None,
+                // 用「单选 + 选中即确认」：比 ItemClick 更可靠（ItemClick 在某些容器状态下不触发）
+                SelectionMode = ListViewSelectionMode.Single,
                 IsItemClickEnabled = true,
             };
             ToolTipService.SetToolTip(grid, "点一张作为头图");
+
+            // 容器不要内边距/外边距，卡片才能和图片严丝合缝对齐
+            var containerStyle = new Style(typeof(GridViewItem));
+            containerStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+            containerStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0)));
+            containerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
+            containerStyle.Setters.Add(new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Stretch));
+            containerStyle.Setters.Add(new Setter(Control.CornerRadiusProperty, new CornerRadius(8)));
+            grid.ItemContainerStyle = containerStyle;
 
             // 单行横排 + 横向滚动、不要纵向滚动
             grid.ItemsPanel = (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
@@ -95,12 +105,15 @@ internal static class CoverSourcePicker
             Microsoft.UI.Xaml.Controls.ScrollViewer.SetHorizontalScrollMode(grid, ScrollMode.Enabled);
             Microsoft.UI.Xaml.Controls.ScrollViewer.SetVerticalScrollMode(grid, ScrollMode.Disabled);
 
-            grid.ItemClick += (_, e) =>
+            void Confirm(CoverCandidate? picked)
             {
-                if (e.ClickedItem is not CoverCandidate picked) return;
+                if (picked is null) return;
                 chosen = picked.SourcePath;
                 dialog.Hide();
-            };
+            }
+
+            grid.ItemClick += (_, e) => Confirm(e.ClickedItem as CoverCandidate);
+            grid.SelectionChanged += (_, _) => Confirm(grid.SelectedItem as CoverCandidate);
 
             // 两端翻页箭头（Gallery「Recently visited」那种）：只在该方向还有内容时出现
             var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
