@@ -75,117 +75,6 @@ public sealed partial class MainPage : Page
 
     // ---------- 多选 + 批量填写（照片墙） ----------
 
-    private void OnWallMultiSelectToggled(object sender, RoutedEventArgs e)
-    {
-        var on = WallMultiSelectToggle?.IsChecked == true;
-
-        SetWallSelectionMode(on);
-
-        if (WallPhotoGrid is not null)
-        {
-            WallPhotoGrid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
-            WallPhotoGrid.IsItemClickEnabled = !on;
-            if (!on) WallPhotoGrid.SelectedItems.Clear();
-        }
-
-        UpdateWallSelection();
-    }
-
-    private void OnWallSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateWallSelection();
-
-    /// <summary>多选开关变化时，让所有卡片决定要不要显示右上角方框。</summary>
-    private void SetWallSelectionMode(bool on)
-    {
-        foreach (var card in ViewModel.Photos)
-        {
-            card.IsSelectionMode = on;
-            if (!on) card.IsSelected = false;
-        }
-    }
-
-    private List<PhotoCardViewModel> WallSelectedCards() =>
-        ViewModel.Photos.Where(c => c.IsSelected).ToList();
-
-    private void UpdateWallSelection()
-    {
-        var selected = WallSelectedCards();
-        var count = selected.Count;
-
-        // 卡片上的勾选徽标自己画（已关掉 GridView 的系统勾选框）
-        var set = new HashSet<PhotoCardViewModel>(selected);
-        foreach (var card in ViewModel.Photos)
-        {
-            card.IsSelected = set.Contains(card);
-        }
-
-        // 「全选」只在多选模式开启时出现
-        if (WallSelectAllButton is not null)
-        {
-            WallSelectAllButton.Visibility =
-                WallMultiSelectToggle?.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        // 计数挂在「多选」按钮的 Label 上（CommandBar 里只放得下 ICommandBarElement）
-        if (WallMultiSelectToggle is not null)
-        {
-            WallMultiSelectToggle.Label = count > 0 ? $"多选 · 已选 {count}" : "多选";
-        }
-        // 没选中时不占位，勾选（或全选）之后才出现
-        if (WallBatchFillButton is not null)
-        {
-            WallBatchFillButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            WallBatchFillButton.IsEnabled = count > 0;
-        }
-        if (WallClearSelectionButton is not null)
-        {
-            WallClearSelectionButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            WallClearSelectionButton.IsEnabled = count > 0;
-        }
-    }
-
-    private void OnWallSelectAllClick(object sender, RoutedEventArgs e)
-    {
-        foreach (var card in ViewModel.Photos) card.IsSelected = true;
-        UpdateWallSelection();
-    }
-
-    private void OnWallClearSelectionClick(object sender, RoutedEventArgs e)
-    {
-        foreach (var card in ViewModel.Photos) card.IsSelected = false;
-        UpdateWallSelection();
-    }
-
-    private async void OnWallBatchFillClick(object sender, RoutedEventArgs e)
-    {
-        if (XamlRoot is null) return;
-
-        var cards = WallSelectedCards();
-        if (cards.Count == 0) return;
-
-        var photos = cards.Select(c => c.Photo).ToList();
-
-        var fields = await Views.PhotoBatchEditDialog.ShowAsync(XamlRoot, photos);
-        if (fields is null) return;
-
-        try
-        {
-            var result = await App.BatchEdit.ApplyAsync(photos, fields);
-
-            OnWallClearSelectionClick(this, new RoutedEventArgs());
-            await ViewModel.InitializeAsync();
-            UpdateWallSelection();
-
-            var message = result.Unchanged == 0
-                ? $"已更新 {result.Updated} 张照片。"
-                : $"已更新 {result.Updated} 张照片；另有 {result.Unchanged} 张内容本来就相同，未改动。";
-            await Views.Dialogs.AlertAsync("批量填写完成", message);
-        }
-        catch (Exception ex)
-        {
-            await Views.Dialogs.AlertAsync("批量填写失败", ex.Message);
-        }
-    }
-
     private void OnFilterChanged(object sender, TextChangedEventArgs e)
     {
         ViewModel.InvalidateFilter();
@@ -361,14 +250,7 @@ public sealed partial class MainPage : Page
     {
         if (e.ClickedItem is not PhotoCardViewModel card) return;
 
-        // 多选模式下，点卡片本身 = 勾选/取消勾选
-        if (WallMultiSelectToggle?.IsChecked == true)
-        {
-            card.IsSelected = !card.IsSelected;
-            UpdateWallSelection();
-            return;
-        }
-
+        // 照片墙不做多选：点卡片直接打开这张照片的详情
         _ = ShowDetailDialogSafeAsync(card);
     }
 

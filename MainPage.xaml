@@ -213,37 +213,10 @@
         <CommandBar Grid.Row="0" DefaultLabelPosition="Right" Background="Transparent">
             <AppBarButton Label="导入照片" Icon="Add" Click="OnImportClick" />
             <AppBarButton Label="刷新" Icon="Refresh" Command="{x:Bind ViewModel.RefreshCommand}" />
-            <AppBarSeparator />
-            <!-- 多选：开着时点照片是勾选，关掉才打开详情 -->
-            <AppBarToggleButton x:Name="WallMultiSelectToggle"
-                                Label="多选"
-                                Checked="OnWallMultiSelectToggled"
-                                Unchecked="OnWallMultiSelectToggled"
-                                AutomationProperties.Name="多选">
-                <AppBarToggleButton.Icon>
-                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}" Glyph="&#xE762;" />
-                </AppBarToggleButton.Icon>
-            </AppBarToggleButton>
-            <AppBarButton x:Name="WallSelectAllButton"
-                          Label="全选"
-                          Icon="SelectAll"
-                          Visibility="Collapsed"
-                          Click="OnWallSelectAllClick"
-                          AutomationProperties.Name="全选" />
-            <AppBarButton x:Name="WallBatchFillButton"
-                          Label="批量填写"
-                          Icon="Edit"
-                          IsEnabled="False"
-                          Visibility="Collapsed"
-                          Click="OnWallBatchFillClick"
-                          AutomationProperties.Name="批量填写" />
-            <AppBarButton x:Name="WallClearSelectionButton"
-                          Label="取消选择"
-                          Icon="Clear"
-                          IsEnabled="False"
-                          Visibility="Collapsed"
-                          Click="OnWallClearSelectionClick"
-                          AutomationProperties.Name="取消选择" />
+            
+            
+            
+            
 
             <AppBarSeparator />
             <AppBarToggleButton Label="按注册号分组"
@@ -418,7 +391,6 @@
                               IsMultiSelectCheckBoxEnabled="False"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
-                              SelectionChanged="OnWallSelectionChanged"
                               ItemClick="OnPhotoItemClick"
                               ItemTemplate="{StaticResource WallCardTpl}"
                               AutomationProperties.Name="照片墙">

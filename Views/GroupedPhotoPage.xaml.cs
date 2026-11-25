@@ -287,10 +287,9 @@ public sealed partial class GroupedPhotoPage : Page
         var count = SelectedCards().Count;
         SelectionCountText.Text = $"已选 {count} 张";
 
-        // 没选中时这两个按钮不占位；勾选（或点全选）之后才出现
-        BatchFillButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ClearSelectionButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // 多选开启后三个按钮常驻，只按有没有选中决定能否点（不再忽隐忽现）
         BatchFillButton.IsEnabled = count > 0;
+        ClearSelectionButton.IsEnabled = count > 0;
     }
 
     private List<PhotoCardViewModel> SelectedCards() =>
