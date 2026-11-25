@@ -250,6 +250,13 @@ public sealed partial class GroupedPhotoPage : Page
     {
         var on = MultiSelectToggle?.IsChecked == true;
 
+        // 方框显隐由卡片自己决定：多选模式恒显示，未选是空框
+        foreach (var card in ViewModel.Photos)
+        {
+            card.IsSelectionMode = on;
+            if (!on) card.IsSelected = false;
+        }
+
         foreach (var grid in PhotoGrids())
         {
             grid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;

@@ -79,6 +79,8 @@ public sealed partial class MainPage : Page
     {
         var on = WallMultiSelectToggle?.IsChecked == true;
 
+        SetWallSelectionMode(on);
+
         if (WallPhotoGrid is not null)
         {
             WallPhotoGrid.SelectionMode = on ? ListViewSelectionMode.Multiple : ListViewSelectionMode.None;
@@ -90,6 +92,16 @@ public sealed partial class MainPage : Page
     }
 
     private void OnWallSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateWallSelection();
+
+    /// <summary>多选开关变化时，让所有卡片决定要不要显示右上角方框。</summary>
+    private void SetWallSelectionMode(bool on)
+    {
+        foreach (var card in ViewModel.Photos)
+        {
+            card.IsSelectionMode = on;
+            if (!on) card.IsSelected = false;
+        }
+    }
 
     private List<PhotoCardViewModel> WallSelectedCards() =>
         WallPhotoGrid is null

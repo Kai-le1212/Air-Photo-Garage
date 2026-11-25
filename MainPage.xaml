@@ -45,19 +45,25 @@
                                Stretch="Uniform" />
 
 
-                        <!-- 多选徽标：平时不显示，勾选后出现在右上角（自带圆底，不依赖 GridView 的系统勾选框） -->
+                        <!--
+                            多选方框：多选模式下右上角恒显示 —— 未选是空框、选中是带勾的强调色框。
+                            压在照片上，所以未选态用半透明黑底 + 白描边，任何照片上都看得清。
+                        -->
                         <Border HorizontalAlignment="Right"
-                                VerticalAlignment="Bottom"
+                                VerticalAlignment="Top"
                                 Margin="8"
-                                Width="26"
-                                Height="26"
-                                CornerRadius="13"
-                                Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                Visibility="{x:Bind SelectedBadgeVisibility, Mode=OneWay}">
+                                Width="24"
+                                Height="24"
+                                CornerRadius="4"
+                                BorderThickness="1.5"
+                                BorderBrush="White"
+                                Background="{x:Bind SelectionBoxBackground, Mode=OneWay}"
+                                Visibility="{x:Bind SelectionBoxVisibility, Mode=OneWay}">
                             <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                       Glyph="&#xE73E;"
-                                      FontSize="13"
-                                      Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                      FontSize="12"
+                                      Foreground="White"
+                                      Visibility="{x:Bind SelectionCheckVisibility, Mode=OneWay}" />
                         </Border>
 
                         <!-- 未提供信息覆盖层 -->
