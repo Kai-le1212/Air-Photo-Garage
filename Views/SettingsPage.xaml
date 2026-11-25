@@ -11,7 +11,8 @@
     mc:Ignorable="d">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Padding="32,24" Spacing="24" MaxWidth="720" HorizontalAlignment="Left">
+        <StackPanel Padding="32,24" Spacing="24" MaxWidth="720" HorizontalAlignment="Left"
+                    Typography.NumeralAlignment="Tabular">
 
             <!-- 顶部标题 -->
             <StackPanel Spacing="4">

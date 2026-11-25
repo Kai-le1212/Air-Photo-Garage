@@ -165,7 +165,7 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid>
+    <Grid Typography.NumeralAlignment="Tabular">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
