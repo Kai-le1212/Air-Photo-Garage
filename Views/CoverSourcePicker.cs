@@ -104,13 +104,42 @@ internal static class CoverSourcePicker
                 strip.Children.Add(cell);
             }
 
-            body.Children.Add(new ScrollViewer
+            // ---- 横向滑动条：隐藏滚动条，两端加「‹ ›」翻页按钮（只在该方向还有内容时出现）----
+            var scroller = new ScrollViewer
             {
                 Content = strip,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                HorizontalScrollMode = ScrollMode.Auto,
-            });
+                HorizontalScrollMode = ScrollMode.Enabled,
+                Padding = new Thickness(0, 4, 0, 4),
+            };
+
+            var leftChevron = MakeChevron(0xE76B, HorizontalAlignment.Left);
+            var rightChevron = MakeChevron(0xE76C, HorizontalAlignment.Right);
+
+            void SyncChevrons()
+            {
+                var canScroll = scroller.ScrollableWidth > 1;
+                leftChevron.Visibility = canScroll && scroller.HorizontalOffset > 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+                rightChevron.Visibility = canScroll && scroller.HorizontalOffset < scroller.ScrollableWidth - 1
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            leftChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Max(0, scroller.HorizontalOffset - CellWidth * 2.5), null, null, false);
+            rightChevron.Click += (_, _) => scroller.ChangeView(
+                Math.Min(scroller.ScrollableWidth, scroller.HorizontalOffset + CellWidth * 2.5), null, null, false);
+
+            scroller.ViewChanged += (_, _) => SyncChevrons();
+            scroller.Loaded += (_, _) => SyncChevrons();
+
+            var stripHost = new Grid { Height = CellHeight + 8 };
+            stripHost.Children.Add(scroller);
+            stripHost.Children.Add(leftChevron);
+            stripHost.Children.Add(rightChevron);
+
+            body.Children.Add(stripHost);
         }
 
         dialog.Content = body;
@@ -142,6 +171,35 @@ internal static class CoverSourcePicker
 
         var file = await picker.PickSingleFileAsync();
         return string.IsNullOrEmpty(file?.Path) ? null : file.Path;
+    }
+
+    /// <summary>两端翻页按钮：半透明圆角底 + 白箭头，贴在滑动条左右边缘。</summary>
+    private static Button MakeChevron(int glyph, HorizontalAlignment side)
+    {
+        var button = new Button
+        {
+            Content = new FontIcon
+            {
+                Glyph = char.ConvertFromUtf32(glyph),
+                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"],
+                FontSize = 14,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+            },
+            Width = 32,
+            Height = 56,
+            Padding = new Thickness(0),
+            HorizontalAlignment = side,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = side == HorizontalAlignment.Left ? new Thickness(8, 0, 0, 0) : new Thickness(0, 0, 8, 0),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xB3, 32, 32, 32)),
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(16),
+            Visibility = Visibility.Collapsed,
+            IsTabStop = false,
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            button, side == HorizontalAlignment.Left ? "向前翻" : "向后翻");
+        return button;
     }
 
     /// <summary>图片读不了/编码失败时给一句人话提示。</summary>
