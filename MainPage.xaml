@@ -293,7 +293,7 @@
 
                         <controls:TokenizingTextBox x:Name="TtbAirport"
                                                     Header="机场代码"
-                                                    PlaceholderText="如 ZBAA"
+                                                    PlaceholderText="如 SZX"
                                                     SuggestedItemsSource="{x:Bind ViewModel.AirportSuggestions}"
                                                     SuggestionChosen="OnSuggestionChosen"
                                                     QuerySubmitted="OnQuerySubmitted"

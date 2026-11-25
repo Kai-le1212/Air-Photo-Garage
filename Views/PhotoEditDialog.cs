@@ -141,7 +141,7 @@ public static class PhotoEditDialog
         var tbIata = new TextBox
         {
             Header = "机场 IATA",
-            PlaceholderText = "如 PEK",
+            PlaceholderText = "如 SZX",
             Text = photo.AirportIata ?? "",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -149,7 +149,7 @@ public static class PhotoEditDialog
         var tbIcao = new TextBox
         {
             Header = "机场 ICAO",
-            PlaceholderText = "如 ZBAA",
+            PlaceholderText = "如 ZGSZ",
             Text = photo.AirportIcao ?? "",
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,

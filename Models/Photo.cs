@@ -34,10 +34,10 @@ public sealed class Photo
     /// <summary>机场 ICAO / IATA 代码（兼容旧字段，新数据请用 <see cref="AirportIata"/> / <see cref="AirportIcao"/>）。</summary>
     public string? AirportCode { get; set; }
 
-    /// <summary>IATA 三字代码（如 "PEK"）。</summary>
+    /// <summary>IATA 三字代码（如 "SZX"）。</summary>
     public string? AirportIata { get; set; }
 
-    /// <summary>ICAO 四字代码（如 "ZBAA"）。</summary>
+    /// <summary>ICAO 四字代码（如 "ZGSZ"）。</summary>
     public string? AirportIcao { get; set; }
 
     /// <summary>机场显示名（如 "北京首都国际机场"）。</summary>

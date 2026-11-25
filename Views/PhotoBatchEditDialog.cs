@@ -87,6 +87,7 @@ internal static class PhotoBatchEditDialog
         var tbIata = new TextBox
         {
             Header = "机场 IATA",
+            PlaceholderText = "如 SZX",
             MaxLength = 3,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -95,6 +96,7 @@ internal static class PhotoBatchEditDialog
         var tbIcao = new TextBox
         {
             Header = "机场 ICAO",
+            PlaceholderText = "如 ZGSZ",
             MaxLength = 4,
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
@@ -103,6 +105,7 @@ internal static class PhotoBatchEditDialog
         var tbAirportName = new TextBox
         {
             Header = "机场名称",
+            PlaceholderText = "如 深圳宝安国际机场",
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
 
